@@ -103,9 +103,17 @@ func TargetUpdate(c echo.Context) error {
 		return returnErrorMsg(c, err.Error())
 	}
 
-	target, err := dao.TargetRegister(honeybeeAddress)
+	target, err := dao.TargetGet(uuid)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while registering the target.")
+		return returnInternalError(c, err, "Error occurred while getting the target.")
+	}
+
+	target, err = dao.TargetUpdate(&model.Target{
+		UUID:            target.UUID,
+		HoneybeeAddress: honeybeeAddress,
+	})
+	if err != nil {
+		return returnInternalError(c, err, "Error occurred while updating the target.")
 	}
 
 	return c.JSONPretty(http.StatusOK, target, " ")

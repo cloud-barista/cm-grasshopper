@@ -79,6 +79,16 @@ func TargetGetList(target *model.Target, page int, row int) (*[]model.Target, er
 	return targets, nil
 }
 
+func TargetUpdate(target *model.Target) (*model.Target, error) {
+	result := db.DB.Updates(target)
+	err := result.Error
+	if err != nil {
+		return nil, err
+	}
+
+	return target, nil
+}
+
 func TargetDelete(target *model.Target) error {
 	result := db.DB.Delete(target)
 	err := result.Error
