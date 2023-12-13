@@ -54,6 +54,9 @@ func TargetRegister(c echo.Context) error {
 
 func TargetGet(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
+	if uuid == "" {
+		return errors.New("uuid is empty")
+	}
 
 	target, err := dao.TargetGet(uuid)
 	if err != nil {
