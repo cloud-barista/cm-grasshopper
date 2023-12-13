@@ -46,7 +46,7 @@ func Init() {
 		},
 	}))
 
-	DAG()
+	Target()
 
 	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	logger.Panicln(logger.ERROR, true, err)

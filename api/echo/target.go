@@ -141,7 +141,7 @@ func TargetDelete(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, "TODO", " ")
 }
 
-func DAG() {
+func Target() {
 	e.POST("/target/register", TargetRegister)
 	e.GET("/target/get", TargetGet)
 	e.GET("/target/list", TargetGetList)
