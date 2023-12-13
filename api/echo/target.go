@@ -13,10 +13,6 @@ import (
 )
 
 func checkHoneybeeAddress(honeybeeAddress string) error {
-	if honeybeeAddress == "" {
-		return errors.New("honeybee_address is empty")
-	}
-
 	addrSplit := strings.Split(honeybeeAddress, ":")
 	if len(addrSplit) < 2 {
 		return errors.New("honeybee_address must be {IP or IPv6 or Domain}:{Port} form")
@@ -40,6 +36,9 @@ func checkHoneybeeAddress(honeybeeAddress string) error {
 
 func TargetRegister(c echo.Context) error {
 	honeybeeAddress := c.QueryParam("honeybee_address")
+	if honeybeeAddress == "" {
+		return errors.New("honeybee_address is empty")
+	}
 	err := checkHoneybeeAddress(honeybeeAddress)
 	if err != nil {
 		return returnErrorMsg(c, err.Error())
@@ -72,9 +71,11 @@ func TargetGetList(c echo.Context) error {
 
 	uuid := c.QueryParam("uuid")
 	honeybeeAddress := c.QueryParam("honeybee_address")
-	err = checkHoneybeeAddress(honeybeeAddress)
-	if err != nil {
-		return returnErrorMsg(c, err.Error())
+	if honeybeeAddress != "" {
+		err = checkHoneybeeAddress(honeybeeAddress)
+		if err != nil {
+			return returnErrorMsg(c, err.Error())
+		}
 	}
 
 	target := &model.Target{
