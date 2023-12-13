@@ -55,7 +55,7 @@ func TargetRegister(c echo.Context) error {
 func TargetGet(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return errors.New("uuid is empty")
+		return returnErrorMsg(c, "uuid is empty")
 	}
 
 	target, err := dao.TargetGet(uuid)
@@ -97,7 +97,7 @@ func TargetGetList(c echo.Context) error {
 func TargetUpdate(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return errors.New("uuid is empty")
+		return returnErrorMsg(c, "uuid is empty")
 	}
 
 	honeybeeAddress := c.QueryParam("honeybee_address")
@@ -125,7 +125,7 @@ func TargetUpdate(c echo.Context) error {
 func TargetDelete(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return errors.New("uuid is empty")
+		return returnErrorMsg(c, "uuid is empty")
 	}
 
 	target, err := dao.TargetGet(uuid)
