@@ -47,6 +47,7 @@ func Init() {
 	}))
 
 	Target()
+	Software()
 
 	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	logger.Panicln(logger.ERROR, true, err)
