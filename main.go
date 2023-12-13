@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/cloud-barista/cm-grasshopper/api/echo"
 	"github.com/cloud-barista/cm-grasshopper/common"
+	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/jollaman999/utils/logger"
 	"github.com/jollaman999/utils/syscheck"
@@ -29,10 +30,17 @@ func init() {
 		log.Panicln(err)
 	}
 
+	err = db.Open()
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
 	echo.Init()
 }
 
 func end() {
+	db.Close()
+
 	logger.CloseLogFile()
 }
 
