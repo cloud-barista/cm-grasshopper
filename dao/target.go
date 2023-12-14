@@ -31,9 +31,12 @@ func TargetRegister(honeybeeAddress string) (target *model.Target, err error) {
 func TargetGet(UUID string) (*model.Target, error) {
 	target := &model.Target{}
 
-	result := db.DB.Where("uuid = ?", UUID).Find(target)
+	result := db.DB.Where("uuid = ?", UUID).First(target)
 	err := result.Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("target not found with the provided UUID")
+		}
 		return nil, err
 	}
 
