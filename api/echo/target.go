@@ -63,12 +63,6 @@ func TargetGetList(c echo.Context) error {
 
 	uuid := c.QueryParam("uuid")
 	honeybeeAddress := c.QueryParam("honeybee_address")
-	if honeybeeAddress != "" {
-		err = checkHoneybeeAddress(honeybeeAddress)
-		if err != nil {
-			return returnErrorMsg(c, err.Error())
-		}
-	}
 
 	target := &model.Target{
 		UUID:            uuid,
