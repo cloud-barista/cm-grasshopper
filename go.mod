@@ -3,7 +3,7 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.21
 
 require (
-	github.com/cloud-barista/cm-honeybee v0.0.0-20231213162504-85df58c99fd5
+	github.com/cloud-barista/cm-honeybee v0.0.0-20231214022236-cbc966824df2
 	github.com/glebarez/sqlite v1.10.0
 	github.com/google/uuid v1.5.0
 	github.com/jollaman999/utils v1.0.10
@@ -40,7 +40,7 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	modernc.org/libc v1.37.3 // indirect
+	modernc.org/libc v1.37.4 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/sqlite v1.27.0 // indirect
