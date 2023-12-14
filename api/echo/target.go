@@ -84,6 +84,9 @@ func TargetUpdate(c echo.Context) error {
 	}
 
 	honeybeeAddress := c.QueryParam("honeybee_address")
+	if honeybeeAddress == "" {
+		return errors.New("honeybee_address is empty")
+	}
 	err := checkHoneybeeAddress(honeybeeAddress)
 	if err != nil {
 		return returnErrorMsg(c, err.Error())
