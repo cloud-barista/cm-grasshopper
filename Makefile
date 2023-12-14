@@ -8,7 +8,7 @@ GOPROXY_OPTION := GOPROXY=direct GOSUMDB=off
 GO_COMMAND := ${GOPROXY_OPTION} go
 GOPATH := $(shell go env GOPATH)
 
-.PHONY: all dependency lint test race coverage coverhtml gofmt update build windows clean help
+.PHONY: all dependency lint test race coverage coverhtml gofmt update build clean help
 
 all: build
 
@@ -53,11 +53,6 @@ update: ## Update all of module dependencies
 build: lint ## Build the binary file
 	@echo Building...
 	@CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go
-	@echo Build finished!
-
-windows: lint ## Build the Windows exe binary file
-	@echo Building for Windows system...
-	@GOOS=windows CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME}.exe main.go
 	@echo Build finished!
 
 clean: ## Remove previous build
