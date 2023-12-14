@@ -111,10 +111,11 @@ func TargetUpdate(c echo.Context) error {
 		return returnInternalError(c, err, "Error occurred while getting the target.")
 	}
 
-	target, err = dao.TargetUpdate(&model.Target{
-		UUID:            target.UUID,
-		HoneybeeAddress: honeybeeAddress,
-	})
+	if honeybeeAddress != "" {
+		target.HoneybeeAddress = honeybeeAddress
+	}
+
+	err = dao.TargetUpdate(target)
 	if err != nil {
 		return returnInternalError(c, err, "Error occurred while updating the target.")
 	}

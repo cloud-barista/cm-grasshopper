@@ -79,14 +79,14 @@ func TargetGetList(target *model.Target, page int, row int) (*[]model.Target, er
 	return targets, nil
 }
 
-func TargetUpdate(target *model.Target) (*model.Target, error) {
-	result := db.DB.Updates(target)
+func TargetUpdate(target *model.Target) error {
+	result := db.DB.Model(&model.Target{}).Where("uuid = ?", target.UUID).Updates(target)
 	err := result.Error
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return target, nil
+	return nil
 }
 
 func TargetDelete(target *model.Target) error {
