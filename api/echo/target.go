@@ -5,9 +5,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/model"
 	"github.com/labstack/echo/v4"
-	"net"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
 )
@@ -20,15 +18,6 @@ func checkHoneybeeAddress(honeybeeAddress string) error {
 	port, err := strconv.Atoi(addrSplit[len(addrSplit)-1])
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("honeybee_address has invalid port value")
-	}
-	addr, _ := strings.CutSuffix(honeybeeAddress, ":"+strconv.Itoa(port))
-	_, err = netip.ParseAddr(addr)
-	if err != nil {
-		_, err = net.LookupIP(addr)
-		if err != nil {
-			return errors.New("honeybee_address has invalid address value " +
-				"or can't find the domain (" + addr + ")")
-		}
 	}
 
 	return nil
