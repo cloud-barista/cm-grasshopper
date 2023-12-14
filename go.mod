@@ -3,7 +3,7 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.21
 
 require (
-	github.com/cloud-barista/cm-honeybee v0.0.0-20231214022236-cbc966824df2
+	github.com/cloud-barista/cm-honeybee v0.0.0-20231214033700-7c63c9bc9263
 	github.com/glebarez/sqlite v1.10.0
 	github.com/google/uuid v1.5.0
 	github.com/jollaman999/utils v1.0.10
