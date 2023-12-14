@@ -122,7 +122,7 @@ func TargetDelete(c echo.Context) error {
 		return returnInternalError(c, err, "Error occurred while deleting the target.")
 	}
 
-	return c.JSONPretty(http.StatusOK, "TODO", " ")
+	return c.JSONPretty(http.StatusOK, target, " ")
 }
 
 func Target() {
