@@ -13,6 +13,9 @@
       - .cm-grasshopper/conf directory under user's home directory
       - 'conf' directory where running the binary
       - 'conf' directory where placed in the path of 'CMGRASSHOPPER_ROOT' environment variable
+   - Configuration options
+       - listen
+           - port : Listen port of the API.
    - Configuration file example
      ```yaml
      cm-grasshopper:
