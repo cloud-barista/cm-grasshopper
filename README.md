@@ -53,3 +53,38 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
      ```shell
      sudo ./cm-grasshopper
      ```
+#### Download source code
+
+Clone CM-Grasshopper repository
+
+```bash
+git clone https://github.com/cloud-barista/cm-grasshopper.git ${HOME}/cm-grasshopper
+```
+
+#### Build CM-Grasshopper
+
+Build CM-Grasshopper source code
+
+```bash
+cd ${HOME}/cm-grasshopper
+make build
+```
+
+(Optional) Update Swagger API document
+```bash
+cd ${HOME}/cm-grasshopper
+make swag
+```
+
+Access to Swagger UI
+(Default link) http://localhost:8056/Grasshopper/swagger/index.html
+
+#### Run CM-Grasshopper binary
+
+Run CM-Grasshopper server
+
+```bash
+cd ${HOME}/cm-grasshopper
+make build
+./cm-grasshopper
+```
