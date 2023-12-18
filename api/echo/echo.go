@@ -2,11 +2,14 @@ package echo
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	_ "github.com/cloud-barista/cm-honeybee/docs"
 	"github.com/jollaman999/utils/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"strconv"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 var e *echo.Echo
@@ -48,7 +51,7 @@ func Init() {
 
 	Target()
 	Software()
-
+	e.GET("/honeybee/swagger/*", echoSwagger.WrapHandler)
 	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	logger.Panicln(logger.ERROR, true, err)
 }
