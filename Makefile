@@ -21,7 +21,7 @@ lint: dependency ## Lint the files
 	@if [ ! -f "${GOPATH}/bin/golangci-lint" ] && [ ! -f "$(GOROOT)/bin/golangci-lint" ]; then \
 	  ${GO_COMMAND} install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
 	fi
-	@golangci-lint run -E contextcheck -E revive -D unused
+	@golangci-lint run -E contextcheck -D unused
 
 test: dependency ## Run unittests
 	@echo "Running tests..."
@@ -54,6 +54,12 @@ build: lint ## Build the binary file
 	@echo Building...
 	@CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go
 	@echo Build finished!
+
+swag swagger:
+	@if [ ! -f "${GOPATH}/bin/swag" ]; then \
+	  ${GO_COMMAND} install github.com/swaggo/swag/cmd/swag@latest; \
+	fi
+	@${GOPATH}/bin/swag init --parseDependency
 
 clean: ## Remove previous build
 	@echo Cleaning build...

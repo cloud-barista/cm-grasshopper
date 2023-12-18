@@ -2,11 +2,26 @@ package echo
 
 import (
 	"encoding/json"
-	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-honeybee/model/software"
-	"github.com/labstack/echo/v4"
 	"net/http"
+
+	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/model/software"
+	"github.com/labstack/echo/v4"
 )
+
+type GetSoftwareResponse struct {
+	software.Software
+}
+
+// GetSoftewareList godoc
+//	@Summary		Get a list of Integrated Softeware information
+//	@Description	Get information of all Softeware.
+//	@Tags			[Sample] Get Softeware
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	GetSoftwareResponse	"(This is a sample description for success response in Swagger UI"
+//	@Failure		404	{object}	GetSoftwareResponse	"Failed to get software"
+//	@Router			/software/list [get]
 
 func SoftwareGetList(c echo.Context) error {
 	uuid := c.QueryParam("uuid")

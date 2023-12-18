@@ -2,13 +2,18 @@ package echo
 
 import (
 	"errors"
-	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-grasshopper/model"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/model/software"
+	"github.com/labstack/echo/v4"
 )
+
+type PostTargetDeleteResponse struct {
+	software.Software
+}
 
 func checkHoneybeeAddress(honeybeeAddress string) error {
 	addrSplit := strings.Split(honeybeeAddress, ":")
@@ -108,6 +113,16 @@ func TargetUpdate(c echo.Context) error {
 
 	return c.JSONPretty(http.StatusOK, target, " ")
 }
+
+// PostTargetDelete godoc
+//	@Summary		Target Computing Software Delete
+//	@Description	Delete Target Softeware.
+//	@Tags			[Sample] Delete Softeware
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	PostTargetDeleteResponse	"(This is a sample description for success response in Swagger UI"
+//	@Failure		404	{object}	PostTargetDeleteResponse	"Failed to delete software"
+//	@Router			/target/delete [post]
 
 func TargetDelete(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
