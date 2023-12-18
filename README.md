@@ -29,78 +29,27 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 ## How to run
 
 1. Build the binary
-  - Run on Linux.
-    ```shell
-    make
-    ```
+     ```shell
+     make
+     ```
 
 2. Write the configuration file.
-  - Configuration file name is 'cm-grasshopper.yaml'
-  - The configuration file must be placed in one of the following directories.
-    - .cm-grasshopper/conf directory under user's home directory
-    - 'conf' directory where running the binary
-    - 'conf' directory where placed in the path of 'CMHONEYBEE_ROOT' environment variable
-  - Configuration options
-    - server (Need to implementation.)
-      - timeout : HTTP timeout value as seconds.
-    - listen
-      - port : Listen port of the API.
-  - Configuration file example
-    ```yaml
-    cm-grasshopper:
-        listen:
-            port: 8082
-    ```
+    - Configuration file name is 'cm-grasshopper.yaml'
+    - The configuration file must be placed in one of the following directories.
+        - .cm-grasshopper/conf directory under user's home directory
+        - 'conf' directory where running the binary
+        - 'conf' directory where placed in the path of 'CMGRASSHOPPER_ROOT' environment variable
+    - Configuration options
+        - listen
+            - port : Listen port of the API.
+    - Configuration file example
+      ```yaml
+      cm-grasshopper:
+          listen:
+              port: 8084
+      ```
 
 3. Run with privileges
-  - Linux
-    ```shell
-    sudo ./cm-grasshopper
-    ```
-
-#### Download source code
-
-Clone CM-Grasshopper repository
-
-```bash
-git clone https://github.com/cloud-barista/cm-grasshopper.git ${HOME}/cm-grasshopper
-```
-
-#### Build CM-Grasshopper
-
-Build CM-Grasshopper source code
-
-```bash
-cd ${HOME}/cm-grasshopper
-make build
-```
-
-(Optional) Update Swagger API document
-```bash
-cd ${HOME}/cm-grasshopper
-make swag
-```
-
-Access to Swagger UI
-(Default link) http://localhost:8056/beetle/swagger/index.html
-
-#### Run CM-Grasshopper binary
-
-Run CM-Grasshopper server
-
-```bash
-cd ${HOME}/cm-grasshopper
-make build
-./cm-grasshopper
-```
-
-#### Health-check CM-Grasshopper
-
-Check if CM-Grasshopper is running
-
-```bash
-curl http://localhost:8056/grasshopper/health
-
-# Output if it's running successfully
-# {"message":"CM-Grasshopper API server is running"}
-```
+     ```shell
+     sudo ./cm-grasshopper
+     ```
