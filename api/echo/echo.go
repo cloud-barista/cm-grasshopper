@@ -51,7 +51,7 @@ func Init() {
 
 	Target()
 	Software()
-	e.GET("/honeybee/swagger/*", echoSwagger.WrapHandler)
+	e.GET("/grasshoper/swagger/*", echoSwagger.WrapHandler)
 	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	logger.Panicln(logger.ERROR, true, err)
 }
