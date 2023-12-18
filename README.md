@@ -77,7 +77,7 @@ make swag
 ```
 
 Access to Swagger UI
-(Default link) http://localhost:8056/Grasshopper/swagger/index.html
+(Default link) http://localhost:8056/grasshopper/swagger/index.html
 
 #### Run CM-Grasshopper binary
 
