@@ -77,7 +77,7 @@ make swag
 ```
 
 Access to Swagger UI
-(Default link) http://localhost:8056/grasshopper/swagger/index.html
+(Default link) http://localhost:8084/grasshopper/swagger/index.html
 
 #### Run CM-Grasshopper binary
 
@@ -87,4 +87,15 @@ Run CM-Grasshopper server
 cd ${HOME}/cm-grasshopper
 make build
 ./cm-grasshopper
+```
+
+#### Health-check CM-Grasshopper
+
+Check if CM-Grasshopper is running
+
+```bash
+curl http://localhost:8084/honeybee/health
+
+# Output if it's running successfully
+# {"message":"CM-Grasshopper API server is running"}
 ```
