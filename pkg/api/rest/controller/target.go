@@ -1,17 +1,18 @@
-package echo
+package controller
 
 import (
 	"errors"
+	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	"github.com/cloud-barista/cm-honeybee/pkg/api/rest/model/software"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-grasshopper/model/software"
-	"github.com/labstack/echo/v4"
 )
 
-type PostTargetDeleteResponse struct {
+type TargetDeleteResponse struct {
 	software.Software
 }
 
@@ -35,12 +36,12 @@ func TargetRegister(c echo.Context) error {
 	}
 	err := checkHoneybeeAddress(honeybeeAddress)
 	if err != nil {
-		return returnErrorMsg(c, err.Error())
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	target, err := dao.TargetRegister(honeybeeAddress)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while registering the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while registering the target.")
 	}
 
 	return c.JSONPretty(http.StatusOK, target, " ")
@@ -49,21 +50,21 @@ func TargetRegister(c echo.Context) error {
 func TargetGet(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return returnErrorMsg(c, "uuid is empty")
+		return common.ReturnErrorMsg(c, "uuid is empty")
 	}
 
 	target, err := dao.TargetGet(uuid)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while getting the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while getting the target.")
 	}
 
 	return c.JSONPretty(http.StatusOK, target, " ")
 }
 
 func TargetGetList(c echo.Context) error {
-	page, row, err := checkPageRow(c)
+	page, row, err := common.CheckPageRow(c)
 	if err != nil {
-		return returnErrorMsg(c, err.Error())
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	uuid := c.QueryParam("uuid")
@@ -76,7 +77,7 @@ func TargetGetList(c echo.Context) error {
 
 	targets, err := dao.TargetGetList(target, page, row)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while getting the target list.")
+		return common.ReturnInternalError(c, err, "Error occurred while getting the target list.")
 	}
 
 	return c.JSONPretty(http.StatusOK, targets, " ")
@@ -85,7 +86,7 @@ func TargetGetList(c echo.Context) error {
 func TargetUpdate(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return returnErrorMsg(c, "uuid is empty")
+		return common.ReturnErrorMsg(c, "uuid is empty")
 	}
 
 	honeybeeAddress := c.QueryParam("honeybee_address")
@@ -94,12 +95,12 @@ func TargetUpdate(c echo.Context) error {
 	}
 	err := checkHoneybeeAddress(honeybeeAddress)
 	if err != nil {
-		return returnErrorMsg(c, err.Error())
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	target, err := dao.TargetGet(uuid)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while getting the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while getting the target.")
 	}
 
 	if honeybeeAddress != "" {
@@ -108,45 +109,37 @@ func TargetUpdate(c echo.Context) error {
 
 	err = dao.TargetUpdate(target)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while updating the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while updating the target.")
 	}
 
 	return c.JSONPretty(http.StatusOK, target, " ")
 }
 
-// PostTargetDelete godoc
-//	@Summary		Target Computing Software Delete
-//	@Description	Delete Target Softeware.
-//	@Tags			[Sample] Delete Softeware
+// TargetDelete godoc
+//
+//	@Summary		Delete the computing target
+//	@Description	Delete the target.
+//	@Tags			[Sample] Delete the target
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	PostTargetDeleteResponse	"(This is a sample description for success response in Swagger UI"
-//	@Failure		404	{object}	PostTargetDeleteResponse	"Failed to delete software"
+//	@Success		200	{object}	TargetDeleteResponse	"Successfully delete the target"
+//	@Failure		404	{object}	TargetDeleteResponse	"Failed to delete the target"
 //	@Router			/target/delete [post]
-
 func TargetDelete(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
-		return returnErrorMsg(c, "uuid is empty")
+		return common.ReturnErrorMsg(c, "uuid is empty")
 	}
 
 	target, err := dao.TargetGet(uuid)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while getting the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while getting the target.")
 	}
 
 	err = dao.TargetDelete(target)
 	if err != nil {
-		return returnInternalError(c, err, "Error occurred while deleting the target.")
+		return common.ReturnInternalError(c, err, "Error occurred while deleting the target.")
 	}
 
 	return c.JSONPretty(http.StatusOK, target, " ")
-}
-
-func Target() {
-	e.POST("/target/register", TargetRegister)
-	e.GET("/target/get", TargetGet)
-	e.GET("/target/list", TargetGetList)
-	e.POST("/target/update", TargetUpdate)
-	e.POST("/target/delete", TargetDelete)
 }

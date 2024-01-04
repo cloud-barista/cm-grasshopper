@@ -1,23 +1,15 @@
-package echo
+package middlewares
 
 import (
 	"fmt"
-	"strconv"
-
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
-	_ "github.com/cloud-barista/cm-honeybee/docs"
 	"github.com/jollaman999/utils/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	echoSwagger "github.com/swaggo/echo-swagger"
+	"strconv"
 )
 
-var e *echo.Echo
-
-func Init() {
-	e = echo.New()
-
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+func CustomLogger() echo.MiddlewareFunc {
+	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:    true,
 		LogURI:       true,
 		LogHost:      true,
@@ -47,11 +39,5 @@ func Init() {
 
 			return nil
 		},
-	}))
-
-	Target()
-	Software()
-	e.GET("/grasshoper/swagger/*", echoSwagger.WrapHandler)
-	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
-	logger.Panicln(logger.ERROR, true, err)
+	})
 }

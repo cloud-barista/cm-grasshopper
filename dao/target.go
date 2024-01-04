@@ -3,7 +3,7 @@ package dao
 import (
 	"errors"
 	"github.com/cloud-barista/cm-grasshopper/db"
-	"github.com/cloud-barista/cm-grasshopper/model"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

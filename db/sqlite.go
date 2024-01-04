@@ -2,7 +2,7 @@ package db
 
 import (
 	"github.com/cloud-barista/cm-grasshopper/common"
-	"github.com/cloud-barista/cm-grasshopper/model"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/glebarez/sqlite"
 	"github.com/jollaman999/utils/logger"
 	"gorm.io/gorm"

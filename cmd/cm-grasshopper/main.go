@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/cloud-barista/cm-grasshopper/api/echo"
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/server"
 	"github.com/jollaman999/utils/logger"
 	"github.com/jollaman999/utils/syscheck"
 	"log"
@@ -35,7 +35,7 @@ func init() {
 		logger.Panicln(logger.ERROR, true, err.Error())
 	}
 
-	echo.Init()
+	server.Init()
 }
 
 func end() {
