@@ -3,7 +3,7 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.21
 
 require (
-	github.com/cloud-barista/cm-honeybee v0.1.1
+	github.com/cloud-barista/cm-honeybee v0.1.2
 	github.com/glebarez/sqlite v1.10.0
 	github.com/google/uuid v1.5.0
 	github.com/jollaman999/utils v1.0.10
@@ -46,7 +46,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.16.1 // indirect
