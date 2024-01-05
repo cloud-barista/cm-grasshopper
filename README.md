@@ -85,8 +85,7 @@ Run CM-Grasshopper server
 
 ```bash
 cd ${HOME}/cm-grasshopper
-make build
-./cm-grasshopper
+make run
 ```
 
 #### Health-check CM-Grasshopper
