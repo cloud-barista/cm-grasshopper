@@ -9,20 +9,18 @@ import (
 	"net/http"
 )
 
-type GetSoftwareResponse struct {
-	software.Software
-}
-
 // SoftwareGetList godoc
 //
-//	@Summary		Get a list of integrated software information
-//	@Description	Get information of all software.
-//	@Tags			[Sample] Get software
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	GetSoftwareResponse	"Successfully get software list."
-//	@Failure		404	{object}	GetSoftwareResponse	"Error occurred while getting software list."
-//	@Router			/software/list [get]
+// @Summary		Get a list of software information.
+// @Description	Get software information.
+// @Tags			[Software] Get software info
+// @Accept			json
+// @Produce		json
+// @Param			uuid query string true "UUID of the target"
+// @Success		200	{object}	software.Software	"Successfully get information of software."
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to get information of software."
+// @Router			/software/list [get]
 func SoftwareGetList(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {

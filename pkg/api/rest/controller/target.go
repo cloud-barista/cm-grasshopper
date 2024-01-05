@@ -29,6 +29,18 @@ func checkHoneybeeAddress(honeybeeAddress string) error {
 	return nil
 }
 
+// TargetRegister godoc
+//
+// @Summary		Register the computing target
+// @Description	Register the target.
+// @Tags			[Target] Register target
+// @Accept			json
+// @Produce		json
+// @Param			honeybee_address query string true "Honeybee address installed in the target"
+// @Success		200	{object}	common.ErrorResponse	"Successfully register the target"
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to register the target"
+// @Router			/target/update [post]
 func TargetRegister(c echo.Context) error {
 	honeybeeAddress := c.QueryParam("honeybee_address")
 	if honeybeeAddress == "" {
@@ -47,6 +59,18 @@ func TargetRegister(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, target, " ")
 }
 
+// TargetGet godoc
+//
+// @Summary		Get information of the target.
+// @Description	Get target information.
+// @Tags			[Target] Get target
+// @Accept			json
+// @Produce		json
+// @Param			uuid query string true "UUID of the target"
+// @Success		200	{object}	model.Target	"Successfully get the target."
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to get the target."
+// @Router			/target/get [get]
 func TargetGet(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
@@ -61,6 +85,17 @@ func TargetGet(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, target, " ")
 }
 
+// TargetGetList godoc
+//
+// @Summary		Get a list of targets.
+// @Description	Get a list of targets.
+// @Tags			[Target] Get target list
+// @Accept			json
+// @Produce		json
+// @Success		200	{object}	[]model.Target	"Successfully get a list of targets."
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to get a list of targets."
+// @Router			/target/list [get]
 func TargetGetList(c echo.Context) error {
 	page, row, err := common.CheckPageRow(c)
 	if err != nil {
@@ -83,6 +118,18 @@ func TargetGetList(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, targets, " ")
 }
 
+// TargetUpdate godoc
+//
+// @Summary		Update the computing target
+// @Description	Update the target.
+// @Tags			[Target] Update target
+// @Accept			json
+// @Produce		json
+// @Param			uuid query string true "UUID of the target"
+// @Success		200	{object}	common.ErrorResponse	"Successfully update the target"
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to update the target"
+// @Router			/target/update [post]
 func TargetUpdate(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
@@ -117,14 +164,16 @@ func TargetUpdate(c echo.Context) error {
 
 // TargetDelete godoc
 //
-//	@Summary		Delete the computing target
-//	@Description	Delete the target.
-//	@Tags			[Sample] Delete the target
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{object}	TargetDeleteResponse	"Successfully delete the target"
-//	@Failure		404	{object}	TargetDeleteResponse	"Failed to delete the target"
-//	@Router			/target/delete [post]
+// @Summary		Delete the computing target
+// @Description	Delete the target.
+// @Tags			[Target] Delete target
+// @Accept			json
+// @Produce		json
+// @Param			uuid query string true "UUID of the target"
+// @Success		200	{object}	common.ErrorResponse	"Successfully delete the target"
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to delete the target"
+// @Router			/target/delete [post]
 func TargetDelete(c echo.Context) error {
 	uuid := c.QueryParam("uuid")
 	if uuid == "" {
