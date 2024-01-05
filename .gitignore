@@ -3,6 +3,8 @@ vendor
 .idea/
 .vscode/
 
+.diff_*
+
 *.log
 
 *.db
