@@ -8,7 +8,7 @@ GOPROXY_OPTION := GOPROXY=direct
 GO_COMMAND := ${GOPROXY_OPTION} go
 GOPATH := $(shell go env GOPATH)
 
-.PHONY: all dependency lint test race coverage coverhtml gofmt update swag swagger build run clean help
+.PHONY: all dependency lint test race coverage coverhtml gofmt update swag swagger build run stop clean help
 
 all: build
 
@@ -18,10 +18,18 @@ dependency: ## Get dependencies
 
 lint: dependency ## Lint the files
 	@echo "Running linter..."
-	@if [ ! -f "${GOPATH}/bin/golangci-lint" ] && [ ! -f "$(GOROOT)/bin/golangci-lint" ]; then \
-	  ${GO_COMMAND} install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
-	fi
-	@golangci-lint run -E contextcheck -E revive
+	@go_path=${GOPATH}; \
+	  kernel_name=`uname -s` && \
+	  if [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
+	    drive=`go env GOPATH | cut -f1 -d':' | tr '[:upper:]' '[:lower:]'`; \
+	    path=`go env GOPATH | cut -f2 -d':' | sed 's@\\\\\\@\/@g'`; \
+	    cygdrive_prefix=`mount -p | tail -n1 | awk '{print $$1}'`; \
+	    go_path=`echo $$cygdrive_prefix/$$drive/$$path | sed 's@\/\/@\/@g'`; \
+	  fi; \
+	  if [ ! -f "$$go_path/bin/golangci-lint" ]; then \
+	    ${GO_COMMAND} install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	  fi; \
+	  $$go_path/bin/golangci-lint run -E contextcheck -E revive
 
 test: dependency ## Run unittests
 	@echo "Running tests..."
@@ -52,10 +60,18 @@ update: ## Update all of module dependencies
 
 swag swagger: ## Generate Swagger Documentation
 	@echo "Running swag..."
-	@if [ ! -f "${GOPATH}/bin/swag" ] && [ ! -f "$(GOROOT)/bin/swag" ]; then \
-	  ${GO_COMMAND} install github.com/swaggo/swag/cmd/swag@latest; \
-	fi
-	@swag init -g ./pkg/api/rest/server/server.go --pd -o ./pkg/api/rest/docs/ > /dev/null
+	@go_path=${GOPATH}; \
+	  kernel_name=`uname -s` && \
+	  if [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
+	    drive=`go env GOPATH | cut -f1 -d':' | tr '[:upper:]' '[:lower:]'`; \
+	    path=`go env GOPATH | cut -f2 -d':' | sed 's@\\\\\\@\/@g'`; \
+	    cygdrive_prefix=`mount -p | tail -n1 | awk '{print $$1}'`; \
+	    go_path=`echo $$cygdrive_prefix/$$drive/$$path | sed 's@\/\/@\/@g'`; \
+	  fi; \
+	  if [ ! -f "$$go_path/bin/swag" ]; then \
+	    ${GO_COMMAND} install github.com/swaggo/swag/cmd/swag@latest; \
+	  fi; \
+	  $$go_path/bin/swag init -g ./pkg/api/rest/server/server.go --pd -o ./pkg/api/rest/docs/ > /dev/null
 
 build: lint swag ## Build the binary file
 	@echo Building...
@@ -72,15 +88,38 @@ build: lint swag ## Build the binary file
 	@git rev-parse HEAD > .git_hash_last_build
 	@echo Build finished!
 
+linux: lint swag ## Build the binary file for Linux
+	@echo Building...
+	@cd cmd/${MODULE_NAME} && GOOS=linux CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go
+	@git diff > .diff_last_build
+	@git rev-parse HEAD > .git_hash_last_build
+	@echo Build finished!
+
+windows: lint swag ## Build the binary file for Windows
+	@echo Building...
+	@cd cmd/${MODULE_NAME} && GOOS=windows CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME}.exe main.go
+	@git diff > .diff_last_build
+	@git rev-parse HEAD > .git_hash_last_build
+	@echo Build finished!
+
 run: ## Run the built binary
 	@git diff > .diff_current
 	@STATUS=`diff .diff_last_build .diff_current 2>&1 > /dev/null; echo $$?` && \
 	  GIT_HASH_MINE=`git rev-parse HEAD` && \
 	  GIT_HASH_LAST_BUILD=`cat .git_hash_last_build 2>&1 > /dev/null | true` && \
 	  if [ "$$STATUS" != "0" ] || [ "$$GIT_HASH_MINE" != "$$GIT_HASH_LAST_BUILD" ]; then \
-	    $(MAKE) build; \
+	    "$(MAKE)" build; \
 	  fi
-	@cp -RpPf conf cmd/${MODULE_NAME}/ && ./cmd/${MODULE_NAME}/${MODULE_NAME}* || echo "Trying with sudo..." && sudo ./cmd/${MODULE_NAME}/${MODULE_NAME}*
+	@@kernel_name=`uname -s` && \
+	  cp -RpPf conf cmd/${MODULE_NAME}/ && \
+	  if [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
+	    ./cmd/${MODULE_NAME}/${MODULE_NAME}.exe; \
+	  else \
+        ./cmd/${MODULE_NAME}/${MODULE_NAME} || echo "Trying with sudo..." && sudo ./cmd/${MODULE_NAME}/${MODULE_NAME}; \
+	  fi
+
+stop: ## Stop the built binary
+	@sudo killall ${MODULE_NAME} | true
 
 clean: ## Remove previous build
 	@echo Cleaning build...
