@@ -15,7 +15,6 @@ func Init() {
 
 	e.Use(middlewares.CustomLogger())
 
-	route.Target(e)
 	route.Software(e)
 	route.RegisterSwagger(e)
 	route.RegisterUtility(e)
