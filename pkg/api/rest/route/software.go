@@ -6,5 +6,5 @@ import (
 )
 
 func Software(e *echo.Echo) {
-	e.GET("/software/list", controller.SoftwareGetList)
+	e.POST("/software/install", controller.InstallSoftware)
 }

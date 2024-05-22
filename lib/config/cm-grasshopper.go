@@ -17,6 +17,10 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
+		Honeybee struct {
+			ServerAddress string `yaml:"server_address"`
+			ServerPort    string `yaml:"server_port"`
+		} `yaml:"honeybee"`
 	} `yaml:"cm-grasshopper"`
 }
 
@@ -30,6 +34,14 @@ func checkCMGrasshopperConfigFile() error {
 	port, err := strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {
+		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
+	}
+	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
+	if err != nil || port < 1 || port > 65535 {
+		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
 	}
 
 	return nil

@@ -4,6 +4,26 @@ definitions:
       error:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq:
+    properties:
+      connection_uuid:
+        type: string
+      package_names:
+        items:
+          type: string
+        type: array
+      package_type:
+        type: string
+    required:
+    - connection_uuid
+    - package_names
+    - package_type
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes:
+    properties:
+      output:
+        type: string
+    type: object
   pkg_api_rest_controller.SimpleMsg:
     properties:
       message:
@@ -31,4 +51,34 @@ paths:
       summary: Check Grasshopper is alive
       tags:
       - '[Admin] System management'
+  /software/install:
+    post:
+      consumes:
+      - application/json
+      description: Install pieces of software to target.
+      parameters:
+      - description: Software install request.
+        in: body
+        name: softwareInstallReq
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully sent SSH command.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to sent SSH command.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Install Software
+      tags:
+      - '[Software]'
 swagger: "2.0"
