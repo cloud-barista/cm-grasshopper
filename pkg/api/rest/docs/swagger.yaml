@@ -1,0 +1,34 @@
+definitions:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  pkg_api_rest_controller.SimpleMsg:
+    properties:
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /grasshopper/health:
+    get:
+      consumes:
+      - application/json
+      description: Check Grasshopper is alive
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get heath state.
+          schema:
+            $ref: '#/definitions/pkg_api_rest_controller.SimpleMsg'
+        "500":
+          description: Failed to check health.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Check Grasshopper is alive
+      tags:
+      - '[Admin] System management'
+swagger: "2.0"
