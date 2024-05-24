@@ -1,0 +1,14 @@
+services:
+  cm-honeybee:
+    container_name: cm-grasshopper
+    restart: always
+    privileged: true
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: cm-grasshopper:${TAG:-latest}
+    entrypoint: /docker-entrypoint.sh
+    volumes:
+      - ./docker-entrypoint.sh:/docker-entrypoint.sh:ro
+      - ./conf/:/conf/:ro
+    network_mode: "host"
