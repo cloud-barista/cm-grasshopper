@@ -4,9 +4,9 @@
         "contact": {}
     },
     "paths": {
-        "/grasshopper/health": {
+        "/grasshopper/readyz": {
             "get": {
-                "description": "Check Grasshopper is alive",
+                "description": "Check Grasshopper is ready",
                 "consumes": [
                     "application/json"
                 ],
@@ -16,16 +16,16 @@
                 "tags": [
                     "[Admin] System management"
                 ],
-                "summary": "Check Grasshopper is alive",
+                "summary": "Check Ready",
                 "responses": {
                     "200": {
-                        "description": "Successfully get heath state.",
+                        "description": "Successfully get ready state.",
                         "schema": {
                             "$ref": "#/definitions/pkg_api_rest_controller.SimpleMsg"
                         }
                     },
                     "500": {
-                        "description": "Failed to check health.",
+                        "description": "Failed to check ready state.",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }

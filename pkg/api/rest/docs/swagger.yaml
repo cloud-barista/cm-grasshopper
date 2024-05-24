@@ -32,23 +32,23 @@ definitions:
 info:
   contact: {}
 paths:
-  /grasshopper/health:
+  /grasshopper/readyz:
     get:
       consumes:
       - application/json
-      description: Check Grasshopper is alive
+      description: Check Grasshopper is ready
       produces:
       - application/json
       responses:
         "200":
-          description: Successfully get heath state.
+          description: Successfully get ready state.
           schema:
             $ref: '#/definitions/pkg_api_rest_controller.SimpleMsg'
         "500":
-          description: Failed to check health.
+          description: Failed to check ready state.
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Check Grasshopper is alive
+      summary: Check Ready
       tags:
       - '[Admin] System management'
   /software/install:

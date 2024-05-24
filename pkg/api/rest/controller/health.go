@@ -10,18 +10,25 @@ type SimpleMsg struct {
 	Message string `json:"message"`
 }
 
-// GetHealth func is for checking Grasshopper server health.
-// @Summary Check Grasshopper is alive
-// @Description Check Grasshopper is alive
+var OkMessage = SimpleMsg{}
+var IsReady = false
+
+// CheckReady func is for checking Grasshopper server health.
+// @Summary Check Ready
+// @Description Check Grasshopper is ready
 // @Tags [Admin] System management
-// @Accept  json
-// @Produce  json
-// @Success		200 {object}	SimpleMsg	"Successfully get heath state."
-// @Failure		500	{object}	common.ErrorResponse	"Failed to check health."
+// @Accept		json
+// @Produce		json
+// @Success		200 {object}	SimpleMsg				"Successfully get ready state."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to check ready state."
 //
-// @Router /grasshopper/health [get]
-func GetHealth(c echo.Context) error {
-	okMessage := SimpleMsg{}
-	okMessage.Message = "CM-Grasshopper API server is running"
-	return c.JSONPretty(http.StatusOK, &okMessage, " ")
+// @Router /grasshopper/readyz [get]
+func CheckReady(c echo.Context) error {
+	status := http.StatusOK
+
+	if !IsReady {
+		status = http.StatusServiceUnavailable
+	}
+
+	return c.JSONPretty(status, &OkMessage, " ")
 }
