@@ -93,8 +93,8 @@ make run
 Check if CM-Grasshopper is running
 
 ```bash
-curl http://localhost:8084/honeybee/health
+curl http://localhost:8084/grasshopper/readyz
 
 # Output if it's running successfully
-# {"message":"CM-Grasshopper API server is running"}
+# {"message":"CM-Grasshopper API server is ready"}
 ```
