@@ -1,5 +1,5 @@
 services:
-  cm-honeybee:
+  cm-grasshopper:
     container_name: cm-grasshopper
     restart: always
     privileged: true
