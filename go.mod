@@ -3,7 +3,7 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.22.3
 
 require (
-	github.com/cloud-barista/cm-honeybee/server v0.0.0-20240522171320-cb61f875f480
+	github.com/cloud-barista/cm-honeybee/server v0.0.0-20240530070023-ee1c0a77fbf7
 	github.com/glebarez/sqlite v1.11.0
 	github.com/jollaman999/utils v1.0.10
 	github.com/labstack/echo/v4 v4.12.0
@@ -37,7 +37,7 @@ require (
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pkg/sftp v1.13.5 // indirect
+	github.com/pkg/sftp v1.13.6 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -48,7 +48,7 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.21.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.50.8 // indirect
+	modernc.org/libc v1.50.9 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/sqlite v1.29.10 // indirect
