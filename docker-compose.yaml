@@ -2,13 +2,10 @@ services:
   cm-grasshopper:
     container_name: cm-grasshopper
     restart: always
-    privileged: true
     build:
       context: ./
       dockerfile: Dockerfile
     image: cm-grasshopper:${TAG:-latest}
-    entrypoint: /docker-entrypoint.sh
     volumes:
-      - ./docker-entrypoint.sh:/docker-entrypoint.sh:ro
-      - ./conf/:/conf/:ro
+      - ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
     network_mode: "host"
