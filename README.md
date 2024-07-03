@@ -49,7 +49,7 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
               port: 8084
       ```
 
-3. Run with privileges
+3. Run
      ```shell
      ./cm-grasshopper
      ```
