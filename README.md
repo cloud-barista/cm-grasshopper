@@ -22,73 +22,42 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 
 ## Execution and development environment
 * Tested operating systems (OSs):
-  * Ubuntu 23.10, Ubuntu 22.04, Ubuntu 18.04, Rocky Linux 9
+  * Ubuntu 24.04, Ubuntu 22.04, Ubuntu 18.04, Rocky Linux 9
 * Language:
-  * Go: 1.21.5
+  * Go: 1.21.6
 
 ## How to run
 
-1. Build the binary
-     ```shell
-     make
-     ```
+### 1. Build and run
 
-2. Write the configuration file.
-    - Configuration file name is 'cm-grasshopper.yaml'
-    - The configuration file must be placed in one of the following directories.
-        - .cm-grasshopper/conf directory under user's home directory
-        - 'conf' directory where running the binary
-        - 'conf' directory where placed in the path of 'CMGRASSHOPPER_ROOT' environment variable
-    - Configuration options
-        - listen
-            - port : Listen port of the API.
-    - Configuration file example
-      ```yaml
-      cm-grasshopper:
-          listen:
-              port: 8084
-      ```
+1.1. Write the configuration file.
+  - Configuration file name is 'cm-grasshopper.yaml'
+  - The configuration file must be placed in one of the following directories.
+    - .cm-grasshopper/conf directory under user's home directory
+      - 'conf' directory where running the binary
+    - 'conf' directory where placed in the path of 'CMGRASSHOPPER_ROOT' environment variable
+  - Configuration options
+    - listen
+      - port : Listen port of the API.
+    - honeybee
+      - server_address : IP address of the honeybee server's API.
+      - server_port : Port of the honeybee server's API.
+  - Configuration file example
+    ```yaml
+    cm-grasshopper:
+        listen:
+            port: 8084
+        honeybee:
+            server_address: 127.0.0.1
+            server_port: 8081
+    ```
 
-3. Run
-     ```shell
-     ./cm-grasshopper
-     ```
-#### Download source code
+2. Build and run the binary
+ ```shell
+ make run
+ ```
 
-Clone CM-Grasshopper repository
-
-```bash
-git clone https://github.com/cloud-barista/cm-grasshopper.git ${HOME}/cm-grasshopper
-```
-
-#### Build CM-Grasshopper
-
-Build CM-Grasshopper source code
-
-```bash
-cd ${HOME}/cm-grasshopper
-make build
-```
-
-(Optional) Update Swagger API document
-```bash
-cd ${HOME}/cm-grasshopper
-make swag
-```
-
-Access to Swagger UI
-(Default link) http://localhost:8084/grasshopper/swagger/index.html
-
-#### Run CM-Grasshopper binary
-
-Run CM-Grasshopper server
-
-```bash
-cd ${HOME}/cm-grasshopper
-make run
-```
-
-#### Health-check CM-Grasshopper
+### Health-check
 
 Check if CM-Grasshopper is running
 
@@ -98,3 +67,6 @@ curl http://localhost:8084/grasshopper/readyz
 # Output if it's running successfully
 # {"message":"CM-Grasshopper API server is ready"}
 ```
+
+## Check out all APIs
+* [Grasshopper APIs (Swagger Document)](https://cloud-barista.github.io/cb-tumblebug-api-web/?url=https://raw.githubusercontent.com/cloud-barista/cm-grasshopper/main/pkg/api/rest/docs/swagger.yaml)
