@@ -47,7 +47,7 @@ func NewSSHClient(connectionInfoID string) (*Client, error) {
 	}
 
 	var auth goph.Auth
-	if connectionInfo.PrivateKey != "" {
+	if connectionInfo.PrivateKey != "" && connectionInfo.PrivateKey != "-" {
 		auth, err = goph.RawKey(connectionInfo.PrivateKey, "")
 		if err != nil {
 			return nil, err
