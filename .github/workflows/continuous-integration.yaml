@@ -14,8 +14,8 @@ on:
       - "LICENSE"
       - "CODEOWNERS"
       - "docs/**"
+      - "scripts/**"
       # - "assets/**"
-      # - "scripts/**"
       # - "src/testclient/scripts/**"
 
 jobs:

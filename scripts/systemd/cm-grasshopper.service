@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloud-Migrator Grasshopper Service
+After=network.target
+
+[Service]
+Environment="CMGRASSHOPPER_ROOT=/etc/cloud-migrator/cm-grasshopper/"
+Type=simple
+User=root
+ExecStart=/usr/bin/cm-grasshopper
+ExecStop=/usr/bin/killall cm-grasshopper
+Restart=on-failure
+RestartPreventExitStatus=100
+
+[Install]
+WantedBy=multi-user.target
+Alias=grasshopper.service
