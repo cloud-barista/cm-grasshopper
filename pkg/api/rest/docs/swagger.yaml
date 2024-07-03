@@ -6,7 +6,7 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq:
     properties:
-      connection_uuid:
+      connection_id:
         type: string
       package_names:
         items:
@@ -15,7 +15,7 @@ definitions:
       package_type:
         type: string
     required:
-    - connection_uuid
+    - connection_id
     - package_names
     - package_type
     type: object

@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"github.com/jollaman999/utils/logger"
 	"io"
 	"net/http"
 )
@@ -9,6 +10,9 @@ import (
 func GetHTTPRequest(URL string) ([]byte, error) {
 	ctx := context.Background()
 	client := &http.Client{}
+
+	logger.Println(logger.DEBUG, false, "GetHTTPRequest: Requesting URL='"+URL+"'")
+
 	req, err := http.NewRequest(http.MethodGet, URL, nil)
 	if err != nil {
 		return nil, err

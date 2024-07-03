@@ -32,10 +32,10 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 	return goph.AddKnownHost(host, remote, key, "")
 }
 
-func NewSSHClient(connectionInfoUUID string) (*Client, error) {
+func NewSSHClient(connectionInfoID string) (*Client, error) {
 	data, err := common.GetHTTPRequest("http://" + config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress +
 		":" + config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort +
-		"/connection_info/" + connectionInfoUUID)
+		"/honeybee/connection_info/" + connectionInfoID)
 	if err != nil {
 		return nil, err
 	}

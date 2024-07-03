@@ -30,7 +30,7 @@ func InstallSoftware(c echo.Context) error {
 		return err
 	}
 
-	client, err := ssh.NewSSHClient(softwareInstallReq.ConnectionUUID)
+	client, err := ssh.NewSSHClient(softwareInstallReq.ConnectionID)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}

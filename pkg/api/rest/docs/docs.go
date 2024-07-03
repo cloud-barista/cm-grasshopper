@@ -103,12 +103,12 @@ const docTemplate = `{
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq": {
             "type": "object",
             "required": [
-                "connection_uuid",
+                "connection_id",
                 "package_names",
                 "package_type"
             ],
             "properties": {
-                "connection_uuid": {
+                "connection_id": {
                     "type": "string"
                 },
                 "package_names": {
