@@ -28,9 +28,7 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 
 ## How to run
 
-### 1. Build and run
-
-1.1. Write the configuration file.
+1. Write the configuration file.
   - Configuration file name is 'cm-grasshopper.yaml'
   - The configuration file must be placed in one of the following directories.
     - .cm-grasshopper/conf directory under user's home directory
