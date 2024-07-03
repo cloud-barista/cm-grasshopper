@@ -7,7 +7,6 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/controller"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/server"
 	"github.com/jollaman999/utils/logger"
-	"github.com/jollaman999/utils/syscheck"
 	"log"
 	"os"
 	"os/signal"
@@ -17,12 +16,7 @@ import (
 )
 
 func init() {
-	err := syscheck.CheckRoot()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	err = config.PrepareConfigs()
+	err := config.PrepareConfigs()
 	if err != nil {
 		log.Fatalln(err)
 	}

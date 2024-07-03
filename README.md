@@ -51,7 +51,7 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 
 3. Run with privileges
      ```shell
-     sudo ./cm-grasshopper
+     ./cm-grasshopper
      ```
 #### Download source code
 
