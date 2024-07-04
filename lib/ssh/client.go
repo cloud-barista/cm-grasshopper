@@ -1,11 +1,15 @@
 package ssh
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	grasshopperCommon "github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
+	"github.com/jollaman999/utils/logger"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 	"net"
@@ -32,6 +36,30 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 	return goph.AddKnownHost(host, remote, key, "")
 }
 
+func decryptPasswordAndPrivateKey(connectionInfo *honeybee.ConnectionInfo) (*honeybee.ConnectionInfo, error) {
+	encryptedPassword, err := base64.StdEncoding.DecodeString(connectionInfo.Password)
+	if err != nil {
+		errMsg := "error occurred while decrypting the base64 encoded encrypted password (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+		return nil, errors.New(errMsg)
+	}
+
+	decryptedPasswordBytes := rsautil.DecryptWithPrivateKey(encryptedPassword, grasshopperCommon.HoneybeePrivateKey)
+	connectionInfo.Password = string(decryptedPasswordBytes)
+
+	encryptedPrivateKey, err := base64.StdEncoding.DecodeString(connectionInfo.PrivateKey)
+	if err != nil {
+		errMsg := "error occurred while decrypting the base64 encoded encrypted private key (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+		return nil, errors.New(errMsg)
+	}
+
+	decryptedPrivateKeyBytes := rsautil.DecryptWithPrivateKey(encryptedPrivateKey, grasshopperCommon.HoneybeePrivateKey)
+	connectionInfo.PrivateKey = string(decryptedPrivateKeyBytes)
+
+	return connectionInfo, nil
+}
+
 func NewSSHClient(connectionInfoID string) (*Client, error) {
 	data, err := common.GetHTTPRequest("http://" + config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress +
 		":" + config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort +
@@ -40,8 +68,13 @@ func NewSSHClient(connectionInfoID string) (*Client, error) {
 		return nil, err
 	}
 
-	var connectionInfo honeybee.ConnectionInfo
-	err = json.Unmarshal(data, &connectionInfo)
+	var encryptedConnectionInfo honeybee.ConnectionInfo
+	err = json.Unmarshal(data, &encryptedConnectionInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	connectionInfo, err := decryptPasswordAndPrivateKey(&encryptedConnectionInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +105,6 @@ func NewSSHClient(connectionInfoID string) (*Client, error) {
 
 	return &Client{
 		client,
-		connectionInfo,
+		*connectionInfo,
 	}, nil
 }

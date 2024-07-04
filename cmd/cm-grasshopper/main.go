@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/controller"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/server"
+	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
 	"log"
 	"os"
@@ -41,6 +44,17 @@ func init() {
 	err = db.Open()
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.OkMessage.Message = "Honeybee's RSA private key is not ready"
+	privateKeyPath := common.RootPath + "/" + common.HoneybeePrivateKeyFileName
+	if !fileutil.IsExist(privateKeyPath) {
+		logger.Panicln(logger.ERROR, true, errors.New("Honeybee's private key not found ("+privateKeyPath+")"))
+	}
+
+	common.HoneybeePrivateKey, err = rsautil.ReadPrivateKey(privateKeyPath)
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, "error occurred while reading Honeybee's private key")
 	}
 
 	controller.OkMessage.Message = "CM-Grasshopper API server is ready"
