@@ -1,13 +1,77 @@
 package controller
 
 import (
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"strings"
 )
+
+// RegisterSoftware godoc
+//
+// @Summary	Register Software
+// @Description	Register the software.
+// @Tags		[Software]
+// @Accept		json
+// @Produce		json
+// @Param		softwareRegisterReq body model.SoftwareRegisterReq true "Software register request."
+// @Success		200	{object}	model.SoftwareRegisterReq	"Successfully registered the software."
+// @Failure		400	{object}	common.ErrorResponse		"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
+// @Router		/software/register [post]
+func RegisterSoftware(c echo.Context) error {
+	var err error
+
+	softwareRegisterReq := new(model.SoftwareRegisterReq)
+	err = c.Bind(softwareRegisterReq)
+	if err != nil {
+		return err
+	}
+
+	installType, err := model.ToInstallType(softwareRegisterReq.InstallType)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+	architecture, err := model.ToArchitecture(softwareRegisterReq.Architecture)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	if softwareRegisterReq.Name == "" {
+		return common.ReturnErrorMsg(c, "Please provide the name")
+	}
+
+	if softwareRegisterReq.Version == "" {
+		return common.ReturnErrorMsg(c, "Please provide the version")
+	}
+
+	if softwareRegisterReq.OS == "" {
+		return common.ReturnErrorMsg(c, "Please provide the os")
+	}
+
+	if softwareRegisterReq.OSVersion == "" {
+		return common.ReturnErrorMsg(c, "Please provide the os version")
+	}
+
+	if softwareRegisterReq.MatchNames == nil || len(softwareRegisterReq.MatchNames) == 0 {
+		return common.ReturnErrorMsg(c, "Please provide the match names")
+	}
+
+	software := model.Software{
+		ID:           uuid.New().String(),
+		InstallType:  installType,
+		Name:         softwareRegisterReq.Name,
+		Version:      softwareRegisterReq.Version,
+		OS:           softwareRegisterReq.OS,
+		OSVersion:    softwareRegisterReq.OSVersion,
+		Architecture: architecture,
+		MatchNames:   softwareRegisterReq.MatchNames,
+		Size:         "0B",
+	}
+
+	return c.JSONPretty(http.StatusOK, software, " ")
+}
 
 // InstallSoftware godoc
 //
@@ -30,36 +94,7 @@ func InstallSoftware(c echo.Context) error {
 		return err
 	}
 
-	client, err := ssh.NewSSHClient(softwareInstallReq.ConnectionID)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
+	// TODO: Copy configuration files
 
-	var softwareInstallRes model.SoftwareInstallRes
-
-	var packageNames string
-	var out string
-
-	for _, name := range softwareInstallReq.PackageNames {
-		packageNames += " " + name
-	}
-
-	packageType := strings.ToLower(softwareInstallReq.PackageType)
-	if packageType == "apt" {
-		out, err = client.RunBash("echo " + client.ConnectionInfo.Password + " | sudo -S -k apt-get install" + packageNames)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-	} else if packageType == "yum" {
-		out, err = client.RunBash("echo " + client.ConnectionInfo.Password + " | sudo -S -k yum install" + packageNames)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-	} else {
-		return common.ReturnErrorMsg(c, "Invalid package type: "+softwareInstallReq.PackageType)
-	}
-
-	softwareInstallRes.Output = out
-
-	return c.JSONPretty(http.StatusOK, softwareInstallRes, " ")
+	return c.JSONPretty(http.StatusOK, nil, " ")
 }

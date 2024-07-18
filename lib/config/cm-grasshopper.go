@@ -17,6 +17,10 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
+		Ansible struct {
+			PlaybookRootPath string `yaml:"playbook_root_path"`
+			PlaybookLogPath  string `yaml:"playbook_log_path"`
+		} `yaml:"ansible"`
 		Honeybee struct {
 			ServerAddress string `yaml:"server_address"`
 			ServerPort    string `yaml:"server_port"`
@@ -34,6 +38,22 @@ func checkCMGrasshopperConfigFile() error {
 	port, err := strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Listen.Port)
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath == "" {
+		return errors.New("config error: cm-grasshopper.ansible.playbook_root_path is empty")
+	}
+	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath) {
+		return errors.New("config error: cm-grasshopper.ansible.playbook_root_path (" +
+			CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath + ") is not exist")
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath == "" {
+		return errors.New("config error: cm-grasshopper.ansible.playbook_log_path is empty")
+	}
+	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath) {
+		return errors.New("config error: cm-grasshopper.ansible.playbook_log_path (" +
+			CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath + ") is not exist")
 	}
 
 	if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {

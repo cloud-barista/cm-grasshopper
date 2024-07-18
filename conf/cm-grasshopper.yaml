@@ -1,6 +1,9 @@
 cm-grasshopper:
     listen:
         port: 8084
+    ansible:
+        playbook_root_path: /playbook
+        playbook_log_path: /playbook_log
     honeybee:
         server_address: 127.0.0.1
         server_port: 8081

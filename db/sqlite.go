@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/cloud-barista/cm-grasshopper/common"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/glebarez/sqlite"
 	"github.com/jollaman999/utils/logger"
 	"gorm.io/gorm"
@@ -17,10 +18,10 @@ func Open() error {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
-	//err = DB.AutoMigrate(&model.XXX{})
-	//if err != nil {
-	//	logger.Panicln(logger.ERROR, true, err)
-	//}
+	err = DB.AutoMigrate(&model.Software{})
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err)
+	}
 
 	return err
 }

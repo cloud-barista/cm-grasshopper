@@ -54,12 +54,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Ansible]"
                 ],
-                "summary": "Install Software",
+                "summary": "Install Ansible",
                 "parameters": [
                     {
-                        "description": "Software install request.",
+                        "description": "Ansible install request.",
                         "name": "softwareInstallReq",
                         "in": "body",
                         "required": true,

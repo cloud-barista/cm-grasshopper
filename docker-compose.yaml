@@ -8,4 +8,5 @@ services:
     image: cm-grasshopper:${TAG:-latest}
     volumes:
       - ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
+      - ./contents-home:/contents-home/:rw
     network_mode: "host"
