@@ -46,6 +46,11 @@ definitions:
           $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution'
         type: array
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
+    properties:
+      message:
+        type: string
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo:
     properties:
       name:
@@ -117,11 +122,6 @@ definitions:
     - namespace_id
     - vm_id
     type: object
-  pkg_api_rest_controller.SimpleMsg:
-    properties:
-      message:
-        type: string
-    type: object
 info:
   contact: {}
 paths:
@@ -136,7 +136,7 @@ paths:
         "200":
           description: Successfully get ready state.
           schema:
-            $ref: '#/definitions/pkg_api_rest_controller.SimpleMsg'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg'
         "500":
           description: Failed to check ready state.
           schema:
@@ -144,6 +144,35 @@ paths:
       summary: Check Ready
       tags:
       - '[Admin] System management'
+  /software/{softwareId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the software.
+      parameters:
+      - description: ID of the software.
+        in: path
+        name: softwareId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully update the software
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to delete the software
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Delete Software
+      tags:
+      - '[Software]'
   /software/execution_list:
     post:
       consumes:

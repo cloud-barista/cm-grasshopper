@@ -134,12 +134,12 @@ func SoftwareUpdate(software *model.Software) error {
 	return nil
 }
 
-//func SoftwareDelete(software *model.Software) error {
-//	result := db.DB.Delete(software)
-//	err := result.Error
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+func SoftwareDelete(software *model.Software) error {
+	result := db.DB.Delete(software)
+	err := result.Error
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -238,3 +238,41 @@ func InstallSoftware(c echo.Context) error {
 		ExecutionList: executionList,
 	}, " ")
 }
+
+// DeleteSoftware godoc
+//
+// @Summary		Delete Software
+// @Description	Delete the software.
+// @Tags		[Software]
+// @Accept		json
+// @Produce		json
+// @Param		softwareId path string true "ID of the software."
+// @Success		200	{object}	model.SimpleMsg			"Successfully update the software"
+// @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+// @Failure		500	{object}	common.ErrorResponse	"Failed to delete the software"
+// @Router		/software/{softwareId} [delete]
+func DeleteSoftware(c echo.Context) error {
+	swID := c.Param("softwareId")
+	if swID == "" {
+		return common.ReturnErrorMsg(c, "Please provide the softwareId.")
+	}
+
+	sw, err := dao.SoftwareGet(swID)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	if sw.InstallType == "ansible" {
+		err = software.DeletePlaybook(swID)
+		if err != nil {
+			return common.ReturnErrorMsg(c, err.Error())
+		}
+	}
+
+	err = dao.SoftwareDelete(sw)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	return c.JSONPretty(http.StatusOK, model.SimpleMsg{Message: "success"}, " ")
+}

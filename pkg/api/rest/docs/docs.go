@@ -32,7 +32,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully get ready state.",
                         "schema": {
-                            "$ref": "#/definitions/pkg_api_rest_controller.SimpleMsg"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg"
                         }
                     },
                     "500": {
@@ -186,6 +186,50 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/software/{softwareId}": {
+            "delete": {
+                "description": "Delete the software.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Software]"
+                ],
+                "summary": "Delete Software",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the software.",
+                        "name": "softwareId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully update the software",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete the software",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -257,6 +301,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution"
                     }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -360,14 +412,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vm_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "pkg_api_rest_controller.SimpleMsg": {
-            "type": "object",
-            "properties": {
-                "message": {
                     "type": "string"
                 }
             }

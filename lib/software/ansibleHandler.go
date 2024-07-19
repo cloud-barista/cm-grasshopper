@@ -397,22 +397,14 @@ func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarge
 	return nil
 }
 
-//func deletePlaybook(id string) error {
-//	playbookPath, err := getAnsiblePlaybookFolderPath(id)
-//	if err != nil {
-//		errMsg := "ANSIBLE: " + err.Error()
-//		logger.Logger.Println(logger.ERROR, true, errMsg)
-//		return err
-//	}
-//	deleteDir(playbookPath)
-//
-//	logPath, err := getAnsiblePlaybookLogPath(id)
-//	if err != nil {
-//		errMsg := "ANSIBLE: " + err.Error()
-//		logger.Logger.Println(logger.ERROR, true, errMsg)
-//		return err
-//	}
-//	deleteDir(logPath)
-//
-//	return nil
-//}
+func DeletePlaybook(id string) error {
+	playbookPath, err := getAnsiblePlaybookFolderPath(id)
+	if err != nil {
+		errMsg := "ANSIBLE: " + err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return err
+	}
+	deleteDir(playbookPath)
+
+	return nil
+}
