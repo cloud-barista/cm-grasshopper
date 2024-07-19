@@ -1,0 +1,1 @@
+{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.19.2"}
