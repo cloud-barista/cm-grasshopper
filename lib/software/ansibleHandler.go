@@ -372,6 +372,13 @@ func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarge
 		return err
 	}
 
+	err = fileutil.CreateDirIfNotExist(logPath)
+	if err != nil {
+		errMsg := "ANSIBLE: " + err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return err
+	}
+
 	logFile, err := os.OpenFile(filepath.Join(logPath, logFileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
