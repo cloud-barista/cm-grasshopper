@@ -8,6 +8,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/controller"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/server"
+	"github.com/jollaman999/utils/cmd"
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
 	"log"
@@ -27,6 +28,12 @@ func init() {
 	err = logger.InitLogFile(common.RootPath+"/log", strings.ToLower(common.ModuleName))
 	if err != nil {
 		log.Panicln(err)
+	}
+
+	_, err = cmd.RunCMD("ansible-playbook -h")
+	if err != nil {
+		logger.Panicln(logger.ERROR, false,
+			"'ansible-playbook' command not found please install Ansible!")
 	}
 
 	controller.OkMessage.Message = "API server is not ready"
