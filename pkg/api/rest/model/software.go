@@ -85,6 +85,9 @@ type Execution struct {
 }
 
 type GetExecutionListReq struct {
+	OS               string         `json:"os" validate:"required"`
+	OSVersion        string         `json:"os_version" validate:"required"`
+	Architecture     string         `json:"architecture" validate:"required"`
 	SoftwareInfoList []SoftwareInfo `json:"software_info_list" validate:"required"`
 }
 

@@ -182,7 +182,7 @@ func GetExecutionList(c echo.Context) error {
 		return err
 	}
 
-	executionListRes, err := software.MakeExecutionListRes(&getExecutionListReq.SoftwareInfoList)
+	executionListRes, err := software.MakeExecutionListRes(getExecutionListReq)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}

@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-func findMatchedSoftware(softwareInfo model.SoftwareInfo) (*model.Software, error) {
+func findMatchedSoftware(os string, osVersion string,
+	architecture string, softwareInfo model.SoftwareInfo) (*model.Software, error) {
 	list, err := dao.SoftwareGetList(&model.Software{
 		MatchNames: softwareInfo.Name,
 	}, 0, 0)
@@ -18,6 +19,11 @@ func findMatchedSoftware(softwareInfo model.SoftwareInfo) (*model.Software, erro
 
 	var matchedSoftwares []model.Software
 	for _, sw := range *list {
+		if sw.Architecture != "common" &&
+			(sw.OS != os || sw.OSVersion != osVersion || sw.Architecture != architecture) {
+			continue
+		}
+
 		swMatchNames := strings.Split(sw.MatchNames, ",")
 		for _, matchName := range swMatchNames {
 			if softwareInfo.Name == matchName {
@@ -78,14 +84,14 @@ func findMatchedSoftware(softwareInfo model.SoftwareInfo) (*model.Software, erro
 	return nil, errors.New("no matched software found")
 }
 
-func MakeExecutionListRes(softwareInfoList *[]model.SoftwareInfo) (*model.GetExecutionListRes, error) {
+func MakeExecutionListRes(getExecutionListReq *model.GetExecutionListReq) (*model.GetExecutionListRes, error) {
 	var executionList []model.Execution
 	var i int
 	var errMsgs []string
 
-	for _, softwareInfo := range *softwareInfoList {
-
-		software, err := findMatchedSoftware(softwareInfo)
+	for _, softwareInfo := range getExecutionListReq.SoftwareInfoList {
+		software, err := findMatchedSoftware(getExecutionListReq.OS, getExecutionListReq.OSVersion,
+			getExecutionListReq.Architecture, softwareInfo)
 		if err != nil {
 			errMsg := "Software: Name=" + softwareInfo.Name + ", Version=" + softwareInfo.Version + ", Error=" + err.Error()
 			logger.Println(logger.DEBUG, true, errMsg)

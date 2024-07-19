@@ -220,9 +220,21 @@ const docTemplate = `{
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq": {
             "type": "object",
             "required": [
+                "architecture",
+                "os",
+                "os_version",
                 "software_info_list"
             ],
             "properties": {
+                "architecture": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "os_version": {
+                    "type": "string"
+                },
                 "software_info_list": {
                     "type": "array",
                     "items": {

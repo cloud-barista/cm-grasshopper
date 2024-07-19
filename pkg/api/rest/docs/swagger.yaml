@@ -19,11 +19,20 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq:
     properties:
+      architecture:
+        type: string
+      os:
+        type: string
+      os_version:
+        type: string
       software_info_list:
         items:
           $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo'
         type: array
     required:
+    - architecture
+    - os
+    - os_version
     - software_info_list
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes:
