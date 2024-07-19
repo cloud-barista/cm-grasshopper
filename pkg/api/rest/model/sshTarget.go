@@ -2,7 +2,7 @@ package model
 
 type SSHTarget struct {
 	IP         string `json:"ip"`
-	Port       int    `json:"port"`
+	Port       uint   `json:"port"`
 	UseKeypair bool   `json:"use_keypair"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`

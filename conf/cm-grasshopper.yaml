@@ -1,9 +1,16 @@
 cm-grasshopper:
     listen:
         port: 8084
+    software:
+        temp_folder: ./software_temp
+        log_folder: ./software_log
     ansible:
-        playbook_root_path: /playbook
-        playbook_log_path: /playbook_log
+        playbook_root_path: ./playbook
     honeybee:
         server_address: 127.0.0.1
         server_port: 8081
+    tumblebug:
+        server_address: 127.0.0.1
+        server_port: 1323
+        username: default
+        password: default

@@ -1,75 +1,54 @@
 package model
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"time"
 )
 
-type InstallType string
-
-const (
-	PACKAGE InstallType = "package"
-	ANSIBLE InstallType = "ansible"
-	SCRIPT  InstallType = "script"
-)
-
-type Architecture string
-
-const (
-	COMMON Architecture = "common"
-	X8664  Architecture = "x86_64"
-	X86    Architecture = "x86"
-	ARM64  Architecture = "arm64"
-	ARM    Architecture = "arm"
-)
-
-func ToInstallType(input string) (InstallType, error) {
+func CheckInstallType(input string) error {
 	switch input {
 	case "package":
-		return PACKAGE, nil
+		fallthrough
 	case "ansible":
-		return ANSIBLE, nil
+		fallthrough
 	case "script":
-		return SCRIPT, nil
+		return nil
 	default:
-		return "", errors.New("invalid install type")
+		return errors.New("invalid install type")
 	}
 }
 
-func ToArchitecture(input string) (Architecture, error) {
+func CheckArchitecture(input string) error {
 	switch input {
 	case "common":
-		return COMMON, nil
+		fallthrough
 	case "x86_64":
-		return X8664, nil
+		fallthrough
 	case "x86":
-		return X86, nil
+		fallthrough
 	case "arm":
-		return ARM, nil
+		fallthrough
 	case "arm64":
-		return ARM64, nil
+		return nil
 	default:
-		return "", errors.New("invalid architecture")
+		return errors.New("invalid architecture")
 	}
 }
 
 type Software struct {
-	ID           string       `gorm:"primaryKey" json:"uuid" validate:"required"`
-	InstallType  InstallType  `gorm:"install_type" json:"install_type" validate:"required"`
-	Name         string       `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version      string       `gorm:"version" json:"version" validate:"required"`
-	OS           string       `gorm:"os" json:"os" validate:"required"`
-	OSVersion    string       `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture Architecture `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames   []string     `gorm:"match_names" json:"match_names" validate:"required"`
-	Size         string       `gorm:"size" json:"size" validate:"required"`
-	CreatedAt    time.Time    `gorm:"column:created_at" json:"created_at" validate:"required"`
-	UpdatedAt    time.Time    `gorm:"column:updated_at" json:"updated_at" validate:"required"`
-}
-
-type SoftwareInfo struct {
-	Name    string `json:"name" validate:"required"`
-	Version string `json:"version" validate:"required"`
+	ID           string    `gorm:"primaryKey" json:"uuid" validate:"required"`
+	InstallType  string    `gorm:"install_type" json:"install_type" validate:"required"`
+	Name         string    `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
+	Version      string    `gorm:"version" json:"version" validate:"required"`
+	OS           string    `gorm:"os" json:"os" validate:"required"`
+	OSVersion    string    `gorm:"os_version" json:"os_version" validate:"required"`
+	Architecture string    `gorm:"architecture" json:"architecture" validate:"required"`
+	MatchNames   string    `gorm:"match_names" json:"match_names" validate:"required"`
+	Size         string    `gorm:"size" json:"size" validate:"required"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
 }
 
 type Source struct {
@@ -83,26 +62,79 @@ type Target struct {
 }
 
 type SoftwareRegisterReq struct {
-	InstallType  string   `gorm:"install_type" json:"install_type" validate:"required"`
-	Name         string   `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version      string   `gorm:"version" json:"version" validate:"required"`
-	OS           string   `gorm:"os" json:"os" validate:"required"`
-	OSVersion    string   `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture string   `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames   []string `gorm:"match_names" json:"match_names" validate:"required"`
+	InstallType  string   `json:"install_type" validate:"required"`
+	Name         string   `json:"name" validate:"required"`
+	Version      string   `json:"version" validate:"required"`
+	OS           string   `json:"os" validate:"required"`
+	OSVersion    string   `json:"os_version" validate:"required"`
+	Architecture string   `json:"architecture" validate:"required"`
+	MatchNames   []string `json:"match_names" validate:"required"`
+}
+
+type SoftwareInfo struct {
+	Name    string `json:"name" validate:"required"`
+	Version string `json:"version" validate:"required"`
 }
 
 type Execution struct {
-	Order    int      `json:"order"`
-	Software Software `json:"software"`
+	Order               int    `json:"order"`
+	SoftwareID          string `json:"software_id"`
+	SoftwareName        string `json:"software_name"`
+	SoftwareVersion     string `json:"software_version"`
+	SoftwareInstallType string `json:"software_install_type"`
+}
+
+type GetExecutionListReq struct {
+	SoftwareInfoList []SoftwareInfo `json:"software_info_list" validate:"required"`
+}
+
+type GetExecutionListRes struct {
+	Executions []Execution `json:"execution_list"`
+	Errors     []string    `json:"errors"`
 }
 
 type SoftwareInstallReq struct {
-	Source       Source         `json:"source" validate:"required"`
-	Target       Target         `json:"target" validate:"required"`
-	SoftwareList []SoftwareInfo `json:"software_list" validate:"required"`
+	Target      Target   `json:"target" validate:"required"`
+	SoftwareIDs []string `json:"software_ids" validate:"required"`
 }
 
 type SoftwareInstallRes struct {
+	ExecutionID   string      `json:"execution_id"`
 	ExecutionList []Execution `json:"execution_list"`
+}
+
+type ExecutionStatus struct {
+	Order               int       `json:"order"`
+	SoftwareID          string    `json:"software_id"`
+	SoftwareName        string    `json:"software_name"`
+	SoftwareVersion     string    `json:"software_version"`
+	SoftwareInstallType string    `json:"software_install_type"`
+	Status              string    `json:"status"`
+	StartedAt           time.Time `json:"started_at"`
+	ErrorMessage        string    `json:"error_message"`
+}
+
+type SoftwareInstallStatusReq struct {
+	ExecutionID string `json:"execution_id"`
+}
+
+type SoftwareInstallStatus struct {
+	ExecutionID     string            `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
+	Target          Target            `gorm:"target" json:"target" validate:"required"`
+	ExecutionStatus []ExecutionStatus `gorm:"execution_status" json:"execution_status"`
+}
+
+func (t Target) Value() (driver.Value, error) {
+	return json.Marshal(t)
+}
+
+func (t *Target) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("invalid type for Target")
+	}
+	return json.Unmarshal(bytes, t)
 }

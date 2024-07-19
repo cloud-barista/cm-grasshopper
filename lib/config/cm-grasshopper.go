@@ -17,14 +17,23 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
+		Software struct {
+			TempFolder string `yaml:"temp_folder"`
+			LogFolder  string `yaml:"log_folder"`
+		} `yaml:"software"`
 		Ansible struct {
 			PlaybookRootPath string `yaml:"playbook_root_path"`
-			PlaybookLogPath  string `yaml:"playbook_log_path"`
 		} `yaml:"ansible"`
 		Honeybee struct {
 			ServerAddress string `yaml:"server_address"`
 			ServerPort    string `yaml:"server_port"`
 		} `yaml:"honeybee"`
+		Tumblebug struct {
+			ServerAddress string `yaml:"server_address"`
+			ServerPort    string `yaml:"server_port"`
+			Username      string `yaml:"username"`
+			Password      string `yaml:"password"`
+		} `yaml:"tumblebug"`
 	} `yaml:"cm-grasshopper"`
 }
 
@@ -40,6 +49,22 @@ func checkCMGrasshopperConfigFile() error {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
 	}
 
+	if CMGrasshopperConfig.CMGrasshopper.Software.TempFolder == "" {
+		return errors.New("config error: cm-grasshopper.software.temp_folder is empty")
+	}
+	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.TempFolder) {
+		return errors.New("config error: cm-grasshopper.software.temp_folder (" +
+			CMGrasshopperConfig.CMGrasshopper.Software.TempFolder + ") is not exist")
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Software.LogFolder == "" {
+		return errors.New("config error: cm-grasshopper.software.log_folder is empty")
+	}
+	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.LogFolder) {
+		return errors.New("config error: cm-grasshopper.software.log_folder(" +
+			CMGrasshopperConfig.CMGrasshopper.Software.LogFolder + ") is not exist")
+	}
+
 	if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath == "" {
 		return errors.New("config error: cm-grasshopper.ansible.playbook_root_path is empty")
 	}
@@ -48,18 +73,18 @@ func checkCMGrasshopperConfigFile() error {
 			CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath + ") is not exist")
 	}
 
-	if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath == "" {
-		return errors.New("config error: cm-grasshopper.ansible.playbook_log_path is empty")
-	}
-	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath) {
-		return errors.New("config error: cm-grasshopper.ansible.playbook_log_path (" +
-			CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookLogPath + ") is not exist")
-	}
-
 	if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {
 		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
 	}
 	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
+	if err != nil || port < 1 || port > 65535 {
+		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
+		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
+	}
+	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort)
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
 	}

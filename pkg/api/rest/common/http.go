@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func GetHTTPRequest(URL string) ([]byte, error) {
+func GetHTTPRequest(URL string, username string, password string) ([]byte, error) {
 	ctx := context.Background()
 	client := &http.Client{}
 
@@ -16,6 +16,10 @@ func GetHTTPRequest(URL string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, URL, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
 	}
 
 	req = req.WithContext(ctx)

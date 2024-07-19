@@ -4,25 +4,109 @@ definitions:
       error:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution:
     properties:
-      connection_id:
+      order:
+        type: integer
+      software_id:
         type: string
-      package_names:
+      software_install_type:
+        type: string
+      software_name:
+        type: string
+      software_version:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq:
+    properties:
+      software_info_list:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo'
+        type: array
+    required:
+    - software_info_list
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes:
+    properties:
+      errors:
         items:
           type: string
         type: array
-      package_type:
+      execution_list:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution'
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo:
+    properties:
+      name:
+        type: string
+      version:
         type: string
     required:
-    - connection_id
-    - package_names
-    - package_type
+    - name
+    - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq:
+    properties:
+      software_ids:
+        items:
+          type: string
+        type: array
+      target:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
+    required:
+    - software_ids
+    - target
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes:
     properties:
-      output:
+      execution_id:
         type: string
+      execution_list:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution'
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareRegisterReq:
+    properties:
+      architecture:
+        type: string
+      install_type:
+        type: string
+      match_names:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      os:
+        type: string
+      os_version:
+        type: string
+      version:
+        type: string
+    required:
+    - architecture
+    - install_type
+    - match_names
+    - name
+    - os
+    - os_version
+    - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
+    properties:
+      mcis_id:
+        type: string
+      namespace_id:
+        type: string
+      vm_id:
+        type: string
+    required:
+    - mcis_id
+    - namespace_id
+    - vm_id
     type: object
   pkg_api_rest_controller.SimpleMsg:
     properties:
@@ -51,6 +135,36 @@ paths:
       summary: Check Ready
       tags:
       - '[Admin] System management'
+  /software/execution_list:
+    post:
+      consumes:
+      - application/json
+      description: Get software migration execution list.
+      parameters:
+      - description: Software info list.
+        in: body
+        name: getExecutionListReq
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get migration execution list.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get migration execution list.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Get Execution List
+      tags:
+      - '[Software]'
   /software/install:
     post:
       consumes:
@@ -79,6 +193,40 @@ paths:
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Install Software
+      tags:
+      - '[Software]'
+  /software/register:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
+      parameters:
+      - description: Software register request JSON body string.
+        in: formData
+        name: json
+        required: true
+        type: string
+      - description: Archive file to upload for ansible.
+        in: formData
+        name: archive
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully registered the software.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareRegisterReq'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to sent SSH command.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Register Software
       tags:
       - '[Software]'
 swagger: "2.0"

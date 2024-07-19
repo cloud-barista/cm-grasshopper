@@ -9,3 +9,7 @@ vendor
 *.log
 
 *.db
+
+playbook/
+software_temp/
+software_log/
