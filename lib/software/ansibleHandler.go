@@ -386,13 +386,11 @@ func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarge
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 
-	go func(routineCMD *exec.Cmd) {
-		err = routineCMD.Run()
-		if err != nil {
-			errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + softwareID + ", Error: " + err.Error() + ")"
-			logger.Logger.Println(logger.ERROR, true, errMsg)
-		}
-	}(cmd)
+	err = cmd.Run()
+	if err != nil {
+		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + softwareID + ", Error: " + err.Error() + ")"
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+	}
 
 	return nil
 }
