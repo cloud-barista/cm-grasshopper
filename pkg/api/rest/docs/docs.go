@@ -44,7 +44,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/execution_list": {
+        "/grasshopper/software/execution_list": {
             "post": {
                 "description": "Get software migration execution list.",
                 "consumes": [
@@ -90,7 +90,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/install": {
+        "/grasshopper/software/install": {
             "post": {
                 "description": "Install pieces of software to target.",
                 "consumes": [
@@ -136,7 +136,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/register": {
+        "/grasshopper/software/register": {
             "post": {
                 "description": "Register the software.\u003cbr\u003e\u003cbr\u003e[JSON Body Example]\u003cbr\u003e{\"architecture\":\"x86_64\",\"install_type\":\"ansible\",\"match_names\":[\"telegraf\"],\"name\":\"telegraf\",\"os\":\"Ubuntu\",\"os_version\":\"22.04\",\"version\":\"1.0\"}",
                 "consumes": [
@@ -187,7 +187,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/{softwareId}": {
+        "/grasshopper/software/{softwareId}": {
             "delete": {
                 "description": "Delete the software.",
                 "consumes": [
