@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	"github.com/google/uuid"
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/iputil"
 	"github.com/jollaman999/utils/logger"
 	"github.com/mholt/archiver/v3"
+	cp "github.com/otiai10/copy"
 	"io"
 	"os"
 	"os/exec"
@@ -21,9 +21,10 @@ import (
 
 var ansibleConfigPath string
 var inventoryFileName = "inventory.ini"
+var logFileName = "ansible_output.log"
 
-func getAnsiblePlaybookFolderPath(id string) (string, error) {
-	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, id))
+func getAnsiblePlaybookFolderPath(softwareID string) (string, error) {
+	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, softwareID))
 	if err != nil {
 		errMsg := err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -32,8 +33,33 @@ func getAnsiblePlaybookFolderPath(id string) (string, error) {
 	return abs, nil
 }
 
-func getAnsiblePlaybookLogPath(id string) (string, error) {
-	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, id))
+func getTemporaryAnsiblePlaybookFolderPath(executionID string, softwareID string) (string, error) {
+	absSource, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, softwareID))
+	if err != nil {
+		errMsg := err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return "", err
+	}
+
+	absDest, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder, executionID))
+	if err != nil {
+		errMsg := err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return "", err
+	}
+
+	err = cp.Copy(absSource, absDest)
+	if err != nil {
+		errMsg := err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return "", err
+	}
+
+	return absDest, nil
+}
+
+func getAnsiblePlaybookLogPath(executionID string) (string, error) {
+	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder, executionID))
 	if err != nil {
 		errMsg := err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -50,7 +76,7 @@ func checkRootDirectory(pwd string, files []os.DirEntry) bool {
 
 	if len(files) == 1 && files[0].IsDir() {
 		originPath := filepath.Join(pwd, files[0].Name())
-		tempPath := originPath + "_temp"
+		tempPath := pwd + "_temp"
 
 		err := moveDir(originPath, tempPath)
 		if err != nil {
@@ -63,6 +89,11 @@ func checkRootDirectory(pwd string, files []os.DirEntry) bool {
 		err = moveDir(tempPath, pwd)
 		if err != nil {
 			deleteDir(tempPath)
+			return false
+		}
+
+		files, err = getFiles(pwd)
+		if err != nil {
 			return false
 		}
 
@@ -96,7 +127,7 @@ func findPlaybookFile(id string) (string, error) {
 	}
 
 	for _, file := range files {
-		if !file.IsDir() {
+		if file.IsDir() {
 			continue
 		}
 
@@ -126,47 +157,44 @@ func decompressFile(filePath string, destDir string) error {
 	return nil
 }
 
-func savePlaybook(playbookArchiveFile string) (playbookFile string, sizeString string, err error) {
+func SavePlaybook(id string, playbookArchiveFile string) (sizeString string, err error) {
 	pwd := ""
-	playbookFile = ""
 	sizeString = "0B"
-	err = nil
 
-	UUID := uuid.New().String()
-	pwd, err = getAnsiblePlaybookFolderPath(UUID)
+	pwd, err = getAnsiblePlaybookFolderPath(id)
 	if err != nil {
-		return playbookFile, sizeString, err
+		return sizeString, err
 	}
 
 	err = decompressFile(playbookArchiveFile, pwd)
 	if err != nil {
 		logger.Logger.Println(logger.ERROR, true, err)
-		return playbookFile, sizeString, err
+		return sizeString, err
 	}
 
 	err = os.Remove(playbookArchiveFile)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return playbookFile, sizeString, err
+		return sizeString, err
 	}
 
-	playbookFile, err = findPlaybookFile(UUID)
+	_, err = findPlaybookFile(id)
 	if err != nil {
 		logger.Logger.Println(logger.ERROR, true, err)
-		return playbookFile, sizeString, err
+		return sizeString, err
 	}
 
 	size, err := getFolderSize(pwd)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return playbookFile, sizeString, err
+		return sizeString, err
 	}
 
 	sizeString = formatSize(size)
 
-	return playbookFile, sizeString, err
+	return sizeString, err
 }
 
 func inventoryFileCreate(id string, sshTarget model.SSHTarget) error {
@@ -292,7 +320,7 @@ func checkAnsibleConfig() error {
 	return nil
 }
 
-func runPlaybook(id string, sshTarget model.SSHTarget) error {
+func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarget) error {
 	err := checkAnsibleConfig()
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
@@ -300,14 +328,17 @@ func runPlaybook(id string, sshTarget model.SSHTarget) error {
 		return err
 	}
 
-	pwd, err := getAnsiblePlaybookFolderPath(id)
+	pwd, err := getTemporaryAnsiblePlaybookFolderPath(executionID, softwareID)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
 		return err
 	}
+	defer func() {
+		deleteDir(pwd)
+	}()
 
-	playbookFile, err := findPlaybookFile(id)
+	playbookFile, err := findPlaybookFile(softwareID)
 	if err != nil {
 		logger.Logger.Println(logger.ERROR, true, err)
 		return err
@@ -322,7 +353,7 @@ func runPlaybook(id string, sshTarget model.SSHTarget) error {
 	}
 
 	inventoryFilePath := filepath.Join(pwd, inventoryFileName)
-	err = inventoryFileCreate(id, sshTarget)
+	err = inventoryFileCreate(softwareID, sshTarget)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -334,7 +365,14 @@ func runPlaybook(id string, sshTarget model.SSHTarget) error {
 		"ANSIBLE_CONFIG=" + ansibleConfigPath,
 	}
 
-	logFile, err := os.OpenFile("ansible_output.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logPath, err := getAnsiblePlaybookLogPath(executionID)
+	if err != nil {
+		errMsg := "ANSIBLE: " + err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return err
+	}
+
+	logFile, err := os.OpenFile(filepath.Join(logPath, logFileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -351,7 +389,7 @@ func runPlaybook(id string, sshTarget model.SSHTarget) error {
 	go func(routineCMD *exec.Cmd) {
 		err = routineCMD.Run()
 		if err != nil {
-			errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + id + ", Error: " + err.Error() + ")"
+			errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + softwareID + ", Error: " + err.Error() + ")"
 			logger.Logger.Println(logger.ERROR, true, errMsg)
 		}
 	}(cmd)
@@ -359,22 +397,22 @@ func runPlaybook(id string, sshTarget model.SSHTarget) error {
 	return nil
 }
 
-func deletePlaybook(id string) error {
-	playbookPath, err := getAnsiblePlaybookFolderPath(id)
-	if err != nil {
-		errMsg := "ANSIBLE: " + err.Error()
-		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return err
-	}
-	deleteDir(playbookPath)
-
-	logPath, err := getAnsiblePlaybookLogPath(id)
-	if err != nil {
-		errMsg := "ANSIBLE: " + err.Error()
-		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return err
-	}
-	deleteDir(logPath)
-
-	return nil
-}
+//func deletePlaybook(id string) error {
+//	playbookPath, err := getAnsiblePlaybookFolderPath(id)
+//	if err != nil {
+//		errMsg := "ANSIBLE: " + err.Error()
+//		logger.Logger.Println(logger.ERROR, true, errMsg)
+//		return err
+//	}
+//	deleteDir(playbookPath)
+//
+//	logPath, err := getAnsiblePlaybookLogPath(id)
+//	if err != nil {
+//		errMsg := "ANSIBLE: " + err.Error()
+//		logger.Logger.Println(logger.ERROR, true, errMsg)
+//		return err
+//	}
+//	deleteDir(logPath)
+//
+//	return nil
+//}
