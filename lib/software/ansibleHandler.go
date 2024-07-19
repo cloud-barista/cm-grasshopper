@@ -197,12 +197,7 @@ func SavePlaybook(id string, playbookArchiveFile string) (sizeString string, err
 	return sizeString, err
 }
 
-func inventoryFileCreate(id string, sshTarget model.SSHTarget) error {
-	pwd, err := getAnsiblePlaybookFolderPath(id)
-	if err != nil {
-		return err
-	}
-
+func inventoryFileCreate(pwd string, sshTarget model.SSHTarget) error {
 	fileContent := bytes.NewBufferString("[all]\n")
 
 	ip := iputil.CheckValidIP(sshTarget.IP)
@@ -227,7 +222,7 @@ func inventoryFileCreate(id string, sshTarget model.SSHTarget) error {
 		}
 
 		privateKeyFilePath := filepath.Join(pwd, "private_key.pem")
-		err = os.WriteFile(privateKeyFilePath, []byte(privateKey), 0600)
+		err := os.WriteFile(privateKeyFilePath, []byte(privateKey), 0600)
 		if err != nil {
 			return err
 		}
@@ -241,7 +236,7 @@ func inventoryFileCreate(id string, sshTarget model.SSHTarget) error {
 		hostConfig += fmt.Sprintf(" ansible_ssh_user=%s ansible_ssh_pass=%s", sshTarget.Username, sshTarget.Password)
 	}
 
-	_, err = fileContent.WriteString(hostConfig + "\n")
+	_, err := fileContent.WriteString(hostConfig + "\n")
 	if err != nil {
 		return err
 	}
@@ -353,7 +348,7 @@ func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarge
 	}
 
 	inventoryFilePath := filepath.Join(pwd, inventoryFileName)
-	err = inventoryFileCreate(softwareID, sshTarget)
+	err = inventoryFileCreate(pwd, sshTarget)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
