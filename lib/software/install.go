@@ -87,9 +87,14 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 	}
 
 	go func(id string, exList []model.Execution, exStatusList []model.ExecutionStatus, t model.SSHTarget) {
-		var updateStatus = func(i int, status string, errMsg string) {
+		var updateStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
 			exStatusList[i].Status = status
 			exStatusList[i].ErrorMessage = errMsg
+			now := time.Now()
+			if updateStartedTime {
+				exStatusList[i].StartedAt = now
+			}
+			exStatusList[i].UpdatedAt = now
 
 			err := dao.SoftwareInstallStatusUpdate(&model.SoftwareInstallStatus{
 				ExecutionID:     executionID,
@@ -103,15 +108,15 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 
 		for i, execution := range exList {
 			if execution.SoftwareInstallType == "ansible" {
-				updateStatus(i, "installing", "")
+				updateStatus(i, "installing", "", true)
 				err := runPlaybook(id, execution.SoftwareID, t)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "installSoftware: ExecutionID="+executionID+
 						", InstallType=ansible, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error())
+					updateStatus(i, "failed", err.Error(), false)
 				}
 			} else {
-				updateStatus(i, "failed", "not supported install type")
+				updateStatus(i, "failed", "not supported install type", false)
 			}
 		}
 	}(executionID, *executionList, executionStatusList, *sshTarget)

@@ -9,8 +9,9 @@ import (
 )
 
 func SoftwareCreate(software *model.Software) (*model.Software, error) {
-	software.CreatedAt = time.Now()
-	software.UpdatedAt = time.Now()
+	now := time.Now()
+	software.CreatedAt = now
+	software.UpdatedAt = now
 
 	result := db.DB.Create(software)
 	err := result.Error
