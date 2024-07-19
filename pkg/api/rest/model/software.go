@@ -117,14 +117,16 @@ type ExecutionStatus struct {
 	ErrorMessage        string    `json:"error_message"`
 }
 
+type ExecutionStatusList []ExecutionStatus
+
 type SoftwareInstallStatusReq struct {
 	ExecutionID string `json:"execution_id"`
 }
 
 type SoftwareInstallStatus struct {
-	ExecutionID     string            `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
-	Target          Target            `gorm:"target" json:"target" validate:"required"`
-	ExecutionStatus []ExecutionStatus `gorm:"execution_status" json:"execution_status"`
+	ExecutionID     string              `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
+	Target          Target              `gorm:"target" json:"target"`
+	ExecutionStatus ExecutionStatusList `gorm:"execution_status" json:"execution_status"`
 }
 
 func (t Target) Value() (driver.Value, error) {
@@ -140,4 +142,19 @@ func (t *Target) Scan(value interface{}) error {
 		return errors.New("invalid type for Target")
 	}
 	return json.Unmarshal(bytes, t)
+}
+
+func (esl ExecutionStatusList) Value() (driver.Value, error) {
+	return json.Marshal(esl)
+}
+
+func (esl *ExecutionStatusList) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("invalid type for ExecutionStatusList")
+	}
+	return json.Unmarshal(bytes, esl)
 }
