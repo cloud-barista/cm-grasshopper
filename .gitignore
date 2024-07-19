@@ -9,6 +9,7 @@ vendor
 *.log
 
 *.db
+honeybee.key
 
 playbook/
 software_temp/
