@@ -50,9 +50,23 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
             server_port: 8081
     ```
 
-2. Build and run the binary
+2. Copy honeybee private key file (honeybee.key) to .cm-grasshopper/ directory under user's home directory or the path of 'CMGRASSHOPPER_ROOT' environment variable.
+You can get honeybee.key from .cm-honeybee/ directory under user's home directory or the path of 'CMHONEYBEE_ROOT' environment variable.
+
+If you are running honeybee within Docker, you can copy it with this command.
+
+ ```shell
+ docker cp cm-honeybee:/root/.cm-honeybee/honeybee.key .
+ ```
+
+3. Build and run the binary
  ```shell
  make run
+ ```
+
+Or, you can run it within Docker by this command.
+ ```shell
+ make run_docker
  ```
 
 ### Health-check
