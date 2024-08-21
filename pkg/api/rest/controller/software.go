@@ -105,7 +105,7 @@ func RegisterSoftware(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the os version")
 	}
 
-	if softwareRegisterReq.MatchNames == nil || len(softwareRegisterReq.MatchNames) == 0 {
+	if len(softwareRegisterReq.MatchNames) == 0 {
 		return common.ReturnErrorMsg(c, "Please provide the match names")
 	}
 
