@@ -69,6 +69,12 @@ Or, you can run it within Docker by this command.
  make run_docker
  ```
 
+Docker container will use the default honeybee private key file.
+To use the copied honeybee private key file, uncomment it below in the `docker-compose.yaml` file.
+```shell
+#- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+```
+
 ### Health-check
 
 Check if CM-Grasshopper is running

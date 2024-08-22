@@ -8,7 +8,7 @@ services:
     image: cm-grasshopper:${TAG:-latest}
     volumes:
       #- ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
-      - ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+      #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       - ./software_temp:/software_temp:rw
       - ./software_log:/software_log:rw
       - ./playbook:/playbook/:rw
