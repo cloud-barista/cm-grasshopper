@@ -5,7 +5,7 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
-    image: cm-grasshopper:${TAG:-latest}
+    image: cloudbaristaorg/cm-grasshopper:edge
     volumes:
       #- ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
       #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
