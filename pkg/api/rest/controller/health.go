@@ -19,7 +19,7 @@ var IsReady = false
 // @Success		200 {object}	model.SimpleMsg			"Successfully get ready state."
 // @Failure		500	{object}	common.ErrorResponse	"Failed to check ready state."
 //
-// @Router /grasshopper/readyz [get]
+// @Router		/readyz [get]
 func CheckReady(c echo.Context) error {
 	status := http.StatusOK
 

@@ -10,12 +10,16 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {},
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/grasshopper/readyz": {
+        "/readyz": {
             "get": {
                 "description": "Check Grasshopper is ready",
                 "consumes": [
@@ -44,7 +48,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/grasshopper/software/execution_list": {
+        "/software/execution_list": {
             "post": {
                 "description": "Get software migration execution list.",
                 "consumes": [
@@ -90,7 +94,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/grasshopper/software/install": {
+        "/software/install": {
             "post": {
                 "description": "Install pieces of software to target.",
                 "consumes": [
@@ -136,7 +140,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/grasshopper/software/register": {
+        "/software/register": {
             "post": {
                 "description": "Register the software.\u003cbr\u003e\u003cbr\u003e[JSON Body Example]\u003cbr\u003e{\"architecture\":\"x86_64\",\"install_type\":\"ansible\",\"match_names\":[\"telegraf\"],\"name\":\"telegraf\",\"os\":\"Ubuntu\",\"os_version\":\"22.04\",\"version\":\"1.0\"}",
                 "consumes": [
@@ -187,7 +191,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/grasshopper/software/{softwareId}": {
+        "/software/{softwareId}": {
             "delete": {
                 "description": "Delete the software.",
                 "consumes": [
@@ -421,12 +425,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
+	Version:          "latest",
 	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	BasePath:         "/grasshopper",
+	Schemes:          []string{"http"},
+	Title:            "CM-Grasshopper REST API",
+	Description:      "Software migration management module",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

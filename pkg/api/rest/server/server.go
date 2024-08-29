@@ -42,6 +42,17 @@ func getLocalIP() string {
 	return localIP[0]
 }
 
+// @title CM-Grasshopper REST API
+// @version latest
+// @description Software migration management module
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @BasePath /grasshopper
+
+// @schemes http
+
 func Init() {
 	e := echo.New()
 

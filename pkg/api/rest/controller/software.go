@@ -66,7 +66,7 @@ func uploadHandler(c echo.Context) (string, error) {
 // @Success		200	{object}	model.SoftwareRegisterReq	"Successfully registered the software."
 // @Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 // @Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
-// @Router		/grasshopper/software/register [post]
+// @Router		/software/register [post]
 func RegisterSoftware(c echo.Context) error {
 	err := c.Request().ParseMultipartForm(10 << 30) // 10GB
 	if err != nil {
@@ -172,7 +172,7 @@ func RegisterSoftware(c echo.Context) error {
 // @Success		200	{object}	model.GetExecutionListRes	"Successfully get migration execution list."
 // @Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 // @Failure		500	{object}	common.ErrorResponse		"Failed to get migration execution list."
-// @Router		/grasshopper/software/execution_list [post]
+// @Router		/software/execution_list [post]
 func GetExecutionList(c echo.Context) error {
 	var err error
 
@@ -201,7 +201,7 @@ func GetExecutionList(c echo.Context) error {
 // @Success		200	{object}	model.SoftwareInstallRes	"Successfully sent SSH command."
 // @Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 // @Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
-// @Router		/grasshopper/software/install [post]
+// @Router		/software/install [post]
 func InstallSoftware(c echo.Context) error {
 	softwareInstallReq := new(model.SoftwareInstallReq)
 	err := c.Bind(softwareInstallReq)
@@ -250,7 +250,7 @@ func InstallSoftware(c echo.Context) error {
 // @Success		200	{object}	model.SimpleMsg			"Successfully update the software"
 // @Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 // @Failure		500	{object}	common.ErrorResponse	"Failed to delete the software"
-// @Router		/grasshopper/software/{softwareId} [delete]
+// @Router		/software/{softwareId} [delete]
 func DeleteSoftware(c echo.Context) error {
 	swID := c.Param("softwareId")
 	if swID == "" {

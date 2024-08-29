@@ -1,10 +1,21 @@
 {
+    "schemes": [
+        "http"
+    ],
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "Software migration management module",
+        "title": "CM-Grasshopper REST API",
+        "contact": {},
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "latest"
     },
+    "basePath": "/grasshopper",
     "paths": {
-        "/grasshopper/readyz": {
+        "/readyz": {
             "get": {
                 "description": "Check Grasshopper is ready",
                 "consumes": [
@@ -33,7 +44,7 @@
                 }
             }
         },
-        "/grasshopper/software/execution_list": {
+        "/software/execution_list": {
             "post": {
                 "description": "Get software migration execution list.",
                 "consumes": [
@@ -79,7 +90,7 @@
                 }
             }
         },
-        "/grasshopper/software/install": {
+        "/software/install": {
             "post": {
                 "description": "Install pieces of software to target.",
                 "consumes": [
@@ -125,7 +136,7 @@
                 }
             }
         },
-        "/grasshopper/software/register": {
+        "/software/register": {
             "post": {
                 "description": "Register the software.\u003cbr\u003e\u003cbr\u003e[JSON Body Example]\u003cbr\u003e{\"architecture\":\"x86_64\",\"install_type\":\"ansible\",\"match_names\":[\"telegraf\"],\"name\":\"telegraf\",\"os\":\"Ubuntu\",\"os_version\":\"22.04\",\"version\":\"1.0\"}",
                 "consumes": [
@@ -176,7 +187,7 @@
                 }
             }
         },
-        "/grasshopper/software/{softwareId}": {
+        "/software/{softwareId}": {
             "delete": {
                 "description": "Delete the software.",
                 "consumes": [

@@ -1,3 +1,4 @@
+basePath: /grasshopper
 definitions:
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse:
     properties:
@@ -124,8 +125,14 @@ definitions:
     type: object
 info:
   contact: {}
+  description: Software migration management module
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: CM-Grasshopper REST API
+  version: latest
 paths:
-  /grasshopper/readyz:
+  /readyz:
     get:
       consumes:
       - application/json
@@ -144,7 +151,7 @@ paths:
       summary: Check Ready
       tags:
       - '[Admin] System management'
-  /grasshopper/software/{softwareId}:
+  /software/{softwareId}:
     delete:
       consumes:
       - application/json
@@ -173,7 +180,7 @@ paths:
       summary: Delete Software
       tags:
       - '[Software]'
-  /grasshopper/software/execution_list:
+  /software/execution_list:
     post:
       consumes:
       - application/json
@@ -203,7 +210,7 @@ paths:
       summary: Get Execution List
       tags:
       - '[Software]'
-  /grasshopper/software/install:
+  /software/install:
     post:
       consumes:
       - application/json
@@ -233,7 +240,7 @@ paths:
       summary: Install Software
       tags:
       - '[Software]'
-  /grasshopper/software/register:
+  /software/register:
     post:
       consumes:
       - multipart/form-data
@@ -267,4 +274,6 @@ paths:
       summary: Register Software
       tags:
       - '[Software]'
+schemes:
+- http
 swagger: "2.0"
