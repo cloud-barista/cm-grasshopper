@@ -428,7 +428,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "latest",
 	Host:             "",
 	BasePath:         "/grasshopper",
-	Schemes:          []string{"http"},
+	Schemes:          []string{},
 	Title:            "CM-Grasshopper REST API",
 	Description:      "Software migration management module",
 	InfoInstanceName: "swagger",

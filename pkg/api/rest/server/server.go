@@ -51,8 +51,6 @@ func getLocalIP() string {
 
 // @BasePath /grasshopper
 
-// @schemes http
-
 func Init() {
 	e := echo.New()
 
