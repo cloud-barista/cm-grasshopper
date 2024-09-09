@@ -137,6 +137,7 @@ paths:
       consumes:
       - application/json
       description: Check Grasshopper is ready
+      operationId: health-check-readyz
       produces:
       - application/json
       responses:
@@ -150,12 +151,13 @@ paths:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Check Ready
       tags:
-      - '[Admin] System management'
+      - "[Admin]\tSystem management"
   /software/{softwareId}:
     delete:
       consumes:
       - application/json
       description: Delete the software.
+      operationId: delete-software
       parameters:
       - description: ID of the software.
         in: path
@@ -185,6 +187,7 @@ paths:
       consumes:
       - application/json
       description: Get software migration execution list.
+      operationId: get-execution-list
       parameters:
       - description: Software info list.
         in: body
@@ -215,6 +218,7 @@ paths:
       consumes:
       - application/json
       description: Install pieces of software to target.
+      operationId: install-software
       parameters:
       - description: Software install request.
         in: body
@@ -245,6 +249,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
+      operationId: register-software
       parameters:
       - description: Software register request JSON body string.
         in: formData

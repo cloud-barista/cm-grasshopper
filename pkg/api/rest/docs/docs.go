@@ -29,9 +29,10 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Admin] System management"
+                    "[Admin]\tSystem management"
                 ],
                 "summary": "Check Ready",
+                "operationId": "health-check-readyz",
                 "responses": {
                     "200": {
                         "description": "Successfully get ready state.",
@@ -61,6 +62,7 @@ const docTemplate = `{
                     "[Software]"
                 ],
                 "summary": "Get Execution List",
+                "operationId": "get-execution-list",
                 "parameters": [
                     {
                         "description": "Software info list.",
@@ -107,6 +109,7 @@ const docTemplate = `{
                     "[Software]"
                 ],
                 "summary": "Install Software",
+                "operationId": "install-software",
                 "parameters": [
                     {
                         "description": "Software install request.",
@@ -153,6 +156,7 @@ const docTemplate = `{
                     "[Software]"
                 ],
                 "summary": "Register Software",
+                "operationId": "register-software",
                 "parameters": [
                     {
                         "type": "string",
@@ -204,6 +208,7 @@ const docTemplate = `{
                     "[Software]"
                 ],
                 "summary": "Delete Software",
+                "operationId": "delete-software",
                 "parameters": [
                     {
                         "type": "string",

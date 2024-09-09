@@ -22,9 +22,10 @@
                     "application/json"
                 ],
                 "tags": [
-                    "[Admin] System management"
+                    "[Admin]\tSystem management"
                 ],
                 "summary": "Check Ready",
+                "operationId": "health-check-readyz",
                 "responses": {
                     "200": {
                         "description": "Successfully get ready state.",
@@ -54,6 +55,7 @@
                     "[Software]"
                 ],
                 "summary": "Get Execution List",
+                "operationId": "get-execution-list",
                 "parameters": [
                     {
                         "description": "Software info list.",
@@ -100,6 +102,7 @@
                     "[Software]"
                 ],
                 "summary": "Install Software",
+                "operationId": "install-software",
                 "parameters": [
                     {
                         "description": "Software install request.",
@@ -146,6 +149,7 @@
                     "[Software]"
                 ],
                 "summary": "Register Software",
+                "operationId": "register-software",
                 "parameters": [
                     {
                         "type": "string",
@@ -197,6 +201,7 @@
                     "[Software]"
                 ],
                 "summary": "Delete Software",
+                "operationId": "delete-software",
                 "parameters": [
                     {
                         "type": "string",
