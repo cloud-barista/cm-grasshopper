@@ -1,0 +1,29 @@
+- name: "Check if {{ telegraf_package_name }} is installed (Debian family)"
+  command: dpkg-query -l "{{ telegraf_package_name }}"
+  register: debian_package_check
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: "Check if {{ telegraf_package_name }} is installed (Redhat family)"
+  command: rpm -q "{{ telegraf_package_name }}"
+  register: redhat_package_check
+  changed_when: false
+  ignore_errors: true
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Install telegraf deb package (Debian family)
+  apt:
+    deb: "{{telegraf_deb_download_url}}"
+    state: present
+  when: debian_package_check is failed and ansible_facts['os_family'] == "Debian"
+
+- name: Install telegraf rpm package (Redhat family)
+  yum:
+    name: "{{telegraf_deb_download_url}}"
+    state: present
+  when: redhat_package_check is failed and ansible_facts['os_family'] == "RedHat"
+
+- name: Restart telegraf Service
+  service:
+    name: telegraf
+    state: restarted
+    enabled: true

@@ -1,0 +1,6 @@
+- name: Telegraf Provisioning Test
+  hosts: 127.0.0.1
+  force_handlers: true
+
+  roles:
+    - telegraf

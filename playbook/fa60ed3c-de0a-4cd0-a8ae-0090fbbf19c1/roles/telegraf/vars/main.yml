@@ -1,0 +1,6 @@
+telegraf_package_name: "telegraf"
+telegraf_deb_download_url: "https://dl.influxdata.com/telegraf/releases/telegraf_1.19.2-1_amd64.deb"
+telegraf_rpm_download_url: "https://dl.influxdata.com/telegraf/releases/telegraf-1.19.2-1.x86_64.rpm"
+telegraf_default_configuration_location: "/etc/default/telegraf"
+telegraf_configuration_location: "/etc/telegraf/telegraf.conf"
+telegraf_old_configuration_location: "/etc/telegraf/telegraf.conf.old"

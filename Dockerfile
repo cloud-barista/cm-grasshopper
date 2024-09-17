@@ -27,6 +27,7 @@ RUN apk --no-cache add ansible curl
 COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/conf /conf
 COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/cmd/cm-grasshopper/cm-grasshopper /cm-grasshopper
 
+ADD playbook/ /playbook
 ADD CM-GRASSHOPPER.db /CM-GRASSHOPPER.db
 
 RUN mkdir -p /root/.cm-grasshopper/

@@ -9,7 +9,7 @@ services:
     volumes:
       #- ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
       #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
+      #- ./playbook:/playbook/:rw
       - ./software_temp:/software_temp:rw
       - ./software_log:/software_log:rw
-      - ./playbook:/playbook/:rw
     network_mode: "host"
