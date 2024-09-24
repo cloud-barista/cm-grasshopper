@@ -1,6 +1,7 @@
 package rsautil
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
@@ -25,9 +26,39 @@ func BytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 // DecryptWithPrivateKey decrypts data with private key
 func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) []byte {
 	hash := sha512.New()
-	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
-	if err != nil {
-		log.Error(err)
+
+	chunkSize := priv.Size()
+
+	if len(ciphertext) == 0 {
+		log.Error("ciphertext is empty")
+		return nil
 	}
-	return plaintext
+
+	var plaintextData bytes.Buffer
+	offset := 0
+
+	for offset < len(ciphertext) {
+		end := offset + chunkSize
+		if end > len(ciphertext) {
+			log.Error("invalid ciphertext length")
+			return nil
+		}
+
+		chunk := ciphertext[offset:end]
+		plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, chunk, nil)
+		if err != nil {
+			log.Error(err)
+			return nil
+		}
+
+		_, err = plaintextData.Write(plaintext)
+		if err != nil {
+			log.Error(err)
+			return nil
+		}
+
+		offset = end
+	}
+
+	return plaintextData.Bytes()
 }
