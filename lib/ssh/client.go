@@ -45,7 +45,27 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 	return goph.AddKnownHost(host, remote, key, "")
 }
 
-func decryptPasswordAndPrivateKey(connectionInfo *honeybee.ConnectionInfo) (*honeybee.ConnectionInfo, error) {
+func decryptSecrets(connectionInfo *honeybee.ConnectionInfo) (*honeybee.ConnectionInfo, error) {
+	encryptedSSHPort, err := base64.StdEncoding.DecodeString(connectionInfo.SSHPort)
+	if err != nil {
+		errMsg := "error occurred while decrypting the base64 encoded encrypted ssh port (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+		return nil, errors.New(errMsg)
+	}
+
+	decryptedSSHPortBytes := rsautil.DecryptWithPrivateKey(encryptedSSHPort, grasshopperCommon.HoneybeePrivateKey)
+	connectionInfo.SSHPort = string(decryptedSSHPortBytes)
+
+	encryptedUser, err := base64.StdEncoding.DecodeString(connectionInfo.User)
+	if err != nil {
+		errMsg := "error occurred while decrypting the base64 encoded encrypted user (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+		return nil, errors.New(errMsg)
+	}
+
+	decryptedUserBytes := rsautil.DecryptWithPrivateKey(encryptedUser, grasshopperCommon.HoneybeePrivateKey)
+	connectionInfo.User = string(decryptedUserBytes)
+
 	encryptedPassword, err := base64.StdEncoding.DecodeString(connectionInfo.Password)
 	if err != nil {
 		errMsg := "error occurred while decrypting the base64 encoded encrypted password (" + err.Error() + ")"
@@ -91,7 +111,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 			return nil, err
 		}
 
-		connectionInfo, err := decryptPasswordAndPrivateKey(&encryptedConnectionInfo)
+		connectionInfo, err := decryptSecrets(&encryptedConnectionInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -108,10 +128,12 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 			return nil, errors.New("failed to determine auth method")
 		}
 
+		sshPort, _ := strconv.Atoi(connectionInfo.SSHPort)
+
 		client, err = goph.NewConn(&goph.Config{
 			User:     connectionInfo.User,
 			Addr:     connectionInfo.IPAddress,
-			Port:     uint(connectionInfo.SSHPort),
+			Port:     uint(sshPort),
 			Auth:     auth,
 			Timeout:  goph.DefaultTimeout,
 			Callback: AddKnownHost,
@@ -127,7 +149,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 
 		sshTarget = &model.SSHTarget{
 			IP:         connectionInfo.IPAddress,
-			Port:       uint(connectionInfo.SSHPort),
+			Port:       uint(sshPort),
 			UseKeypair: useKeypair,
 			Username:   connectionInfo.User,
 			Password:   connectionInfo.Password,

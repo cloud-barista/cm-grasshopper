@@ -29,11 +29,6 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) []byte {
 
 	chunkSize := priv.Size()
 
-	if len(ciphertext) == 0 {
-		log.Error("ciphertext is empty")
-		return nil
-	}
-
 	var plaintextData bytes.Buffer
 	offset := 0
 
