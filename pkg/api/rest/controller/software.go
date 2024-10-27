@@ -162,16 +162,17 @@ func RegisterSoftware(c echo.Context) error {
 		NeededPackages: neededPackages,
 	}
 
+	dbSW, err := dao.SoftwareCreate(&sw)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
 	destDir := filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, sw.ID)
 	err = writePlaybookFiles(softwareRegisterReq.Name, destDir, softwareRegisterReq.NeededPackages)
 	if err != nil {
 		_ = fileutil.DeleteDir(destDir)
+		_ = dao.SoftwareDelete(&sw)
 
-		return common.ReturnErrorMsg(c, err.Error())
-	}
-
-	dbSW, err := dao.SoftwareCreate(&sw)
-	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
