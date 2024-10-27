@@ -15,7 +15,7 @@ import (
 func targetToSSHTarget(target *model.Target) (*model.SSHTarget, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+target.NamespaceID+"/mcis/"+target.MCISID+"/vm/"+target.VMID,
+		"/tumblebug/ns/"+target.NamespaceID+"/mci/"+target.MCISID+"/vm/"+target.VMID,
 		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 	if err != nil {
 		return nil, err
@@ -25,6 +25,22 @@ func targetToSSHTarget(target *model.Target) (*model.SSHTarget, error) {
 	err = json.Unmarshal(data, &vmInfo)
 	if err != nil {
 		return nil, err
+	}
+
+	if vmInfo.PublicIP == "" {
+		return nil, errors.New("failed to get target VM's public IP")
+	}
+
+	if vmInfo.SSHPort == "" {
+		return nil, errors.New("failed to get target VM's SSH port")
+	}
+
+	if vmInfo.SSHKeyID == "" {
+		return nil, errors.New("failed to get target VM's SSH Key ID")
+	}
+
+	if vmInfo.VMUserName == "" {
+		return nil, errors.New("failed to get target VM's user name")
 	}
 
 	sshPort, err := strconv.Atoi(vmInfo.SSHPort)
@@ -46,11 +62,15 @@ func targetToSSHTarget(target *model.Target) (*model.SSHTarget, error) {
 		return nil, err
 	}
 
+	if sshKeyInfo.PrivateKey == "" {
+		return nil, errors.New("failed to get target VM's private key")
+	}
+
 	return &model.SSHTarget{
 		IP:         vmInfo.PublicIP,
 		Port:       uint(sshPort),
 		UseKeypair: true,
-		Username:   vmInfo.VMUserAccount,
+		Username:   vmInfo.VMUserName,
 		Password:   "",
 		PrivateKey: sshKeyInfo.PrivateKey,
 	}, nil

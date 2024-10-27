@@ -1,15 +1,10 @@
 package model
 
-type CSPViewVMDetail struct {
-	PublicIP string `json:"PublicIP"`
-}
-
 type TBVMInfo struct {
-	PublicIP        string          `json:"publicIP"`
-	SSHPort         string          `json:"sshPort"`
-	SSHKeyID        string          `json:"sshKeyId"`
-	VMUserAccount   string          `json:"vmUserAccount,omitempty"`
-	CSPViewVMDetail CSPViewVMDetail `json:"cspViewVmDetail"`
+	PublicIP   string `json:"publicIP"`
+	SSHPort    string `json:"sshPort"`
+	SSHKeyID   string `json:"sshKeyId"`
+	VMUserName string `json:"vmUserName,omitempty"`
 }
 
 type TBSSHKeyInfo struct {

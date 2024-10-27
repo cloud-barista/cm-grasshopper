@@ -210,7 +210,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 		}
 
 		client, err = goph.NewConn(&goph.Config{
-			User:     vmInfo.VMUserAccount,
+			User:     vmInfo.VMUserName,
 			Addr:     vmInfo.PublicIP,
 			Port:     uint(sshPort),
 			Auth:     auth,
@@ -225,7 +225,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 			IP:         vmInfo.PublicIP,
 			Port:       uint(sshPort),
 			UseKeypair: true,
-			Username:   vmInfo.VMUserAccount,
+			Username:   vmInfo.VMUserName,
 			Password:   "",
 			PrivateKey: sshKeyInfo.PrivateKey,
 		}
