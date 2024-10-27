@@ -1,6 +1,6 @@
-- name: Telegraf Provisioning Test
+- name: Install SOFTWARE_NAME
   hosts: 127.0.0.1
   force_handlers: true
 
   roles:
-    - telegraf
+    - role

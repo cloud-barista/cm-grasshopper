@@ -127,7 +127,7 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 		}
 
 		for i, execution := range exList {
-			if execution.SoftwareInstallType == "ansible" {
+			if execution.SoftwareInstallType == "package" {
 				updateStatus(i, "installing", "", true)
 				err := runPlaybook(id, execution.SoftwareID, t)
 				if err != nil {

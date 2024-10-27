@@ -65,7 +65,7 @@ const docTemplate = `{
                 "operationId": "get-execution-list",
                 "parameters": [
                     {
-                        "description": "Software info list.",
+                        "description": "Software info list",
                         "name": "getExecutionListReq",
                         "in": "body",
                         "required": true,
@@ -147,7 +147,7 @@ const docTemplate = `{
             "post": {
                 "description": "Register the software.\u003cbr\u003e\u003cbr\u003e[JSON Body Example]\u003cbr\u003e{\"architecture\":\"x86_64\",\"install_type\":\"ansible\",\"match_names\":[\"telegraf\"],\"name\":\"telegraf\",\"os\":\"Ubuntu\",\"os_version\":\"22.04\",\"version\":\"1.0\"}",
                 "consumes": [
-                    "multipart/form-data"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -159,18 +159,13 @@ const docTemplate = `{
                 "operationId": "register-software",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Software register request JSON body string.",
-                        "name": "json",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Archive file to upload for ansible.",
-                        "name": "archive",
-                        "in": "formData",
-                        "required": true
+                        "description": "Software info",
+                        "name": "softwareRegisterReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareRegisterReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -375,6 +370,7 @@ const docTemplate = `{
                 "install_type",
                 "match_names",
                 "name",
+                "needed_packages",
                 "os",
                 "os_version",
                 "version"
@@ -394,6 +390,12 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "needed_packages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "os": {
                     "type": "string"

@@ -1,0 +1,14 @@
+- name: Install deb package (Debian family)
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop: "{{ packages }}"
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install rpm package (Redhat family)
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages }}"
+  when: ansible_facts['os_family'] == "RedHat"

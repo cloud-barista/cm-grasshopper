@@ -1,1 +1,0 @@
-{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Redhat","os_version":"8.8","version":"1.19.2"}

@@ -11,8 +11,6 @@ func CheckInstallType(input string) error {
 	switch input {
 	case "package":
 		fallthrough
-	case "ansible":
-		fallthrough
 	case "script":
 		return nil
 	default:
@@ -38,17 +36,17 @@ func CheckArchitecture(input string) error {
 }
 
 type Software struct {
-	ID           string    `gorm:"primaryKey" json:"uuid" validate:"required"`
-	InstallType  string    `gorm:"install_type" json:"install_type" validate:"required"`
-	Name         string    `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version      string    `gorm:"version" json:"version" validate:"required"`
-	OS           string    `gorm:"os" json:"os" validate:"required"`
-	OSVersion    string    `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture string    `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames   string    `gorm:"match_names" json:"match_names" validate:"required"`
-	Size         string    `gorm:"size" json:"size" validate:"required"`
-	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
-	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
+	ID             string    `gorm:"primaryKey" json:"uuid" validate:"required"`
+	InstallType    string    `gorm:"install_type" json:"install_type" validate:"required"`
+	Name           string    `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
+	Version        string    `gorm:"version" json:"version" validate:"required"`
+	OS             string    `gorm:"os" json:"os" validate:"required"`
+	OSVersion      string    `gorm:"os_version" json:"os_version" validate:"required"`
+	Architecture   string    `gorm:"architecture" json:"architecture" validate:"required"`
+	MatchNames     string    `gorm:"match_names" json:"match_names" validate:"required"`
+	NeededPackages string    `json:"needed_packages" validate:"required"`
+	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
+	UpdatedAt      time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
 }
 
 type Source struct {
@@ -62,13 +60,14 @@ type Target struct {
 }
 
 type SoftwareRegisterReq struct {
-	InstallType  string   `json:"install_type" validate:"required"`
-	Name         string   `json:"name" validate:"required"`
-	Version      string   `json:"version" validate:"required"`
-	OS           string   `json:"os" validate:"required"`
-	OSVersion    string   `json:"os_version" validate:"required"`
-	Architecture string   `json:"architecture" validate:"required"`
-	MatchNames   []string `json:"match_names" validate:"required"`
+	InstallType    string   `json:"install_type" validate:"required"`
+	Name           string   `json:"name" validate:"required"`
+	Version        string   `json:"version" validate:"required"`
+	OS             string   `json:"os" validate:"required"`
+	OSVersion      string   `json:"os_version" validate:"required"`
+	Architecture   string   `json:"architecture" validate:"required"`
+	MatchNames     []string `json:"match_names" validate:"required"`
+	NeededPackages []string `json:"needed_packages" validate:"required"`
 }
 
 type SoftwareInfo struct {

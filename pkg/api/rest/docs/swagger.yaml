@@ -95,6 +95,10 @@ definitions:
         type: array
       name:
         type: string
+      needed_packages:
+        items:
+          type: string
+        type: array
       os:
         type: string
       os_version:
@@ -106,6 +110,7 @@ definitions:
     - install_type
     - match_names
     - name
+    - needed_packages
     - os
     - os_version
     - version
@@ -189,7 +194,7 @@ paths:
       description: Get software migration execution list.
       operationId: get-execution-list
       parameters:
-      - description: Software info list.
+      - description: Software info list
         in: body
         name: getExecutionListReq
         required: true
@@ -247,20 +252,16 @@ paths:
   /software/register:
     post:
       consumes:
-      - multipart/form-data
+      - application/json
       description: Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
       operationId: register-software
       parameters:
-      - description: Software register request JSON body string.
-        in: formData
-        name: json
+      - description: Software info
+        in: body
+        name: softwareRegisterReq
         required: true
-        type: string
-      - description: Archive file to upload for ansible.
-        in: formData
-        name: archive
-        required: true
-        type: file
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareRegisterReq'
       produces:
       - application/json
       responses:

@@ -1,57 +1,80 @@
 package controller
 
 import (
-	"encoding/json"
-	"errors"
+	"embed"
 	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/google/uuid"
+	"github.com/jollaman999/utils/fileutil"
 	"github.com/labstack/echo/v4"
-	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func uploadHandler(c echo.Context) (string, error) {
-	file, err := c.FormFile("archive")
+//go:embed playbook_base
+var playbookBase embed.FS
+
+func writePlaybookFiles(softwareName string, destDir string, neededPackages []string) error {
+	err := fs.WalkDir(playbookBase, "playbook_base", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		relPath, _ := filepath.Rel("playbook_base", path)
+		destPath := filepath.Join(destDir, relPath)
+
+		err = fileutil.CreateDirIfNotExist(filepath.Dir(destPath))
+		if err != nil {
+			return err
+		}
+
+		data, err := playbookBase.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		if strings.HasSuffix(destPath, "playbook.yml") {
+			dataStr := string(data)
+			dataStr = strings.ReplaceAll(dataStr, "SOFTWARE_NAME", softwareName)
+			data = []byte(dataStr)
+		}
+
+		if err := os.WriteFile(destPath, data, 0644); err != nil {
+			return err
+		}
+
+		if strings.HasSuffix(destPath, filepath.Join("vars", "main.yml")) {
+			err := fileutil.WriteFileAppend(destPath, "packages:")
+			if err != nil {
+				return err
+			}
+
+			for _, packageName := range neededPackages {
+				err := fileutil.WriteFileAppend(destPath, "\n  - "+packageName)
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}
+
+		return nil
+	})
 	if err != nil {
-		return "", errors.New("failed to get file")
+		return err
 	}
 
-	src, err := file.Open()
-	if err != nil {
-		return "", errors.New("failed to open file")
-	}
-	defer func() {
-		_ = src.Close()
-	}()
-
-	id := uuid.New().String()
-	destDir := filepath.Join("uploads", id)
-	err = os.MkdirAll(destDir, os.ModePerm)
-	if err != nil {
-		return "", errors.New("failed to create directory")
-	}
-
-	tempFileAbs := filepath.Join(destDir, file.Filename)
-	tempFile, err := os.Create(tempFileAbs)
-	if err != nil {
-		return "", errors.New("failed to create temp file")
-	}
-	defer func() {
-		_ = tempFile.Close()
-	}()
-
-	_, err = io.Copy(tempFile, src)
-	if err != nil {
-		return "", errors.New("failed to save file")
-	}
-
-	return tempFileAbs, nil
+	return nil
 }
 
 // RegisterSoftware godoc
@@ -60,25 +83,20 @@ func uploadHandler(c echo.Context) (string, error) {
 //	@Summary		Register Software
 //	@Description	Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
 //	@Tags			[Software]
-//	@Accept			mpfd
+//	@Accept			json
 //	@Produce		json
-//	@Param			json formData string true "Software register request JSON body string."
-//	@Param 			archive formData file true "Archive file to upload for ansible."
+//	@Param			softwareRegisterReq body model.SoftwareRegisterReq true "Software info"
 //	@Success		200	{object}	model.SoftwareRegisterReq	"Successfully registered the software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
 //	@Router			/software/register [post]
 func RegisterSoftware(c echo.Context) error {
-	err := c.Request().ParseMultipartForm(10 << 30) // 10GB
-	if err != nil {
-		return common.ReturnErrorMsg(c, "failed to parse multipart form")
-	}
+	var err error
 
-	jsonPart := c.FormValue("json")
-	var softwareRegisterReq model.SoftwareRegisterReq
-	err = json.Unmarshal([]byte(jsonPart), &softwareRegisterReq)
+	softwareRegisterReq := new(model.SoftwareRegisterReq)
+	err = c.Bind(softwareRegisterReq)
 	if err != nil {
-		return common.ReturnErrorMsg(c, "failed to parse json data")
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	err = model.CheckInstallType(softwareRegisterReq.InstallType)
@@ -109,7 +127,6 @@ func RegisterSoftware(c echo.Context) error {
 	if len(softwareRegisterReq.MatchNames) == 0 {
 		return common.ReturnErrorMsg(c, "Please provide the match names")
 	}
-
 	var matchNames string
 	for _, matchName := range softwareRegisterReq.MatchNames {
 		if strings.Contains(matchName, ",") {
@@ -119,39 +136,38 @@ func RegisterSoftware(c echo.Context) error {
 	}
 	matchNames = matchNames[:len(matchNames)-1]
 
-	var id = uuid.New().String()
-	var sizeString = "0B"
-
-	if softwareRegisterReq.InstallType == "ansible" {
-		tempFilePath, err := uploadHandler(c)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-		defer func() {
-			_ = os.RemoveAll(filepath.Join(tempFilePath, ".."))
-		}()
-
-		sizeString, err = software.SavePlaybook(id, tempFilePath)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-	} else {
-		file, _ := c.FormFile("archive")
-		if file != nil {
-			return common.ReturnErrorMsg(c, "archive should not uploaded with the provided install type")
-		}
+	if len(softwareRegisterReq.NeededPackages) == 0 {
+		return common.ReturnErrorMsg(c, "Please provide the needed packages")
 	}
+	var neededPackages string
+	for _, neededPackage := range softwareRegisterReq.NeededPackages {
+		if strings.Contains(neededPackage, ",") {
+			return common.ReturnErrorMsg(c, "Needed package should not contain ','")
+		}
+		neededPackages = neededPackage + ","
+	}
+	neededPackages = neededPackages[:len(neededPackages)-1]
+
+	var id = uuid.New().String()
 
 	sw := model.Software{
-		ID:           id,
-		InstallType:  softwareRegisterReq.InstallType,
-		Name:         softwareRegisterReq.Name,
-		Version:      softwareRegisterReq.Version,
-		OS:           softwareRegisterReq.OS,
-		OSVersion:    softwareRegisterReq.OSVersion,
-		Architecture: softwareRegisterReq.Architecture,
-		MatchNames:   matchNames,
-		Size:         sizeString,
+		ID:             id,
+		InstallType:    softwareRegisterReq.InstallType,
+		Name:           softwareRegisterReq.Name,
+		Version:        softwareRegisterReq.Version,
+		OS:             softwareRegisterReq.OS,
+		OSVersion:      softwareRegisterReq.OSVersion,
+		Architecture:   softwareRegisterReq.Architecture,
+		MatchNames:     matchNames,
+		NeededPackages: neededPackages,
+	}
+
+	destDir := filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, sw.ID)
+	err = writePlaybookFiles(softwareRegisterReq.Name, destDir, softwareRegisterReq.NeededPackages)
+	if err != nil {
+		_ = fileutil.DeleteDir(destDir)
+
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	dbSW, err := dao.SoftwareCreate(&sw)
@@ -170,7 +186,7 @@ func RegisterSoftware(c echo.Context) error {
 //	@Tags			[Software]
 //	@Accept			json
 //	@Produce		json
-//	@Param			getExecutionListReq body model.GetExecutionListReq true "Software info list."
+//	@Param			getExecutionListReq body model.GetExecutionListReq true "Software info list"
 //	@Success		200	{object}	model.GetExecutionListRes	"Successfully get migration execution list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get migration execution list."

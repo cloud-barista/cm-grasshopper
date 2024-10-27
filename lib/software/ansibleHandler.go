@@ -10,7 +10,6 @@ import (
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/iputil"
 	"github.com/jollaman999/utils/logger"
-	"github.com/mholt/archiver/v3"
 	cp "github.com/otiai10/copy"
 	"io"
 	"os"
@@ -146,55 +145,6 @@ func findPlaybookFile(id string) (string, error) {
 	}
 
 	return "", errors.New("ANSIBLE: failed to find any yaml files")
-}
-
-func decompressFile(filePath string, destDir string) error {
-	err := archiver.Unarchive(filePath, destDir)
-	if err != nil {
-		return errors.New("ANSIBLE: failed to decompress file (File: " + filePath + ", Error: " + err.Error() + ")")
-	}
-
-	return nil
-}
-
-func SavePlaybook(id string, playbookArchiveFile string) (sizeString string, err error) {
-	pwd := ""
-	sizeString = "0B"
-
-	pwd, err = getAnsiblePlaybookFolderPath(id)
-	if err != nil {
-		return sizeString, err
-	}
-
-	err = decompressFile(playbookArchiveFile, pwd)
-	if err != nil {
-		logger.Logger.Println(logger.ERROR, true, err)
-		return sizeString, err
-	}
-
-	err = os.Remove(playbookArchiveFile)
-	if err != nil {
-		errMsg := "ANSIBLE: " + err.Error()
-		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return sizeString, err
-	}
-
-	_, err = findPlaybookFile(id)
-	if err != nil {
-		logger.Logger.Println(logger.ERROR, true, err)
-		return sizeString, err
-	}
-
-	size, err := getFolderSize(pwd)
-	if err != nil {
-		errMsg := "ANSIBLE: " + err.Error()
-		logger.Logger.Println(logger.ERROR, true, errMsg)
-		return sizeString, err
-	}
-
-	sizeString = formatSize(size)
-
-	return sizeString, err
 }
 
 func inventoryFileCreate(pwd string, sshTarget model.SSHTarget) error {
