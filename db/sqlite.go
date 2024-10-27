@@ -8,17 +8,23 @@ import (
 	"gorm.io/gorm"
 )
 
+var SoftwaresDB *gorm.DB
 var DB *gorm.DB
 
 func Open() error {
 	var err error
 
-	DB, err = gorm.Open(sqlite.Open(common.ModuleName+".db"), &gorm.Config{})
+	SoftwaresDB, err = gorm.Open(sqlite.Open("softwares.db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
-	err = DB.AutoMigrate(&model.Software{})
+	err = SoftwaresDB.AutoMigrate(&model.Software{})
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err)
+	}
+
+	DB, err = gorm.Open(sqlite.Open(common.ModuleName+".db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
@@ -32,6 +38,11 @@ func Open() error {
 }
 
 func Close() {
+	if SoftwaresDB != nil {
+		sqlDB, _ := SoftwaresDB.DB()
+		_ = sqlDB.Close()
+	}
+
 	if DB != nil {
 		sqlDB, _ := DB.DB()
 		_ = sqlDB.Close()

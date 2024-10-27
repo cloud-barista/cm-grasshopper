@@ -13,7 +13,7 @@ func SoftwareCreate(software *model.Software) (*model.Software, error) {
 	software.CreatedAt = now
 	software.UpdatedAt = now
 
-	result := db.DB.Create(software)
+	result := db.SoftwaresDB.Create(software)
 	err := result.Error
 	if err != nil {
 		return nil, err
@@ -25,12 +25,12 @@ func SoftwareCreate(software *model.Software) (*model.Software, error) {
 func SoftwareGet(id string) (*model.Software, error) {
 	software := &model.Software{}
 
-	// Ensure db.DB is not nil to avoid runtime panics
-	if db.DB == nil {
-		return nil, errors.New("database connection is not initialized")
+	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
+	if db.SoftwaresDB == nil {
+		return nil, errors.New("softwares database is not initialized")
 	}
 
-	result := db.DB.Where("id = ?", id).First(software)
+	result := db.SoftwaresDB.Where("id = ?", id).First(software)
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -45,12 +45,12 @@ func SoftwareGet(id string) (*model.Software, error) {
 func SoftwareGetByName(name string) (*model.Software, error) {
 	software := &model.Software{}
 
-	// Ensure db.DB is not nil to avoid runtime panics
-	if db.DB == nil {
+	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
+	if db.SoftwaresDB == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
 
-	result := db.DB.Where("name = ?", name).First(software)
+	result := db.SoftwaresDB.Where("name = ?", name).First(software)
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -64,12 +64,12 @@ func SoftwareGetByName(name string) (*model.Software, error) {
 
 func SoftwareGetList(software *model.Software, page int, row int) (*[]model.Software, error) {
 	SoftwareList := &[]model.Software{}
-	// Ensure db.DB is not nil to avoid runtime panics
-	if db.DB == nil {
+	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
+	if db.SoftwaresDB == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
 
-	result := db.DB.Scopes(func(d *gorm.DB) *gorm.DB {
+	result := db.SoftwaresDB.Scopes(func(d *gorm.DB) *gorm.DB {
 		var filtered = d
 
 		if len(software.InstallType) != 0 {
@@ -125,7 +125,7 @@ func SoftwareGetList(software *model.Software, page int, row int) (*[]model.Soft
 func SoftwareUpdate(software *model.Software) error {
 	software.UpdatedAt = time.Now()
 
-	result := db.DB.Model(&model.Software{}).Where("id = ?", software.ID).Updates(software)
+	result := db.SoftwaresDB.Model(&model.Software{}).Where("id = ?", software.ID).Updates(software)
 	err := result.Error
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func SoftwareUpdate(software *model.Software) error {
 }
 
 func SoftwareDelete(software *model.Software) error {
-	result := db.DB.Delete(software)
+	result := db.SoftwaresDB.Delete(software)
 	err := result.Error
 	if err != nil {
 		return err
