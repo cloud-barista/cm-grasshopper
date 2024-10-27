@@ -81,7 +81,7 @@ func writePlaybookFiles(softwareName string, destDir string, neededPackages []st
 //
 //	@ID				register-software
 //	@Summary		Register Software
-//	@Description	Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
+//	@Description	Register the software.
 //	@Tags			[Software]
 //	@Accept			json
 //	@Produce		json

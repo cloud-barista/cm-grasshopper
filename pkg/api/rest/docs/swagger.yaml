@@ -253,7 +253,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Register the software.<br><br>[JSON Body Example]<br>{"architecture":"x86_64","install_type":"ansible","match_names":["telegraf"],"name":"telegraf","os":"Ubuntu","os_version":"22.04","version":"1.0"}
+      description: Register the software.
       operationId: register-software
       parameters:
       - description: Software info

@@ -145,7 +145,7 @@ const docTemplate = `{
         },
         "/software/register": {
             "post": {
-                "description": "Register the software.\u003cbr\u003e\u003cbr\u003e[JSON Body Example]\u003cbr\u003e{\"architecture\":\"x86_64\",\"install_type\":\"ansible\",\"match_names\":[\"telegraf\"],\"name\":\"telegraf\",\"os\":\"Ubuntu\",\"os_version\":\"22.04\",\"version\":\"1.0\"}",
+                "description": "Register the software.",
                 "consumes": [
                     "application/json"
                 ],
