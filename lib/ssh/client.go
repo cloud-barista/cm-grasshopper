@@ -46,16 +46,6 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 }
 
 func decryptSecrets(connectionInfo *honeybee.ConnectionInfo) (*honeybee.ConnectionInfo, error) {
-	encryptedSSHPort, err := base64.StdEncoding.DecodeString(connectionInfo.SSHPort)
-	if err != nil {
-		errMsg := "error occurred while decrypting the base64 encoded encrypted ssh port (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-		return nil, errors.New(errMsg)
-	}
-
-	decryptedSSHPortBytes := rsautil.DecryptWithPrivateKey(encryptedSSHPort, grasshopperCommon.HoneybeePrivateKey)
-	connectionInfo.SSHPort = string(decryptedSSHPortBytes)
-
 	encryptedUser, err := base64.StdEncoding.DecodeString(connectionInfo.User)
 	if err != nil {
 		errMsg := "error occurred while decrypting the base64 encoded encrypted user (" + err.Error() + ")"
