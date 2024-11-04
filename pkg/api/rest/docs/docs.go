@@ -379,6 +379,9 @@ const docTemplate = `{
                 "architecture": {
                     "type": "string"
                 },
+                "gpg_key_url": {
+                    "type": "string"
+                },
                 "install_type": {
                     "type": "string"
                 },
@@ -391,6 +394,12 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "need_to_delete_packages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "needed_packages": {
                     "type": "array",
                     "items": {
@@ -402,6 +411,12 @@ const docTemplate = `{
                 },
                 "os_version": {
                     "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "repo_use_os_version_code": {
+                    "type": "boolean"
                 },
                 "version": {
                     "type": "string"

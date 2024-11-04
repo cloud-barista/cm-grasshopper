@@ -87,6 +87,8 @@ definitions:
     properties:
       architecture:
         type: string
+      gpg_key_url:
+        type: string
       install_type:
         type: string
       match_names:
@@ -95,6 +97,10 @@ definitions:
         type: array
       name:
         type: string
+      need_to_delete_packages:
+        items:
+          type: string
+        type: array
       needed_packages:
         items:
           type: string
@@ -103,6 +109,10 @@ definitions:
         type: string
       os_version:
         type: string
+      repo_url:
+        type: string
+      repo_use_os_version_code:
+        type: boolean
       version:
         type: string
     required:

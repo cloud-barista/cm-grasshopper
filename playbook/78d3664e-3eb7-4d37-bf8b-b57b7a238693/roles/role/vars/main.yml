@@ -1,0 +1,17 @@
+packages_to_install:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+packages_to_delete:
+  - docker.io
+  - docker-doc
+  - docker-compose
+  - docker-compose-v2
+  - podman-docker
+  - containerd
+  - runc
+repo_url: https://download.docker.com/linux/ubuntu
+gpg_key_url: https://download.docker.com/linux/ubuntu/gpg
+repo_use_os_version_code: true

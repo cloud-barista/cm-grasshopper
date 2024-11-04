@@ -1,1 +1,2 @@
+- import_tasks: add_repo.yml
 - import_tasks: install_packages.yml
