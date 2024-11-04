@@ -48,7 +48,7 @@ type Software struct {
 	NeedToDeletePackages string    `json:"need_to_delete_packages"`
 	RepoURL              string    `json:"repo_url"`
 	GPGKeyURL            string    `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool      `json:"repo_use_os_version_code" default:"true"`
+	RepoUseOSVersionCode bool      `json:"repo_use_os_version_code" default:"false"`
 	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
 	UpdatedAt            time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
 }
@@ -75,7 +75,7 @@ type SoftwareRegisterReq struct {
 	NeedToDeletePackages []string `json:"need_to_delete_packages"`
 	RepoURL              string   `json:"repo_url"`
 	GPGKeyURL            string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code"`
+	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
 }
 
 type SoftwareInfo struct {

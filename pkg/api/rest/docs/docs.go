@@ -416,7 +416,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "repo_use_os_version_code": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "default": false
                 },
                 "version": {
                     "type": "string"
