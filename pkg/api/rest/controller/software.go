@@ -169,22 +169,26 @@ func RegisterSoftware(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the needed packages")
 	}
 	var neededPackages string
-	for _, neededPackage := range softwareRegisterReq.NeededPackages {
-		if strings.Contains(neededPackage, ",") {
-			return common.ReturnErrorMsg(c, "Each name of needed_packages should not contain ','")
+	if len(softwareRegisterReq.NeededPackages) > 0 {
+		for _, neededPackage := range softwareRegisterReq.NeededPackages {
+			if strings.Contains(neededPackage, ",") {
+				return common.ReturnErrorMsg(c, "Each name of needed_packages should not contain ','")
+			}
+			neededPackages += neededPackage + ","
 		}
-		neededPackages += neededPackage + ","
+		neededPackages = neededPackages[:len(neededPackages)-1]
 	}
-	neededPackages = neededPackages[:len(neededPackages)-1]
 
 	var needToDeletePackages string
-	for _, needToDeletePackage := range softwareRegisterReq.NeedToDeletePackages {
-		if strings.Contains(needToDeletePackage, ",") {
-			return common.ReturnErrorMsg(c, "Each name of need_to_delete_packages should not contain ','")
+	if len(needToDeletePackages) > 0 {
+		for _, needToDeletePackage := range softwareRegisterReq.NeedToDeletePackages {
+			if strings.Contains(needToDeletePackage, ",") {
+				return common.ReturnErrorMsg(c, "Each name of need_to_delete_packages should not contain ','")
+			}
+			needToDeletePackages += needToDeletePackage + ","
 		}
-		needToDeletePackages += needToDeletePackage + ","
+		needToDeletePackages = needToDeletePackages[:len(needToDeletePackages)-1]
 	}
-	needToDeletePackages = needToDeletePackages[:len(needToDeletePackages)-1]
 
 	var id = uuid.New().String()
 
