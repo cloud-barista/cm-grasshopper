@@ -135,6 +135,7 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 						", InstallType=ansible, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 				}
+				updateStatus(i, "finished", "", true)
 			} else {
 				updateStatus(i, "failed", "not supported install type", false)
 			}
