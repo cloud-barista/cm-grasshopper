@@ -71,14 +71,22 @@ func writePlaybookFiles(softwareName string, destDir string, neededPackages []st
 		if strings.HasSuffix(destPath, filepath.Join("vars", "main.yml")) {
 			var content string
 
-			content += "packages_to_install:\n"
-			for _, packageName := range neededPackages {
-				content += "  - " + packageName + "\n"
+			if len(neededPackages) > 0 {
+				content += "packages_to_install:\n"
+				for _, packageName := range neededPackages {
+					content += "  - " + packageName + "\n"
+				}
+			} else {
+				content += "packages_to_install: []\n"
 			}
 
-			content += "packages_to_delete:\n"
-			for _, packageName := range needToDeletePackages {
-				content += "  - " + packageName + "\n"
+			if len(needToDeletePackages) > 0 {
+				content += "packages_to_delete:\n"
+				for _, packageName := range needToDeletePackages {
+					content += "  - " + packageName + "\n"
+				}
+			} else {
+				content += "packages_to_delete: []\n"
 			}
 
 			if repoURL != "" {
