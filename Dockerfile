@@ -28,7 +28,7 @@ COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/conf /conf
 COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/cmd/cm-grasshopper/cm-grasshopper /cm-grasshopper
 
 ADD playbook/ /playbook
-ADD CM-GRASSHOPPER.db /CM-GRASSHOPPER.db
+ADD softwares.db /softwares.db
 
 RUN mkdir -p /root/.cm-grasshopper/
 RUN curl --ipv4 https://raw.githubusercontent.com/cloud-barista/cm-honeybee/main/server/_default_key/honeybee.key -o /root/.cm-grasshopper/honeybee.key
