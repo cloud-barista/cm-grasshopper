@@ -1,0 +1,15 @@
+{
+  "architecture": "x86_64",
+  "install_type": "package",
+  "match_names": [
+    "nfs-server",
+    "nfs-kernel-server"
+  ],
+  "name": "nfs-kernel-server",
+  "needed_packages": [
+    "nfs-kernel-server"
+  ],
+  "os": "Ubuntu",
+  "os_version": "22.04",
+  "version": "latest"
+}
