@@ -1,0 +1,14 @@
+{
+  "architecture": "x86_64",
+  "install_type": "package",
+  "match_names": [
+    "nginx"
+  ],
+  "name": "nginx",
+  "needed_packages": [
+    "nginx"
+  ],
+  "os": "Ubuntu",
+  "os_version": "22.04",
+  "version": "latest"
+}
