@@ -49,6 +49,119 @@ const docTemplate = `{
                 }
             }
         },
+        "/software": {
+            "get": {
+                "description": "Get a list of connection information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Software]"
+                ],
+                "summary": "List Software",
+                "operationId": "list-software",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Installation type of the software",
+                        "name": "install_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Name of the software",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version of the software",
+                        "name": "version",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operating system of the software",
+                        "name": "os",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Operating system version",
+                        "name": "os_version",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Architecture of the software",
+                        "name": "architecture",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Matching names of the software",
+                        "name": "match_names",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Packages needed to install for the software",
+                        "name": "needed_packages",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Packages that need to be deleted for the software",
+                        "name": "need_to_delete_packages",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Repository URL for install the software",
+                        "name": "repo_url",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "GPG key URL for install the software",
+                        "name": "gpg_key_url",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "If repository URL uses OS version code. (For debian based OSs.)",
+                        "name": "repo_use_os_version_code",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully get a list of software.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get a list of software.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/software/execution_list": {
             "post": {
                 "description": "Get software migration execution list.",
@@ -312,6 +425,70 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software": {
+            "type": "object",
+            "required": [
+                "architecture",
+                "created_at",
+                "install_type",
+                "match_names",
+                "name",
+                "needed_packages",
+                "os",
+                "os_version",
+                "updated_at",
+                "uuid",
+                "version"
+            ],
+            "properties": {
+                "architecture": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "gpg_key_url": {
+                    "type": "string"
+                },
+                "install_type": {
+                    "type": "string"
+                },
+                "match_names": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "need_to_delete_packages": {
+                    "type": "string"
+                },
+                "needed_packages": {
+                    "type": "string"
+                },
+                "os": {
+                    "type": "string"
+                },
+                "os_version": {
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "repo_use_os_version_code": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }

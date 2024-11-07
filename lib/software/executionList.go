@@ -12,7 +12,7 @@ func findMatchedSoftware(os string, osVersion string,
 	architecture string, softwareInfo model.SoftwareInfo) (*model.Software, error) {
 	list, err := dao.SoftwareGetList(&model.Software{
 		MatchNames: softwareInfo.Name,
-	}, 0, 0)
+	}, false, 0, 0)
 	if err != nil {
 		return nil, err
 	}

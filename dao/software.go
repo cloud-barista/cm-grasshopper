@@ -62,7 +62,7 @@ func SoftwareGetByName(name string) (*model.Software, error) {
 	return software, nil
 }
 
-func SoftwareGetList(software *model.Software, page int, row int) (*[]model.Software, error) {
+func SoftwareGetList(software *model.Software, isRepoUseOSVersionCodeSet bool, page int, row int) (*[]model.Software, error) {
 	SoftwareList := &[]model.Software{}
 	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
 	if db.SoftwaresDB == nil {
@@ -73,7 +73,7 @@ func SoftwareGetList(software *model.Software, page int, row int) (*[]model.Soft
 		var filtered = d
 
 		if len(software.InstallType) != 0 {
-			filtered = filtered.Where("install_type LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("install_type LIKE ?", "%"+software.InstallType+"%")
 		}
 
 		if len(software.Name) != 0 {
@@ -81,23 +81,43 @@ func SoftwareGetList(software *model.Software, page int, row int) (*[]model.Soft
 		}
 
 		if len(software.Version) != 0 {
-			filtered = filtered.Where("version LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("version LIKE ?", "%"+software.Version+"%")
 		}
 
 		if len(software.OS) != 0 {
-			filtered = filtered.Where("os LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("os LIKE ?", "%"+software.OS+"%")
 		}
 
 		if len(software.OSVersion) != 0 {
-			filtered = filtered.Where("os_version LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("os_version LIKE ?", "%"+software.OSVersion+"%")
 		}
 
 		if len(software.Architecture) != 0 {
-			filtered = filtered.Where("architecture LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("architecture LIKE ?", "%"+software.Architecture+"%")
 		}
 
 		if len(software.MatchNames) != 0 {
-			filtered = filtered.Where("match_names LIKE ?", "%"+software.Name+"%")
+			filtered = filtered.Where("match_names LIKE ?", "%"+software.MatchNames+"%")
+		}
+
+		if len(software.NeededPackages) != 0 {
+			filtered = filtered.Where("needed_packages LIKE ?", "%"+software.NeededPackages+"%")
+		}
+
+		if len(software.NeedToDeletePackages) != 0 {
+			filtered = filtered.Where("need_to_delete_packages LIKE ?", "%"+software.NeedToDeletePackages+"%")
+		}
+
+		if len(software.RepoURL) != 0 {
+			filtered = filtered.Where("repo_url LIKE ?", "%"+software.RepoURL+"%")
+		}
+
+		if len(software.GPGKeyURL) != 0 {
+			filtered = filtered.Where("gpg_key_url LIKE ?", "%"+software.GPGKeyURL+"%")
+		}
+
+		if isRepoUseOSVersionCodeSet {
+			filtered = filtered.Where("repo_use_os_version_code = ?", software.RepoUseOSVersionCode)
 		}
 
 		if page != 0 && row != 0 {

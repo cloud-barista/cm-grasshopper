@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -313,6 +314,63 @@ func InstallSoftware(c echo.Context) error {
 		ExecutionID:   executionID,
 		ExecutionList: executionList,
 	}, " ")
+}
+
+// ListSoftware godoc
+//
+//	@ID				list-software
+//	@Summary		List Software
+//	@Description	Get a list of connection information.
+//	@Tags			[Software]
+//	@Accept			json
+//	@Produce		json
+//	@Param			install_type query string false "Installation type of the software"
+//	@Param			name query string false "Name of the software"
+//	@Param			version query string false "Version of the software"
+//	@Param			os query string false "Operating system of the software"
+//	@Param			os_version query string false "Operating system version"
+//	@Param			architecture query string false "Architecture of the software"
+//	@Param			match_names query string false "Matching names of the software"
+//	@Param			needed_packages query string false "Packages needed to install for the software"
+//	@Param			need_to_delete_packages query string false "Packages that need to be deleted for the software"
+//	@Param			repo_url query string false "Repository URL for install the software"
+//	@Param			gpg_key_url query string false "GPG key URL for install the software"
+//	@Param			repo_use_os_version_code query bool false "If repository URL uses OS version code. (For debian based OSs.)"
+//	@Success		200	{object}	[]model.Software	"Successfully get a list of software."
+//	@Failure		400	{object}	common.ErrorResponse			"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse			"Failed to get a list of software."
+//	@Router			/software [get]
+func ListSoftware(c echo.Context) error {
+	page, row, err := common.CheckPageRow(c)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	sw := &model.Software{
+		InstallType:          c.QueryParam("install_type"),
+		Name:                 c.QueryParam("name"),
+		Version:              c.QueryParam("version"),
+		OS:                   c.QueryParam("os"),
+		OSVersion:            c.QueryParam("os_version"),
+		Architecture:         c.QueryParam("architecture"),
+		MatchNames:           c.QueryParam("match_names"),
+		NeededPackages:       c.QueryParam("needed_packages"),
+		NeedToDeletePackages: c.QueryParam("need_to_delete_packages"),
+		RepoURL:              c.QueryParam("repo_url"),
+		GPGKeyURL:            c.QueryParam("gpg_key_url"),
+	}
+	var isRepoUseOSVersionCodeSet bool
+	sw.RepoUseOSVersionCode, err = strconv.ParseBool(c.QueryParam("repo_use_os_version_code"))
+	if err == nil {
+		isRepoUseOSVersionCodeSet = true
+	}
+
+	softwares, err := dao.SoftwareGetList(sw, isRepoUseOSVersionCodeSet, page, row)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	return c.JSONPretty(http.StatusOK, &softwares, " ")
 }
 
 // DeleteSoftware godoc

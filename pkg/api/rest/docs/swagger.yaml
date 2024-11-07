@@ -52,6 +52,52 @@ definitions:
       message:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software:
+    properties:
+      architecture:
+        type: string
+      created_at:
+        type: string
+      gpg_key_url:
+        type: string
+      install_type:
+        type: string
+      match_names:
+        type: string
+      name:
+        type: string
+      need_to_delete_packages:
+        type: string
+      needed_packages:
+        type: string
+      os:
+        type: string
+      os_version:
+        type: string
+      repo_url:
+        type: string
+      repo_use_os_version_code:
+        default: false
+        type: boolean
+      updated_at:
+        type: string
+      uuid:
+        type: string
+      version:
+        type: string
+    required:
+    - architecture
+    - created_at
+    - install_type
+    - match_names
+    - name
+    - needed_packages
+    - os
+    - os_version
+    - updated_at
+    - uuid
+    - version
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo:
     properties:
       name:
@@ -168,6 +214,81 @@ paths:
       summary: Check Ready
       tags:
       - "[Admin]\tSystem management"
+  /software:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of connection information.
+      operationId: list-software
+      parameters:
+      - description: Installation type of the software
+        in: query
+        name: install_type
+        type: string
+      - description: Name of the software
+        in: query
+        name: name
+        type: string
+      - description: Version of the software
+        in: query
+        name: version
+        type: string
+      - description: Operating system of the software
+        in: query
+        name: os
+        type: string
+      - description: Operating system version
+        in: query
+        name: os_version
+        type: string
+      - description: Architecture of the software
+        in: query
+        name: architecture
+        type: string
+      - description: Matching names of the software
+        in: query
+        name: match_names
+        type: string
+      - description: Packages needed to install for the software
+        in: query
+        name: needed_packages
+        type: string
+      - description: Packages that need to be deleted for the software
+        in: query
+        name: need_to_delete_packages
+        type: string
+      - description: Repository URL for install the software
+        in: query
+        name: repo_url
+        type: string
+      - description: GPG key URL for install the software
+        in: query
+        name: gpg_key_url
+        type: string
+      - description: If repository URL uses OS version code. (For debian based OSs.)
+        in: query
+        name: repo_use_os_version_code
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get a list of software.
+          schema:
+            items:
+              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software'
+            type: array
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get a list of software.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: List Software
+      tags:
+      - '[Software]'
   /software/{softwareId}:
     delete:
       consumes:
