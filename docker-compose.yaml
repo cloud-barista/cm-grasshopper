@@ -2,9 +2,6 @@ services:
   cm-grasshopper:
     container_name: cm-grasshopper
     restart: always
-    build:
-      context: ./
-      dockerfile: Dockerfile
     image: cloudbaristaorg/cm-grasshopper:edge
     volumes:
       #- ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
