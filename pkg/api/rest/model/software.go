@@ -59,7 +59,7 @@ type Source struct {
 
 type Target struct {
 	NamespaceID string `json:"namespace_id" validate:"required"`
-	MCISID      string `json:"mcis_id" validate:"required"`
+	MCIID       string `json:"mci_id" validate:"required"`
 	VMID        string `json:"vm_id" validate:"required"`
 }
 
@@ -103,12 +103,13 @@ type GetExecutionListRes struct {
 	Errors     []string    `json:"errors"`
 }
 
-type SoftwareInstallReq struct {
-	Target      Target   `json:"target" validate:"required"`
-	SoftwareIDs []string `json:"software_ids" validate:"required"`
+type SoftwareMigrateReq struct {
+	SourceConnectionInfoID string   `json:"source_connection_info_id" validate:"required"`
+	Target                 Target   `json:"target" validate:"required"`
+	SoftwareIDs            []string `json:"software_ids" validate:"required"`
 }
 
-type SoftwareInstallRes struct {
+type SoftwareMigrateRes struct {
 	ExecutionID   string      `json:"execution_id"`
 	ExecutionList []Execution `json:"execution_list"`
 }

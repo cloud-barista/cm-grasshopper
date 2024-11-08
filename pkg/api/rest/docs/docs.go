@@ -209,9 +209,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/install": {
+        "/software/migrate": {
             "post": {
-                "description": "Install pieces of software to target.",
+                "description": "Migrate pieces of software to target.",
                 "consumes": [
                     "application/json"
                 ],
@@ -221,24 +221,24 @@ const docTemplate = `{
                 "tags": [
                     "[Software]"
                 ],
-                "summary": "Install Software",
-                "operationId": "install-software",
+                "summary": "Migrate Software",
+                "operationId": "migrate-software",
                 "parameters": [
                     {
-                        "description": "Software install request.",
-                        "name": "softwareInstallReq",
+                        "description": "Software migrate request.",
+                        "name": "softwareMigrateReq",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully sent SSH command.",
+                        "description": "Successfully migrated pieces of software.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes"
                         }
                     },
                     "400": {
@@ -248,7 +248,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to sent SSH command.",
+                        "description": "Failed to migrate pieces of software.",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }
@@ -508,10 +508,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
             "type": "object",
             "required": [
                 "software_ids",
+                "source_connection_info_id",
                 "target"
             ],
             "properties": {
@@ -521,12 +522,15 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "source_connection_info_id": {
+                    "type": "string"
+                },
                 "target": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes": {
             "type": "object",
             "properties": {
                 "execution_id": {
@@ -604,12 +608,12 @@ const docTemplate = `{
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target": {
             "type": "object",
             "required": [
-                "mcis_id",
+                "mci_id",
                 "namespace_id",
                 "vm_id"
             ],
             "properties": {
-                "mcis_id": {
+                "mci_id": {
                     "type": "string"
                 },
                 "namespace_id": {

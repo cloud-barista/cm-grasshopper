@@ -1,87 +1,26 @@
 package software
 
 import (
-	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/jollaman999/utils/logger"
-	"strconv"
 	"time"
 )
 
-func targetToSSHTarget(target *model.Target) (*model.SSHTarget, error) {
-	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
-		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+target.NamespaceID+"/mci/"+target.MCISID+"/vm/"+target.VMID,
-		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	var vmInfo model.TBVMInfo
-	err = json.Unmarshal(data, &vmInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	if vmInfo.PublicIP == "" {
-		return nil, errors.New("failed to get target VM's public IP")
-	}
-
-	if vmInfo.SSHPort == "" {
-		return nil, errors.New("failed to get target VM's SSH port")
-	}
-
-	if vmInfo.SSHKeyID == "" {
-		return nil, errors.New("failed to get target VM's SSH Key ID")
-	}
-
-	if vmInfo.VMUserName == "" {
-		return nil, errors.New("failed to get target VM's user name")
-	}
-
-	sshPort, err := strconv.Atoi(vmInfo.SSHPort)
-	if err != nil {
-		return nil, errors.New("invalid ssh port")
-	}
-
-	data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
-		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+target.NamespaceID+"/resources/sshKey/"+vmInfo.SSHKeyID,
-		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	var sshKeyInfo model.TBSSHKeyInfo
-	err = json.Unmarshal(data, &sshKeyInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	if sshKeyInfo.PrivateKey == "" {
-		return nil, errors.New("failed to get target VM's private key")
-	}
-
-	return &model.SSHTarget{
-		IP:         vmInfo.PublicIP,
-		Port:       uint(sshPort),
-		UseKeypair: true,
-		Username:   vmInfo.VMUserName,
-		Password:   "",
-		PrivateKey: sshKeyInfo.PrivateKey,
-	}, nil
-}
-
-func InstallSoftware(executionID string, executionList *[]model.Execution, target *model.Target) error {
+func MigrateSoftware(executionID string, executionList *[]model.Execution,
+	sourceConnectionInfoID string, target *model.Target) error {
 	var executionStatusList []model.ExecutionStatus
 
-	sshTarget, err := targetToSSHTarget(target)
+	sourceClient, err := ssh.NewSSHClient(ssh.ConnectionTypeSource, sourceConnectionInfoID, "", "")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to source host: %v", err)
+	}
+
+	targetClient, err := ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.VMID, target.NamespaceID, target.MCIID)
+	if err != nil {
+		return fmt.Errorf("failed to connect to target host: %v", err)
 	}
 
 	for _, execution := range *executionList {
@@ -106,7 +45,13 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 		return err
 	}
 
-	go func(id string, exList []model.Execution, exStatusList []model.ExecutionStatus, t model.SSHTarget) {
+	go func(id string, exList []model.Execution, exStatusList []model.ExecutionStatus,
+		s *ssh.Client, t *ssh.Client) {
+		defer func() {
+			_ = s.Close()
+			_ = t.Close()
+		}()
+
 		var updateStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
 			exStatusList[i].Status = status
 			exStatusList[i].ErrorMessage = errMsg
@@ -121,7 +66,7 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 				ExecutionStatus: exStatusList,
 			})
 			if err != nil {
-				logger.Println(logger.ERROR, true, "installSoftware: ExecutionID="+executionID+
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", Error="+err.Error())
 			}
 		}
@@ -129,18 +74,31 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 		for i, execution := range exList {
 			if execution.SoftwareInstallType == "package" {
 				updateStatus(i, "installing", "", true)
-				err := runPlaybook(id, execution.SoftwareID, t)
+
+				err := runPlaybook(id, execution.SoftwareID, s.SSHTarget)
 				if err != nil {
-					logger.Println(logger.ERROR, true, "installSoftware: ExecutionID="+executionID+
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
+
+					return
 				}
+
+				err = configCopier(s, t, execution.SoftwareName)
+				if err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+					updateStatus(i, "failed", err.Error(), false)
+
+					return
+				}
+
 				updateStatus(i, "finished", "", true)
 			} else {
 				updateStatus(i, "failed", "not supported install type", false)
 			}
 		}
-	}(executionID, *executionList, executionStatusList, *sshTarget)
+	}(executionID, *executionList, executionStatusList, sourceClient, targetClient)
 
 	return nil
 }

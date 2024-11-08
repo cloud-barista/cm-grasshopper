@@ -108,19 +108,22 @@ definitions:
     - name
     - version
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
     properties:
       software_ids:
         items:
           type: string
         type: array
+      source_connection_info_id:
+        type: string
       target:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
     required:
     - software_ids
+    - source_connection_info_id
     - target
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
     properties:
       execution_id:
         type: string
@@ -174,14 +177,14 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
     properties:
-      mcis_id:
+      mci_id:
         type: string
       namespace_id:
         type: string
       vm_id:
         type: string
     required:
-    - mcis_id
+    - mci_id
     - namespace_id
     - vm_id
     type: object
@@ -350,35 +353,35 @@ paths:
       summary: Get Execution List
       tags:
       - '[Software]'
-  /software/install:
+  /software/migrate:
     post:
       consumes:
       - application/json
-      description: Install pieces of software to target.
-      operationId: install-software
+      description: Migrate pieces of software to target.
+      operationId: migrate-software
       parameters:
-      - description: Software install request.
+      - description: Software migrate request.
         in: body
-        name: softwareInstallReq
+        name: softwareMigrateReq
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallReq'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq'
       produces:
       - application/json
       responses:
         "200":
-          description: Successfully sent SSH command.
+          description: Successfully migrated pieces of software.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInstallRes'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes'
         "400":
           description: Sent bad request.
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
         "500":
-          description: Failed to sent SSH command.
+          description: Failed to migrate pieces of software.
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Install Software
+      summary: Migrate Software
       tags:
       - '[Software]'
   /software/register:

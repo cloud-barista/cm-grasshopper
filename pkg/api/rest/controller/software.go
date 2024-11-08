@@ -266,21 +266,21 @@ func GetExecutionList(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, *executionListRes, " ")
 }
 
-// InstallSoftware godoc
+// MigrateSoftware godoc
 //
-//	@ID				install-software
-//	@Summary		Install Software
-//	@Description	Install pieces of software to target.
+//	@ID				migrate-software
+//	@Summary		Migrate Software
+//	@Description	Migrate pieces of software to target.
 //	@Tags			[Software]
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareInstallReq body model.SoftwareInstallReq true "Software install request."
-//	@Success		200	{object}	model.SoftwareInstallRes	"Successfully sent SSH command."
+//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Software migrate request."
+//	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
-//	@Router			/software/install [post]
-func InstallSoftware(c echo.Context) error {
-	softwareInstallReq := new(model.SoftwareInstallReq)
+//	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
+//	@Router			/software/migrate [post]
+func MigrateSoftware(c echo.Context) error {
+	softwareInstallReq := new(model.SoftwareMigrateReq)
 	err := c.Bind(softwareInstallReq)
 	if err != nil {
 		return err
@@ -305,12 +305,13 @@ func InstallSoftware(c echo.Context) error {
 
 	executionID := uuid.New().String()
 
-	err = software.InstallSoftware(executionID, &executionList, &softwareInstallReq.Target)
+	err = software.MigrateSoftware(executionID, &executionList,
+		softwareInstallReq.SourceConnectionInfoID, &softwareInstallReq.Target)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	return c.JSONPretty(http.StatusOK, model.SoftwareInstallRes{
+	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:   executionID,
 		ExecutionList: executionList,
 	}, " ")

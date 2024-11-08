@@ -6,6 +6,7 @@ import (
 	"errors"
 	grasshopperCommon "github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+
 	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
@@ -26,17 +27,11 @@ const (
 
 type Client struct {
 	*goph.Client
-	sshTarget model.SSHTarget
+	SSHTarget *model.SSHTarget
 }
 
 func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
-	hostFound, err := goph.CheckKnownHost(host, remote, key, "")
-
-	// Host in known hosts but key mismatch!
-	// Maybe because of MAN IN THE MIDDLE ATTACK!
-	if hostFound && err != nil {
-		return err
-	}
+	hostFound, _ := goph.CheckKnownHost(host, remote, key, "")
 
 	if hostFound {
 		return nil
@@ -50,36 +45,57 @@ func decryptSecrets(connectionInfo *honeybee.ConnectionInfo) (*honeybee.Connecti
 	if err != nil {
 		errMsg := "error occurred while decrypting the base64 encoded encrypted user (" + err.Error() + ")"
 		logger.Println(logger.ERROR, true, errMsg)
+
 		return nil, errors.New(errMsg)
 	}
 
-	decryptedUserBytes := rsautil.DecryptWithPrivateKey(encryptedUser, grasshopperCommon.HoneybeePrivateKey)
+	decryptedUserBytes, err := rsautil.DecryptWithPrivateKey(encryptedUser, grasshopperCommon.HoneybeePrivateKey)
+	if err != nil {
+		errMsg := "error occurred while decrypting user (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+
+		return nil, errors.New(errMsg)
+	}
 	connectionInfo.User = string(decryptedUserBytes)
 
 	encryptedPassword, err := base64.StdEncoding.DecodeString(connectionInfo.Password)
 	if err != nil {
 		errMsg := "error occurred while decrypting the base64 encoded encrypted password (" + err.Error() + ")"
 		logger.Println(logger.ERROR, true, errMsg)
+
 		return nil, errors.New(errMsg)
 	}
 
-	decryptedPasswordBytes := rsautil.DecryptWithPrivateKey(encryptedPassword, grasshopperCommon.HoneybeePrivateKey)
+	decryptedPasswordBytes, err := rsautil.DecryptWithPrivateKey(encryptedPassword, grasshopperCommon.HoneybeePrivateKey)
+	if err != nil {
+		errMsg := "error occurred while decrypting password (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+
+		return nil, errors.New(errMsg)
+	}
 	connectionInfo.Password = string(decryptedPasswordBytes)
 
 	encryptedPrivateKey, err := base64.StdEncoding.DecodeString(connectionInfo.PrivateKey)
 	if err != nil {
 		errMsg := "error occurred while decrypting the base64 encoded encrypted private key (" + err.Error() + ")"
 		logger.Println(logger.ERROR, true, errMsg)
+
 		return nil, errors.New(errMsg)
 	}
 
-	decryptedPrivateKeyBytes := rsautil.DecryptWithPrivateKey(encryptedPrivateKey, grasshopperCommon.HoneybeePrivateKey)
+	decryptedPrivateKeyBytes, err := rsautil.DecryptWithPrivateKey(encryptedPrivateKey, grasshopperCommon.HoneybeePrivateKey)
+	if err != nil {
+		errMsg := "error occurred while decrypting private key (" + err.Error() + ")"
+		logger.Println(logger.ERROR, true, errMsg)
+
+		return nil, errors.New(errMsg)
+	}
 	connectionInfo.PrivateKey = string(decryptedPrivateKeyBytes)
 
 	return connectionInfo, nil
 }
 
-func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID string) (*Client, error) {
+func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID string) (*Client, error) {
 	var client *goph.Client
 	var sshTarget *model.SSHTarget
 
@@ -152,13 +168,13 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 		if nsID == "" {
 			return nil, errors.New("nsId is required")
 		}
-		if mcisID == "" {
-			return nil, errors.New("mcisId is required")
+		if mciID == "" {
+			return nil, errors.New("mciId is required")
 		}
 
 		data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-			"/tumblebug/ns/"+nsID+"/mcis/"+mcisID+"/vm/"+id,
+			"/tumblebug/ns/"+nsID+"/mci/"+mciID+"/vm/"+id,
 			config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 		if err != nil {
 			return nil, err
@@ -225,6 +241,6 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mcisID 
 
 	return &Client{
 		client,
-		*sshTarget,
+		sshTarget,
 	}, nil
 }

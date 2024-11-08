@@ -147,7 +147,7 @@ func findPlaybookFile(id string) (string, error) {
 	return "", errors.New("ANSIBLE: failed to find any yaml files")
 }
 
-func inventoryFileCreate(pwd string, sshTarget model.SSHTarget) error {
+func inventoryFileCreate(pwd string, sshTarget *model.SSHTarget) error {
 	fileContent := bytes.NewBufferString("[all]\n")
 
 	ip := iputil.CheckValidIP(sshTarget.IP)
@@ -265,7 +265,7 @@ func checkAnsibleConfig() error {
 	return nil
 }
 
-func runPlaybook(executionID string, softwareID string, sshTarget model.SSHTarget) error {
+func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarget) error {
 	err := checkAnsibleConfig()
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()

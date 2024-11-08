@@ -7,7 +7,8 @@ import (
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/labstack/gommon/log"
+	"errors"
+	"github.com/jollaman999/utils/logger"
 )
 
 // BytesToPrivateKey bytes to private key
@@ -24,7 +25,7 @@ func BytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 }
 
 // DecryptWithPrivateKey decrypts data with private key
-func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) []byte {
+func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha512.New()
 
 	chunkSize := priv.Size()
@@ -35,25 +36,26 @@ func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) []byte {
 	for offset < len(ciphertext) {
 		end := offset + chunkSize
 		if end > len(ciphertext) {
-			log.Error("invalid ciphertext length")
-			return nil
+			errMsg := "invalid ciphertext length"
+			logger.Println(logger.ERROR, true, errMsg)
+			return nil, errors.New(errMsg)
 		}
 
 		chunk := ciphertext[offset:end]
 		plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, chunk, nil)
 		if err != nil {
-			log.Error(err)
-			return nil
+			logger.Println(logger.ERROR, true, err.Error())
+			return nil, err
 		}
 
 		_, err = plaintextData.Write(plaintext)
 		if err != nil {
-			log.Error(err)
-			return nil
+			logger.Println(logger.ERROR, true, err.Error())
+			return nil, err
 		}
 
 		offset = end
 	}
 
-	return plaintextData.Bytes()
+	return plaintextData.Bytes(), nil
 }
