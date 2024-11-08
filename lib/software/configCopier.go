@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/jollaman999/utils/logger"
+	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -16,29 +18,84 @@ func sudoWrapper(cmd string, password string) string {
 	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.Replace(cmd, "'", "'\"'\"'", -1))
 }
 
-func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile) error {
-	for _, config := range configs {
-		if config.Status == "" {
-			continue
-		}
+func findCertKeyPaths(client *ssh.Client, filePath string) ([]string, error) {
+	cmd := fmt.Sprintf(`
+        grep -i -E '(ssl|tls)_(certificate|key|trusted_certificate|client_certificate|dhparam)|key_file|cert_file|ca_file|private_key|public_key|certificate|keyfile|certfile|cafile' '%s' 2>/dev/null || true
+    `, filePath)
 
-		err := copyFile(sourceClient, targetClient, config.Path)
-		if err != nil {
-			return fmt.Errorf("failed to copy file %s: %v", config.Path, err)
-		}
-	}
-	return nil
-}
-
-func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath string) error {
-	session, err := sourceClient.NewSession()
+	session, err := client.NewSession()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		_ = session.Close()
 	}()
+	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
+	if err != nil {
+		return nil, err
+	}
 
+	paths := make([]string, 0)
+	seen := make(map[string]bool)
+
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?mi)(?:ssl_certificate|tls_certificate|cert_file|certfile|certificate|cert)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_certificate_key|tls_key|key_file|keyfile|private_key|key)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_trusted_certificate|ssl_client_certificate|ca_file|cafile)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_dhparam|dhparam)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
+	}
+
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		for _, pattern := range patterns {
+			matches := pattern.FindStringSubmatch(line)
+			if len(matches) > 1 {
+				path := matches[1]
+
+				if !strings.HasPrefix(path, "/") {
+					baseDir := filepath.Dir(filePath)
+					path = filepath.Join(baseDir, path)
+				}
+
+				if !seen[path] {
+					seen[path] = true
+					paths = append(paths, path)
+				}
+			}
+		}
+	}
+
+	var validPaths []string
+	for _, path := range paths {
+		var targetExists bool
+
+		checkCmd := fmt.Sprintf("test -f '%s'", path)
+
+		session, err := client.NewSession()
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			_ = session.Close()
+		}()
+		_, err = session.CombinedOutput(sudoWrapper(checkCmd, client.SSHTarget.Password))
+		targetExists = err == nil
+
+		if targetExists {
+			validPaths = append(validPaths, path)
+		} else {
+			logger.Println(logger.WARN, true, fmt.Sprintf("Certificate/key file not found: %s", path))
+		}
+	}
+
+	return validPaths, nil
+}
+
+func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath string) error {
 	sourcePassword := sourceClient.SSHTarget.Password
 	targetPassword := targetClient.SSHTarget.Password
 
@@ -54,7 +111,14 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 		fi
 	`, filePath, filePath, filePath, filePath, filePath)
 
-	output, err := session.CombinedOutput(sudoWrapper(cmd, sourcePassword))
+	sourceSession, err := sourceClient.NewSession()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = sourceSession.Close()
+	}()
+	output, err := sourceSession.CombinedOutput(sudoWrapper(cmd, sourcePassword))
 	if err != nil {
 		return fmt.Errorf("failed to get file info: %s", string(output))
 	}
@@ -70,44 +134,36 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 		symlinkTarget = strings.TrimSpace(lines[1])
 		fileContent = strings.Join(lines[3:], "\n")
 	} else {
-		session, err = sourceClient.NewSession()
+		catCmd := fmt.Sprintf("cat '%s'", filePath)
+
+		sourceSession, err := sourceClient.NewSession()
 		if err != nil {
 			return err
 		}
 		defer func() {
-			_ = session.Close()
+			_ = sourceSession.Close()
 		}()
-
-		catCmd := fmt.Sprintf("cat '%s'", filePath)
-		content, err := session.CombinedOutput(sudoWrapper(catCmd, sourcePassword))
+		content, err := sourceSession.CombinedOutput(sudoWrapper(catCmd, sourcePassword))
 		if err != nil {
-			return fmt.Errorf("failed to read file content: %v", string(content))
+			return fmt.Errorf("failed to read file content: %s", string(content))
 		}
 		fileContent = string(content)
 	}
 
 	var targetExists bool
 	if isSymlink {
-		session, err = targetClient.NewSession()
+		checkCmd := fmt.Sprintf("test -f '%s'", symlinkTarget)
+
+		targetSession, err := targetClient.NewSession()
 		if err != nil {
 			return err
 		}
 		defer func() {
-			_ = session.Close()
+			_ = targetSession.Close()
 		}()
-
-		checkCmd := fmt.Sprintf("test -f '%s'", symlinkTarget)
-		_, err = session.CombinedOutput(sudoWrapper(checkCmd, targetPassword))
+		_, err = targetSession.CombinedOutput(sudoWrapper(checkCmd, targetPassword))
 		targetExists = err == nil
 	}
-
-	session, err = targetClient.NewSession()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = session.Close()
-	}()
 
 	var copyCmd string
 	if isSymlink && targetExists {
@@ -137,12 +193,19 @@ EOL
 			fileInfo[0], filePath)
 
 		if isSymlink {
-			logger.Println(logger.WARN, true, fmt.Sprintf("Symlink target '%s' not found on target system. Created regular file at '%s' instead.\n",
+			logger.Println(logger.WARN, true, fmt.Sprintf("Symlink target '%s' not found on target system. Created regular file at '%s' instead.",
 				symlinkTarget, filePath))
 		}
 	}
 
-	if output, err := session.CombinedOutput(sudoWrapper(copyCmd, targetPassword)); err != nil {
+	targetSession, err := targetClient.NewSession()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = targetSession.Close()
+	}()
+	if output, err = targetSession.CombinedOutput(sudoWrapper(copyCmd, targetPassword)); err != nil {
 		return fmt.Errorf("failed to copy file: %s", string(output))
 	}
 
@@ -150,14 +213,6 @@ EOL
 }
 
 func findConfigs(client *ssh.Client, packageName string) ([]string, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %v", err)
-	}
-	defer func() {
-		_ = session.Close()
-	}()
-
 	cmd := `#!/bin/sh
 pkg="%s"
 
@@ -293,6 +348,13 @@ done
 rm -f "$tmp_result"`
 
 	password := client.SSHTarget.Password
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %v", err)
+	}
+	defer func() {
+		_ = session.Close()
+	}()
 	output, err := session.CombinedOutput(sudoWrapper(fmt.Sprintf(cmd, packageName), password))
 	if err != nil {
 		if len(output) == 0 {
@@ -313,6 +375,47 @@ rm -f "$tmp_result"`
 	return results, nil
 }
 
+func parseConfigLine(line string) ConfigFile {
+	parts := strings.SplitN(line, " [", 2)
+	config := ConfigFile{
+		Path: strings.TrimSpace(parts[0]),
+	}
+
+	if len(parts) > 1 {
+		config.Status = strings.TrimSuffix(parts[1], "]")
+	}
+
+	return config
+}
+
+func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile) error {
+	for _, config := range configs {
+		if config.Status == "" {
+			continue
+		}
+
+		err := copyFile(sourceClient, targetClient, config.Path)
+		if err != nil {
+			return fmt.Errorf("failed to copy file %s: %v", config.Path, err)
+		}
+
+		certKeyPaths, err := findCertKeyPaths(sourceClient, config.Path)
+		if err != nil {
+			continue
+		}
+
+		for _, path := range certKeyPaths {
+			logger.Println(logger.INFO, true, "Copying certificate/key file: %s", path)
+			err := copyFile(sourceClient, targetClient, path)
+			if err != nil {
+				logger.Println(logger.WARN, true, "Failed to copy cert/key file %s: %v", path, err)
+				continue
+			}
+		}
+	}
+	return nil
+}
+
 func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string) error {
 	configs, err := findConfigs(sourceClient, packageName)
 	if err != nil {
@@ -329,17 +432,4 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 	}
 
 	return nil
-}
-
-func parseConfigLine(line string) ConfigFile {
-	parts := strings.SplitN(line, " [", 2)
-	config := ConfigFile{
-		Path: strings.TrimSpace(parts[0]),
-	}
-
-	if len(parts) > 1 {
-		config.Status = strings.TrimSuffix(parts[1], "]")
-	}
-
-	return config
 }

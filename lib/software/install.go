@@ -20,6 +20,8 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 
 	targetClient, err := ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.VMID, target.NamespaceID, target.MCIID)
 	if err != nil {
+		_ = sourceClient.Close()
+
 		return fmt.Errorf("failed to connect to target host: %v", err)
 	}
 
@@ -42,6 +44,9 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 		ExecutionStatus: executionStatusList,
 	})
 	if err != nil {
+		_ = sourceClient.Close()
+		_ = targetClient.Close()
+
 		return err
 	}
 
