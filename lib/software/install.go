@@ -132,7 +132,7 @@ func InstallSoftware(executionID string, executionList *[]model.Execution, targe
 				err := runPlaybook(id, execution.SoftwareID, t)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "installSoftware: ExecutionID="+executionID+
-						", InstallType=ansible, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 				}
 				updateStatus(i, "finished", "", true)
