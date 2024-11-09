@@ -2,7 +2,6 @@ package software
 
 import (
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"path/filepath"
 	"regexp"
@@ -12,19 +11,6 @@ import (
 type ConfigFile struct {
 	Path   string `json:"path"`
 	Status string `json:"status,omitempty"` // Modified, Custom, or empty for default
-}
-
-var migrationLogger *Logger
-
-func initLoggerWithUUID(uuid string) error {
-	migrationLogger = &Logger{}
-
-	logPath := filepath.Join(
-		config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder,
-		uuid,
-	)
-
-	return migrationLogger.Init(logPath, "migration.log")
 }
 
 func sudoWrapper(cmd string, password string) string {

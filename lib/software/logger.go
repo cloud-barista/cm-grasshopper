@@ -2,6 +2,7 @@ package software
 
 import (
 	"fmt"
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/jollaman999/utils/fileutil"
 	"io"
 	"log"
@@ -13,6 +14,19 @@ import (
 type Logger struct {
 	logger *log.Logger
 	fpLog  *os.File
+}
+
+var migrationLogger *Logger
+
+func initLoggerWithUUID(uuid string) error {
+	migrationLogger = &Logger{}
+
+	logPath := filepath.Join(
+		config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder,
+		uuid,
+	)
+
+	return migrationLogger.Init(logPath, "migration.log")
 }
 
 const (

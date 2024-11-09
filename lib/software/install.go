@@ -98,6 +98,15 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 					return
 				}
 
+				err = serviceMigrator(s, t, execution.SoftwareName, executionID)
+				if err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+					updateStatus(i, "failed", err.Error(), false)
+
+					return
+				}
+
 				updateStatus(i, "finished", "", true)
 			} else {
 				updateStatus(i, "failed", "not supported install type", false)
