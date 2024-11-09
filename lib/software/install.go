@@ -89,7 +89,7 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 					return
 				}
 
-				err = configCopier(s, t, execution.SoftwareName)
+				err = configCopier(s, t, execution.SoftwareName, executionID)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())

@@ -20,7 +20,7 @@ import (
 
 var ansibleConfigPath string
 var inventoryFileName = "inventory.ini"
-var logFileName = "ansible_output.log"
+var logFileName = "install.log"
 
 func getAnsiblePlaybookFolderPath(softwareID string) (string, error) {
 	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, softwareID))
@@ -333,7 +333,7 @@ func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarg
 		_ = logFile.Close()
 	}()
 
-	mw := io.MultiWriter(os.Stdout, logFile)
+	mw := io.Writer(logFile)
 
 	cmd.Stdout = mw
 	cmd.Stderr = mw

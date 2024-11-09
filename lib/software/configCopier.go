@@ -2,8 +2,8 @@ package software
 
 import (
 	"fmt"
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
-	"github.com/jollaman999/utils/logger"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,37 +14,57 @@ type ConfigFile struct {
 	Status string `json:"status,omitempty"` // Modified, Custom, or empty for default
 }
 
+var migrationLogger *Logger
+
+func initLoggerWithUUID(uuid string) error {
+	migrationLogger = &Logger{}
+
+	logPath := filepath.Join(
+		config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder,
+		uuid,
+	)
+
+	return migrationLogger.Init(logPath, "migration.log")
+}
+
 func sudoWrapper(cmd string, password string) string {
 	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.Replace(cmd, "'", "'\"'\"'", -1))
 }
 
 func findCertKeyPaths(client *ssh.Client, filePath string) ([]string, error) {
+	migrationLogger.Printf(INFO, "Finding certificate and key paths in file: %s\n", filePath)
+
 	cmd := fmt.Sprintf(`
         grep -i -E '(ssl|tls)_(certificate|key|trusted_certificate|client_certificate|dhparam)|key_file|cert_file|ca_file|private_key|public_key|certificate|keyfile|certfile|cafile' '%s' 2>/dev/null || true
     `, filePath)
 
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, err
+		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
+		return nil, fmt.Errorf("ssh session creation failed: %v", err)
 	}
 	defer func() {
 		_ = session.Close()
 	}()
+
+	migrationLogger.Printf(DEBUG, "Executing grep command for cert/key paths\n")
 	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
 	if err != nil {
-		return nil, err
+		migrationLogger.Printf(ERROR, "Failed to execute grep command: %v\n", err)
+		return nil, fmt.Errorf("command execution failed: %v", err)
 	}
 
 	paths := make([]string, 0)
 	seen := make(map[string]bool)
 
 	patterns := []*regexp.Regexp{
-		regexp.MustCompile(`(?mi)(?:ssl_certificate|tls_certificate|cert_file|certfile|certificate|cert)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
-		regexp.MustCompile(`(?mi)(?:ssl_certificate_key|tls_key|key_file|keyfile|private_key|key)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
-		regexp.MustCompile(`(?mi)(?:ssl_trusted_certificate|ssl_client_certificate|ca_file|cafile)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
-		regexp.MustCompile(`(?mi)(?:ssl_dhparam|dhparam)\s*(?:=|:|\s)\s*["']?(\/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_certificate|tls_certificate|cert_file|certfile|certificate|cert)\s*(?:=|:|\s)\s*["']?(/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_certificate_key|tls_key|key_file|keyfile|private_key|key)\s*(?:=|:|\s)\s*["']?(/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_trusted_certificate|ssl_client_certificate|ca_file|cafile)\s*(?:=|:|\s)\s*["']?(/[^"'\s;]+|[^"'\s;]+)["']?`),
+		regexp.MustCompile(`(?mi)(?:ssl_dhparam|dhparam)\s*(?:=|:|\s)\s*["']?(/[^"'\s;]+|[^"'\s;]+)["']?`),
 	}
 
+	migrationLogger.Printf(DEBUG, "Processing grep output for pattern matches\n")
 	for _, line := range strings.Split(string(output), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -59,96 +79,141 @@ func findCertKeyPaths(client *ssh.Client, filePath string) ([]string, error) {
 				if !strings.HasPrefix(path, "/") {
 					baseDir := filepath.Dir(filePath)
 					path = filepath.Join(baseDir, path)
+					migrationLogger.Printf(DEBUG, "Converted relative path to absolute: %s\n", path)
 				}
 
 				if !seen[path] {
 					seen[path] = true
 					paths = append(paths, path)
+					migrationLogger.Printf(DEBUG, "Found unique cert/key path: %s\n", path)
 				}
 			}
 		}
 	}
 
+	migrationLogger.Printf(INFO, "Found %d potential cert/key paths\n", len(paths))
+
 	var validPaths []string
 	for _, path := range paths {
-		var targetExists bool
+		migrationLogger.Printf(DEBUG, "Verifying path existence: %s\n", path)
 
 		checkCmd := fmt.Sprintf("test -f '%s'", path)
-
 		session, err := client.NewSession()
 		if err != nil {
-			return nil, err
+			migrationLogger.Printf(ERROR, "Failed to create SSH session for path verification: %v\n", err)
+			return nil, fmt.Errorf("ssh session creation failed: %v", err)
 		}
-		defer func() {
-			_ = session.Close()
-		}()
-		_, err = session.CombinedOutput(sudoWrapper(checkCmd, client.SSHTarget.Password))
-		targetExists = err == nil
 
-		if targetExists {
+		_, err = session.CombinedOutput(sudoWrapper(checkCmd, client.SSHTarget.Password))
+		if err == nil {
 			validPaths = append(validPaths, path)
+			migrationLogger.Printf(INFO, "Verified valid cert/key path: %s\n", path)
 		} else {
-			logger.Println(logger.WARN, true, fmt.Sprintf("Certificate/key file not found: %s", path))
+			migrationLogger.Printf(WARN, "Path does not exist or is not accessible: %s\n", path)
 		}
+		_ = session.Close()
 	}
 
+	migrationLogger.Printf(INFO, "Found %d valid cert/key paths\n", len(validPaths))
 	return validPaths, nil
 }
 
 func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath string) error {
+	migrationLogger.Printf(INFO, "Starting file copy process for: %s\n", filePath)
+
 	sourcePassword := sourceClient.SSHTarget.Password
 	targetPassword := targetClient.SSHTarget.Password
 
 	cmd := fmt.Sprintf(`
-		# Permission|UID|GID|FileType
-		stat -c "%%a|%%u|%%g|%%F" "%s"
-		
-		# Check symlinks
-		if [ -L "%s" ]; then
-			readlink -f "%s"
-			realpath "%s"
-			cat "%s"
-		fi
-	`, filePath, filePath, filePath, filePath, filePath)
+               # Permission|UID|GID|FileType
+               stat -c "%%a|%%u|%%g|%%F" "%s"
+               
+               # Check symlinks
+               if [ -L "%s" ]; then
+                 readlink -f "%s"
+               fi
+       `, filePath, filePath, filePath)
+
+	migrationLogger.Printf(DEBUG, "Getting file statistics\n")
 
 	sourceSession, err := sourceClient.NewSession()
 	if err != nil {
-		return err
+		migrationLogger.Printf(ERROR, "Failed to create source SSH session: %v\n", err)
+		return fmt.Errorf("source ssh session creation failed: %v", err)
 	}
 	defer func() {
 		_ = sourceSession.Close()
 	}()
+
 	output, err := sourceSession.CombinedOutput(sudoWrapper(cmd, sourcePassword))
 	if err != nil {
-		return fmt.Errorf("failed to get file info: %s", string(output))
+		migrationLogger.Printf(ERROR, "Failed to get file stats: %v\n", err)
+		return fmt.Errorf("failed to get file stats: %v", err)
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 {
+		migrationLogger.Printf(ERROR, "Failed to get file stats: no output lines")
+		return fmt.Errorf("failed to get file stats: no output lines")
+	}
 	fileInfo := strings.Split(lines[0], "|")
-	isSymlink := len(lines) > 1
+	if len(fileInfo) != 4 {
+		migrationLogger.Printf(ERROR, "Failed to get file stats: wrong file stats: %s", lines[0])
+		return fmt.Errorf("failed to get file stats: wrong file stats: %s", lines[0])
+	}
+	migrationLogger.Printf(DEBUG, "File stats - Permissions: %s, UID: %s, GID: %s, Type: %s\n",
+		fileInfo[0], fileInfo[1], fileInfo[2], fileInfo[3])
 
-	var fileContent string
+	isSymlink := len(lines) > 1
 	var symlinkTarget string
+	var fileContent string
 
 	if isSymlink {
 		symlinkTarget = strings.TrimSpace(lines[1])
-		fileContent = strings.Join(lines[3:], "\n")
-	} else {
-		catCmd := fmt.Sprintf("cat '%s'", filePath)
 
-		sourceSession, err := sourceClient.NewSession()
+		migrationLogger.Printf(INFO, "File is a symbolic link\n")
+
+		migrationLogger.Printf(DEBUG, "Symlink target: %s\n", symlinkTarget)
+		contentCmd := fmt.Sprintf("cat '%s'", symlinkTarget)
+		session, err := sourceClient.NewSession()
 		if err != nil {
-			return err
+			migrationLogger.Printf(ERROR, "Failed to create SSH session for reading symlink target: %v\n", err)
+			return fmt.Errorf("ssh session creation failed: %v", err)
+		}
+
+		content, err := session.CombinedOutput(sudoWrapper(contentCmd, sourcePassword))
+		if err != nil {
+			migrationLogger.Printf(ERROR, "Failed to read symlink target content: %v\n", err)
+			return fmt.Errorf("failed to read symlink target: %v", err)
 		}
 		defer func() {
-			_ = sourceSession.Close()
+			_ = session.Close()
 		}()
-		content, err := sourceSession.CombinedOutput(sudoWrapper(catCmd, sourcePassword))
+
+		fileContent = string(content)
+	} else {
+		migrationLogger.Printf(DEBUG, "Reading regular file content\n")
+
+		contentCmd := fmt.Sprintf("cat '%s'", filePath)
+		session, err := sourceClient.NewSession()
 		if err != nil {
-			return fmt.Errorf("failed to read file content: %s", string(content))
+			migrationLogger.Printf(ERROR, "Failed to create SSH session for reading file: %v\n", err)
+			return fmt.Errorf("ssh session creation failed: %v", err)
 		}
+
+		content, err := session.CombinedOutput(sudoWrapper(contentCmd, sourcePassword))
+		if err != nil {
+			migrationLogger.Printf(ERROR, "Failed to read file content: %v\n", err)
+			return fmt.Errorf("failed to read file content: %v", err)
+		}
+		defer func() {
+			_ = session.Close()
+		}()
+
 		fileContent = string(content)
 	}
+
+	migrationLogger.Printf(INFO, "Copying file to target system\n")
 
 	var targetExists bool
 	if isSymlink {
@@ -167,6 +232,8 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 	var copyCmd string
 	if isSymlink && targetExists {
+		migrationLogger.Printf(DEBUG, "Creating symlink on target system\n")
+
 		copyCmd = fmt.Sprintf(`
 			cat > '%s' << 'EOL'
 %s
@@ -193,26 +260,32 @@ EOL
 			fileInfo[0], filePath)
 
 		if isSymlink {
-			logger.Println(logger.WARN, true, fmt.Sprintf("Symlink target '%s' not found on target system. Created regular file at '%s' instead.",
+			migrationLogger.Println(WARN, true, fmt.Sprintf("Symlink target '%s' not found on target system. Created regular file at '%s' instead.",
 				symlinkTarget, filePath))
 		}
 	}
 
 	targetSession, err := targetClient.NewSession()
 	if err != nil {
-		return err
+		migrationLogger.Printf(ERROR, "Failed to create target SSH session: %v\n", err)
+		return fmt.Errorf("target ssh session creation failed: %v", err)
 	}
 	defer func() {
 		_ = targetSession.Close()
 	}()
-	if output, err = targetSession.CombinedOutput(sudoWrapper(copyCmd, targetPassword)); err != nil {
+
+	if output, err := targetSession.CombinedOutput(sudoWrapper(copyCmd, targetPassword)); err != nil {
+		migrationLogger.Printf(ERROR, "Failed to execute copy command: %v\n", err)
 		return fmt.Errorf("failed to copy file: %s", string(output))
 	}
 
+	migrationLogger.Printf(INFO, "Successfully copied file: %s\n", filePath)
 	return nil
 }
 
-func findConfigs(client *ssh.Client, packageName string) ([]string, error) {
+func findConfigs(client *ssh.Client, packageName string) ([]ConfigFile, error) {
+	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
+
 	cmd := `#!/bin/sh
 pkg="%s"
 
@@ -347,89 +420,140 @@ done
 
 rm -f "$tmp_result"`
 
-	password := client.SSHTarget.Password
+	migrationLogger.Printf(DEBUG, "Executing config search command\n")
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %v", err)
+		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
+		return nil, fmt.Errorf("ssh session creation failed: %v", err)
 	}
 	defer func() {
 		_ = session.Close()
 	}()
-	output, err := session.CombinedOutput(sudoWrapper(fmt.Sprintf(cmd, packageName), password))
-	if err != nil {
-		if len(output) == 0 {
-			return nil, fmt.Errorf("failed to run command: %s", string(output))
-		}
+
+	output, err := session.CombinedOutput(sudoWrapper(fmt.Sprintf(cmd, packageName), client.SSHTarget.Password))
+	if err != nil && len(output) == 0 {
+		migrationLogger.Printf(ERROR, "Failed to execute config search: %v\n", err)
+		return nil, fmt.Errorf("config search failed: %v", err)
 	}
 
-	var results []string
+	var configs []ConfigFile
 	seen := make(map[string]bool)
 
+	migrationLogger.Printf(DEBUG, "Processing found config files\n")
 	for _, line := range strings.Split(string(output), "\n") {
-		if line = strings.TrimSpace(line); line != "" && !seen[line] {
-			seen[line] = true
-			results = append(results, line)
+		if line = strings.TrimSpace(line); line != "" {
+			conf := parseConfigLine(line)
+			if !seen[conf.Path] {
+				seen[conf.Path] = true
+				configs = append(configs, conf)
+				migrationLogger.Printf(DEBUG, "Found config file: %s [%s]\n", conf.Path, conf.Status)
+			}
 		}
 	}
 
-	return results, nil
+	migrationLogger.Printf(INFO, "Found %d unique config files\n", len(configs))
+	return configs, nil
 }
 
 func parseConfigLine(line string) ConfigFile {
+	migrationLogger.Printf(DEBUG, "Parsing config line: %s\n", line)
+
 	parts := strings.SplitN(line, " [", 2)
-	config := ConfigFile{
+	conf := ConfigFile{
 		Path: strings.TrimSpace(parts[0]),
 	}
 
 	if len(parts) > 1 {
-		config.Status = strings.TrimSuffix(parts[1], "]")
+		conf.Status = strings.TrimSuffix(parts[1], "]")
 	}
 
-	return config
+	migrationLogger.Printf(DEBUG, "Parsed config - Path: %s, Status: %s\n", conf.Path, conf.Status)
+	return conf
 }
-
 func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile) error {
-	for _, config := range configs {
-		if config.Status == "" {
+	migrationLogger.Printf(INFO, "Starting config files copy process for %d files\n", len(configs))
+
+	for i, conf := range configs {
+		migrationLogger.Printf(INFO, "Processing config file %d/%d: %s\n", i+1, len(configs), conf.Path)
+
+		if conf.Status == "" {
+			migrationLogger.Printf(DEBUG, "Skipping unmodified config: %s\n", conf.Path)
 			continue
 		}
 
-		err := copyFile(sourceClient, targetClient, config.Path)
+		migrationLogger.Printf(INFO, "Copying config file: %s [Status: %s]\n", conf.Path, conf.Status)
+		err := copyFile(sourceClient, targetClient, conf.Path)
 		if err != nil {
-			return fmt.Errorf("failed to copy file %s: %v", config.Path, err)
+			migrationLogger.Printf(ERROR, "Failed to copy config file %s: %v\n", conf.Path, err)
+			return fmt.Errorf("failed to copy file %s: %v", conf.Path, err)
 		}
 
-		certKeyPaths, err := findCertKeyPaths(sourceClient, config.Path)
+		migrationLogger.Printf(DEBUG, "Searching for associated cert/key files for: %s\n", conf.Path)
+		certKeyPaths, err := findCertKeyPaths(sourceClient, conf.Path)
 		if err != nil {
+			migrationLogger.Printf(WARN, "Error finding cert/key paths for %s: %v\n", conf.Path, err)
 			continue
 		}
 
-		for _, path := range certKeyPaths {
-			logger.Println(logger.INFO, true, "Copying certificate/key file: %s", path)
-			err := copyFile(sourceClient, targetClient, path)
-			if err != nil {
-				logger.Println(logger.WARN, true, "Failed to copy cert/key file %s: %v", path, err)
-				continue
+		if len(certKeyPaths) > 0 {
+			migrationLogger.Printf(INFO, "Found %d cert/key files for %s\n", len(certKeyPaths), conf.Path)
+			for j, path := range certKeyPaths {
+				migrationLogger.Printf(INFO, "Copying cert/key file %d/%d: %s\n", j+1, len(certKeyPaths), path)
+				err := copyFile(sourceClient, targetClient, path)
+				if err != nil {
+					migrationLogger.Printf(WARN, "Failed to copy cert/key file %s: %v\n", path, err)
+					continue
+				}
+				migrationLogger.Printf(INFO, "Successfully copied cert/key file: %s\n", path)
 			}
+		} else {
+			migrationLogger.Printf(DEBUG, "No cert/key files found for: %s\n", conf.Path)
 		}
+
+		migrationLogger.Printf(INFO, "Successfully processed config file: %s\n", conf.Path)
 	}
+
+	migrationLogger.Printf(INFO, "Completed config files copy process\n")
 	return nil
 }
 
-func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string) error {
+func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string) error {
+	if err := initLoggerWithUUID(uuid); err != nil {
+		return fmt.Errorf("failed to initialize logger: %v", err)
+	}
+	defer migrationLogger.Close()
+
+	migrationLogger.Printf(INFO, "Starting config copier for package: %s (UUID: %s)\n", packageName, uuid)
+
+	if sourceClient == nil || targetClient == nil {
+		migrationLogger.Printf(ERROR, "Invalid client connections provided\n")
+		return fmt.Errorf("source or target client is nil")
+	}
+
+	if packageName == "" {
+		migrationLogger.Printf(ERROR, "Empty package name provided\n")
+		return fmt.Errorf("package name cannot be empty")
+	}
+
+	migrationLogger.Printf(INFO, "Finding configuration files for package: %s\n", packageName)
 	configs, err := findConfigs(sourceClient, packageName)
 	if err != nil {
+		migrationLogger.Printf(ERROR, "Failed to find configs for package %s: %v\n", packageName, err)
 		return fmt.Errorf("failed to find configs: %v", err)
 	}
 
-	var configFiles []ConfigFile
-	for _, config := range configs {
-		configFiles = append(configFiles, parseConfigLine(config))
+	if len(configs) == 0 {
+		migrationLogger.Printf(WARN, "No configuration files found for package: %s\n", packageName)
+		return nil
 	}
 
-	if err := copyConfigFiles(sourceClient, targetClient, configFiles); err != nil {
+	migrationLogger.Printf(INFO, "Found %d configuration files for package %s\n", len(configs), packageName)
+
+	if err := copyConfigFiles(sourceClient, targetClient, configs); err != nil {
+		migrationLogger.Printf(ERROR, "Failed to copy config files for package %s: %v\n", packageName, err)
 		return fmt.Errorf("failed to copy config files: %v", err)
 	}
 
+	migrationLogger.Printf(INFO, "Successfully completed config copy process for package: %s\n", packageName)
 	return nil
 }
