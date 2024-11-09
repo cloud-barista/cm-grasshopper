@@ -256,6 +256,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/software/migrate/log/{executionId}": {
+            "get": {
+                "description": "Get the software migration log.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Software]"
+                ],
+                "summary": "Get Software Migration Log",
+                "operationId": "get-software-migration-log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the software migration execution.",
+                        "name": "executionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully get the software migration log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get the software migration log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/software/register": {
             "post": {
                 "description": "Register the software.",
@@ -418,6 +463,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution"
                     }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes": {
+            "type": "object",
+            "properties": {
+                "install_log": {
+                    "type": "string"
+                },
+                "migration_log": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
                 }
             }
         },

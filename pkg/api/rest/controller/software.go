@@ -2,6 +2,7 @@ package controller
 
 import (
 	"embed"
+	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
@@ -315,6 +316,53 @@ func MigrateSoftware(c echo.Context) error {
 		ExecutionID:   executionID,
 		ExecutionList: executionList,
 	}, " ")
+}
+
+// GetSoftwareMigrationLog godoc
+//
+//	@ID				get-software-migration-log
+//	@Summary		Get Software Migration Log
+//	@Description	Get the software migration log.
+//	@Tags			[Software]
+//	@Accept			json
+//	@Produce		json
+//	@Param			executionId path string true "ID of the software migration execution."
+//	@Success		200	{object}	model.GetMigrationLogRes	"Successfully get the software migration log"
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration log"
+//	@Router			/software/migrate/log/{executionId} [get]
+func GetSoftwareMigrationLog(c echo.Context) error {
+	executionID := c.Param("executionId")
+	if executionID == "" {
+		return common.ReturnErrorMsg(c, "Please provide the executionId.")
+	}
+
+	path, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder, executionID))
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return common.ReturnErrorMsg(c, fmt.Sprintf("Log path for executionID %s not found", executionID))
+	}
+
+	response := model.GetMigrationLogRes{
+		UUID: executionID,
+	}
+
+	if content, err := os.ReadFile(filepath.Join(path, "install.log")); err == nil {
+		response.InstallLog = string(content)
+	}
+
+	if content, err := os.ReadFile(filepath.Join(path, "migration.log")); err == nil {
+		response.MigrationLog = string(content)
+	}
+
+	if response.InstallLog == "" && response.MigrationLog == "" {
+		return common.ReturnErrorMsg(c, fmt.Sprintf("No log files found for executionID %s", executionID))
+	}
+
+	return c.JSONPretty(http.StatusOK, response, " ")
 }
 
 // ListSoftware godoc

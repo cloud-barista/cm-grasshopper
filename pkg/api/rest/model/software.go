@@ -103,6 +103,12 @@ type GetExecutionListRes struct {
 	Errors     []string    `json:"errors"`
 }
 
+type GetMigrationLogRes struct {
+	UUID         string `json:"uuid"`
+	InstallLog   string `json:"install_log"`
+	MigrationLog string `json:"migration_log"`
+}
+
 type SoftwareMigrateReq struct {
 	SourceConnectionInfoID string   `json:"source_connection_info_id" validate:"required"`
 	Target                 Target   `json:"target" validate:"required"`

@@ -11,6 +11,7 @@ func Software(e *echo.Echo) {
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/register", controller.RegisterSoftware)
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/execution_list", controller.GetExecutionList)
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate", controller.MigrateSoftware)
+	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate/log/:executionId", controller.GetSoftwareMigrationLog)
 	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software", controller.ListSoftware)
 	e.DELETE("/"+strings.ToLower(common.ShortModuleName)+"/software/:softwareId", controller.DeleteSoftware)
 }
