@@ -80,7 +80,7 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 			if execution.SoftwareInstallType == "package" {
 				updateStatus(i, "installing", "", true)
 
-				err := runPlaybook(id, execution.SoftwareID, s.SSHTarget)
+				err := runPlaybook(id, execution.SoftwareID, t.SSHTarget)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
