@@ -349,11 +349,11 @@ tmp_result=$(mktemp)
 {
     # 1. Package manager search
     if command -v dpkg >/dev/null 2>&1; then
-        dpkg -L "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$' | grep -v '\-available'
+        dpkg -L "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$'
     fi
 
     if command -v rpm >/dev/null 2>&1; then
-        rpm -ql "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$' | grep -v '\-available'
+        rpm -ql "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$'
     fi
 
     # 2. Process config arguments
@@ -364,9 +364,7 @@ tmp_result=$(mktemp)
         if [ -f "$basepath" ]; then
             echo "$basepath"
         elif [ -d "$basepath" ]; then
-            find "$basepath" -type f \( -name "*.conf" -o -name "*.cfg" -o -name "*.ini" -o -name "*.yaml" -o -name "*.yml" \) \
-            ! -path "*/available/*" \
-            ! -path "*/*-available/*" 2>/dev/null
+            find "$basepath" -type f \( -name "*.conf" -o -name "*.cfg" -o -name "*.ini" -o -name "*.yaml" -o -name "*.yml" \) 2>/dev/null
         fi
     done
 
