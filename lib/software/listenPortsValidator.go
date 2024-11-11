@@ -239,6 +239,7 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 		migrationLogger.Printf(DEBUG, "- Local Address: %s, Foreign Address: %s, PID: %d, Program: %s, Command: %s\n", conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
 	}
 
+	var mismatchedPorts []string
 	for _, sourceConn := range sourceServiceConnections {
 		var found bool
 		for _, targetConn := range targetServiceConnections {
@@ -249,8 +250,13 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 			}
 		}
 		if !found {
-			migrationLogger.Printf(INFO, "No matching port for %s on target\n", sourceConn.LocalAddress)
+			mismatchedPorts = append(mismatchedPorts, sourceConn.LocalAddress)
+			migrationLogger.Printf(ERROR, "No matching port for %s on target\n", sourceConn.LocalAddress)
 		}
+	}
+
+	if len(mismatchedPorts) > 0 {
+		return fmt.Errorf("mismatched listen ports found: %s", strings.Join(mismatchedPorts, ", "))
 	}
 
 	return nil
