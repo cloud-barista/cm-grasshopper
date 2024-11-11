@@ -484,6 +484,11 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		}
 		_ = session.Close()
 
+		err = listenPortsValidator(sourceClient, targetClient, service.Name, uuid)
+		if err != nil {
+			issues = append(issues, err.Error())
+		}
+
 		if len(issues) > 0 {
 			verificationError := fmt.Sprintf("Service %s has issues: %v", service.Name, issues)
 			verificationErrors = append(verificationErrors, verificationError)
