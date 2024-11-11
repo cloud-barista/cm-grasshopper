@@ -32,9 +32,14 @@ func cleanServiceName(name string) string {
 	cleaned = strings.ReplaceAll(cleaned, "○", "")
 	cleaned = strings.TrimSpace(cleaned)
 
+	fields := strings.Fields(cleaned)
+	if len(fields) > 0 {
+		cleaned = fields[0]
+	}
+
 	parts := strings.Split(cleaned, "/")
 	if len(parts) > 0 {
-		cleaned = parts[len(parts)-1] // 마지막 부분이 서비스 이름
+		cleaned = parts[len(parts)-1]
 	}
 
 	return cleaned
