@@ -358,7 +358,7 @@ tmp_result=$(mktemp)
     ps aux | grep "$pkg" | grep -o '[[:space:]]/[^[:space:]]*'
 
     # Search common config directories
-    for base in "/etc" "/usr/local/etc" "/usr/share" "/opt" "/var/lib"; do
+    for base in "/etc" "/usr/local/etc"; do
         find "$base" -type f -path "*/$pkg*" 2>/dev/null
         find "$base/$pkg" -type f 2>/dev/null 2>/dev/null
     done
