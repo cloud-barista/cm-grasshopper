@@ -273,26 +273,26 @@ func findConfigs(client *ssh.Client, packageName string) ([]ConfigFile, error) {
 	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
 
 	cmd := `#!/bin/sh
+# Package name from argument
 pkg="%s"
 
+# Find included config files and referenced directories
 check_includes() {
     local file="$1"
-    # Find common include patterns
     {
-        # Cases with quotes
+        # Find include directives with quotes
         grep -i "include.*[\"'].*[\"']" "$file" 2>/dev/null | grep -o "[\"'][^\"']*[\"']" | tr -d "'\"" || true
-        # Cases without quotes
+        # Find include directives without quotes
         grep -i "^[[:space:]]*include[[:space:]]*[^\"']" "$file" 2>/dev/null | sed 's/.*include[[:space:]]*//g' | sed 's/#.*//g' || true
-        # conf.d style directory pattern
-        grep -i "conf.d" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
-        # Directories ending with .d
-        grep -i "\.d" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
+        # Find configuration directories (.d pattern)
+        grep -i -E "(conf|config)\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
+        grep -i "\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
     } | while read -r inc_path; do
-        # Convert to absolute path if it's a relative path
+        # Convert relative paths to absolute
         if [ "${inc_path#/}" = "$inc_path" ]; then
             inc_path="$(dirname "$file")/$inc_path"
         fi
-        # Handle paths with wildcards
+        # Handle wildcard patterns
         if echo "$inc_path" | grep -q "[*]"; then
             eval find $inc_path -type f 2>/dev/null || echo "$inc_path"
         else
@@ -301,21 +301,21 @@ check_includes() {
     done
 }
 
+# Check file status (Original/Modified/Custom)
 check_config_status() {
     local file="$1"
-    # Get the actual file path (in case of symbolic links)
     local real_file=$(readlink -f "$file")
     
     if command -v dpkg >/dev/null 2>&1; then
-        # Debian/Ubuntu
-        if dpkg -S "$real_file" >/dev/null 2>&1; then
-            if dpkg -V "$pkg" 2>/dev/null | grep -q "^..5.*$real_file$"; then
+        # Find package that owns the file
+        local owner_pkg=$(dpkg -S "$real_file" 2>/dev/null | cut -d: -f1)
+        if [ -n "$owner_pkg" ]; then
+            if dpkg -V "$owner_pkg" 2>/dev/null | grep -q "^..5.* $real_file"; then
                 echo "$file [Modified]"
             else
                 echo "$file"
             fi
         else
-            # Check the original file if it's a symbolic link
             if [ "$file" != "$real_file" ] && dpkg -S "$file" >/dev/null 2>&1; then
                 echo "$file"
             else
@@ -323,15 +323,15 @@ check_config_status() {
             fi
         fi
     elif command -v rpm >/dev/null 2>&1; then
-        # RedHat/CentOS
-        if rpm -qf "$real_file" >/dev/null 2>&1; then
-            if rpm -V "$pkg" | grep -q "^..5.*$real_file$"; then
+        # Find package that owns the file
+        local owner_pkg=$(rpm -qf "$real_file" 2>/dev/null)
+        if [ -n "$owner_pkg" ]; then
+            if rpm -V "$owner_pkg" | grep -q "^..5.* $real_file"; then
                 echo "$file [Modified]"
             else
                 echo "$file"
             fi
         else
-            # Check the original file if it's a symbolic link
             if [ "$file" != "$real_file" ] && rpm -qf "$file" >/dev/null 2>&1; then
                 echo "$file"
             else
@@ -339,65 +339,64 @@ check_config_status() {
             fi
         fi
     else
-        echo "$file"
+        echo "$file [Custom]"
     fi
 }
 
-# Create temp file for results
+# Temporary file for collecting results
 tmp_result=$(mktemp)
 
 {
-    # 1. Package manager search
+    # Search using package manager
     if command -v dpkg >/dev/null 2>&1; then
-        dpkg -L "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$'
+        dpkg -L "$pkg" 2>/dev/null
+    elif command -v rpm >/dev/null 2>&1; then
+        rpm -ql "$pkg" 2>/dev/null
     fi
 
-    if command -v rpm >/dev/null 2>&1; then
-        rpm -ql "$pkg" 2>/dev/null | grep -E 'conf$|config|\.cfg$|\.ini$|\.yaml$|\.yml$'
-    fi
+    # Search for config files in process arguments
+    ps aux | grep "$pkg" | grep -o '[[:space:]]/[^[:space:]]*'
 
-    # 2. Process config arguments
-    ps aux | grep "$pkg" | grep -o '[[:space:]]/[^[:space:]]*conf[^[:space:]]*'
-
-    # 3. Common config locations
-    for basepath in "/etc/$pkg" "/etc/$pkg.conf" "/etc/$pkg.d" "/usr/local/etc/$pkg" "/opt/$pkg/etc" "/var/lib/$pkg" "/usr/share/$pkg"; do
-        if [ -f "$basepath" ]; then
-            echo "$basepath"
-        elif [ -d "$basepath" ]; then
-            find "$basepath" -type f \( -name "*.conf" -o -name "*.cfg" -o -name "*.ini" -o -name "*.yaml" -o -name "*.yml" \) 2>/dev/null
-        fi
+    # Search common config directories
+    for base in "/etc" "/usr/local/etc" "/usr/share" "/opt" "/var/lib"; do
+        find "$base" -type f -path "*/$pkg*" 2>/dev/null
+        find "$base/$pkg" -type f 2>/dev/null 2>/dev/null
     done
 
-    # 4. Systemd config references
-    if [ -d "/etc/systemd/system" ]; then
-        grep -r "^ExecStart.*$pkg\|^ExecStartPre.*$pkg\|^EnvironmentFile.*$pkg" /etc/systemd/system/ 2>/dev/null | \
-        grep -o '/[^[:space:]]*\.conf\|/[^[:space:]]*\.cfg\|/[^[:space:]]*\.ini\|/[^[:space:]]*\.yaml\|/[^[:space:]]*\.yml'
-        find /etc/systemd/system -type f -exec grep -l "conf=$\|config=" {} \; 2>/dev/null
+    # Search systemd and init.d configurations
+    if [ -d "/etc/systemd" ]; then
+        find /etc/systemd -type f -exec grep -l "$pkg" {} \; 2>/dev/null
+    fi
+    
+    if [ -d "/etc/init.d" ]; then
+        find /etc/init.d -type f -exec grep -l "$pkg" {} \; 2>/dev/null
     fi
 
-    # 5. Init.d scripts
-    if [ -f "/etc/init.d/$pkg" ]; then
-        grep -o '/[^[:space:]]*\.conf\|/[^[:space:]]*\.cfg\|/[^[:space:]]*\.ini\|/[^[:space:]]*\.yaml\|/[^[:space:]]*\.yml' "/etc/init.d/$pkg" 2>/dev/null
-    fi
 } | sort -u | while read -r file; do
-    if [ -f "$file" ]; then
-        echo "$file" >> "$tmp_result"
-        # Find included files within each config file
-        check_includes "$file" | while read -r inc_file; do
-            if [ -f "$inc_file" ]; then
-                echo "$inc_file" >> "$tmp_result"
-                # Recursively check for includes
-                check_includes "$inc_file" | while read -r sub_inc; do
-                    if [ -f "$sub_inc" ]; then
-                        echo "$sub_inc" >> "$tmp_result"
-                    fi
-                done
-            fi
-        done
+    # Filter config files by common patterns and backup files
+    if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
+        if [ -f "$file" ]; then
+            echo "$file" >> "$tmp_result"
+            check_includes "$file" | while read -r inc_file; do
+                if [ -f "$inc_file" ]; then
+                    echo "$inc_file" >> "$tmp_result"
+                fi
+            done
+        fi
+    # Check content of non-standard named files for config-like content
+    elif [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
+        if grep -i -E '(server|listen|port|host|config|ssl|virtual|root|location)' "$file" >/dev/null 2>&1; then
+            echo "$file" >> "$tmp_result"
+            check_includes "$file" | while read -r inc_file; do
+                if [ -f "$inc_file" ]; then
+                    echo "$inc_file" >> "$tmp_result"
+                fi
+            done
+        fi
     fi
 done
 
-# Output results (remove duplicates)
+# Process and output unique results with status
 sort -u "$tmp_result" | while read -r file; do
     check_config_status "$file"
 done
