@@ -11,6 +11,7 @@ import (
 )
 
 type Connection struct {
+	Protocol       string
 	LocalAddress   string
 	ForeignAddress string
 	PID            int
@@ -119,6 +120,7 @@ func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool,
 				programName := readProgramName(client, password, pid)
 
 				connections = append(connections, Connection{
+					Protocol:       protocol,
 					LocalAddress:   localAddr,
 					ForeignAddress: foreignAddr,
 					PID:            pid,
@@ -224,7 +226,8 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 	sourceServiceConnections := filterConnectionsByPID(sourceConnections, sourcePortPID)
 	migrationLogger.Printf(DEBUG, "Source listening connections:\n")
 	for _, conn := range sourceServiceConnections {
-		migrationLogger.Printf(DEBUG, "- Local Address: %s, Foreign Address: %s, PID: %d, Program: %s, Command: %s\n", conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
+		migrationLogger.Printf(DEBUG, "- Protocol: %s, Local Address: %s, Foreign Address: %s, PID: %d, Program: %s, Command: %s\n",
+			conn.Protocol, conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
 	}
 
 	migrationLogger.Printf(DEBUG, "Retrieving target listening connections\n")
@@ -236,7 +239,8 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 	targetServiceConnections := filterConnectionsByPID(targetConnections, targetPortPID)
 	migrationLogger.Printf(DEBUG, "Target listening connections:\n")
 	for _, conn := range targetServiceConnections {
-		migrationLogger.Printf(DEBUG, "- Local Address: %s, Foreign Address: %s, PID: %d, Program: %s, Command: %s\n", conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
+		migrationLogger.Printf(DEBUG, "- Protocol: %s, Local Address: %s, Foreign Address: %s, PID: %d, Program: %s, Command: %s\n",
+			conn.Protocol, conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
 	}
 
 	var mismatchedPorts []string
@@ -244,19 +248,21 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 		var found bool
 		for _, targetConn := range targetServiceConnections {
 			if sourceConn.LocalAddress == targetConn.LocalAddress {
-				migrationLogger.Printf(INFO, "Matching port found: %s\n", sourceConn.LocalAddress)
+				migrationLogger.Printf(INFO, "Matching port found: %s %s\n",
+					sourceConn.Protocol, sourceConn.LocalAddress)
 				found = true
 				break
 			}
 		}
 		if !found {
-			mismatchedPorts = append(mismatchedPorts, sourceConn.LocalAddress)
-			migrationLogger.Printf(ERROR, "No matching port for %s on target\n", sourceConn.LocalAddress)
+			mismatchedPorts = append(mismatchedPorts, sourceConn.Protocol+" "+sourceConn.LocalAddress)
+			migrationLogger.Printf(ERROR, "No matching port for %s %s on target\n",
+				sourceConn.Protocol, sourceConn.LocalAddress)
 		}
 	}
 
 	if len(mismatchedPorts) > 0 {
-		return fmt.Errorf("mismatched listen ports found: %s", strings.Join(mismatchedPorts, ", "))
+		return fmt.Errorf("some listen ports are not matched on target: %s", strings.Join(mismatchedPorts, ", "))
 	}
 
 	return nil
