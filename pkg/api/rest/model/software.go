@@ -83,7 +83,7 @@ type SoftwareInfo struct {
 	Version string `json:"version" validate:"required"`
 }
 
-type Execution struct {
+type MigrationSoftwareInfo struct {
 	Order               int    `json:"order"`
 	SoftwareID          string `json:"software_id"`
 	SoftwareName        string `json:"software_name"`
@@ -91,19 +91,17 @@ type Execution struct {
 	SoftwareInstallType string `json:"software_install_type"`
 }
 
-type GetExecutionListReq struct {
-	OS               string         `json:"os" validate:"required"`
-	OSVersion        string         `json:"os_version" validate:"required"`
-	Architecture     string         `json:"architecture" validate:"required"`
-	SoftwareInfoList []SoftwareInfo `json:"software_info_list" validate:"required"`
+type MigrationServer struct {
+	ConnectionInfoID string                  `json:"connection_info_id"`
+	MigrationList    []MigrationSoftwareInfo `json:"migration_list"`
+	Errors           []string                `json:"errors"`
 }
 
-type GetExecutionListRes struct {
-	Executions []Execution `json:"execution_list"`
-	Errors     []string    `json:"errors"`
+type MigrationListRes struct {
+	Server []MigrationServer `json:"server"`
 }
 
-type GetMigrationLogRes struct {
+type MigrationLogRes struct {
 	UUID         string `json:"uuid"`
 	InstallLog   string `json:"install_log"`
 	MigrationLog string `json:"migration_log"`
@@ -116,8 +114,8 @@ type SoftwareMigrateReq struct {
 }
 
 type SoftwareMigrateRes struct {
-	ExecutionID   string      `json:"execution_id"`
-	ExecutionList []Execution `json:"execution_list"`
+	ExecutionID   string                  `json:"execution_id"`
+	ExecutionList []MigrationSoftwareInfo `json:"execution_list"`
 }
 
 type ExecutionStatus struct {

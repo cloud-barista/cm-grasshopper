@@ -1,17 +1,14 @@
 package ssh
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	grasshopperCommon "github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 
-	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
+	comm "github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
-	"github.com/jollaman999/utils/logger"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 	"net"
@@ -40,61 +37,6 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 	return goph.AddKnownHost(host, remote, key, "")
 }
 
-func decryptSecrets(connectionInfo *honeybee.ConnectionInfo) (*honeybee.ConnectionInfo, error) {
-	encryptedUser, err := base64.StdEncoding.DecodeString(connectionInfo.User)
-	if err != nil {
-		errMsg := "error occurred while decrypting the base64 encoded encrypted user (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-
-	decryptedUserBytes, err := rsautil.DecryptWithPrivateKey(encryptedUser, grasshopperCommon.HoneybeePrivateKey)
-	if err != nil {
-		errMsg := "error occurred while decrypting user (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-	connectionInfo.User = string(decryptedUserBytes)
-
-	encryptedPassword, err := base64.StdEncoding.DecodeString(connectionInfo.Password)
-	if err != nil {
-		errMsg := "error occurred while decrypting the base64 encoded encrypted password (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-
-	decryptedPasswordBytes, err := rsautil.DecryptWithPrivateKey(encryptedPassword, grasshopperCommon.HoneybeePrivateKey)
-	if err != nil {
-		errMsg := "error occurred while decrypting password (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-	connectionInfo.Password = string(decryptedPasswordBytes)
-
-	encryptedPrivateKey, err := base64.StdEncoding.DecodeString(connectionInfo.PrivateKey)
-	if err != nil {
-		errMsg := "error occurred while decrypting the base64 encoded encrypted private key (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-
-	decryptedPrivateKeyBytes, err := rsautil.DecryptWithPrivateKey(encryptedPrivateKey, grasshopperCommon.HoneybeePrivateKey)
-	if err != nil {
-		errMsg := "error occurred while decrypting private key (" + err.Error() + ")"
-		logger.Println(logger.ERROR, true, errMsg)
-
-		return nil, errors.New(errMsg)
-	}
-	connectionInfo.PrivateKey = string(decryptedPrivateKeyBytes)
-
-	return connectionInfo, nil
-}
-
 func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID string) (*Client, error) {
 	var client *goph.Client
 	var sshTarget *model.SSHTarget
@@ -117,7 +59,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 			return nil, err
 		}
 
-		connectionInfo, err := decryptSecrets(&encryptedConnectionInfo)
+		connectionInfo, err := comm.ConnectionInfoDecryptSecrets(&encryptedConnectionInfo)
 		if err != nil {
 			return nil, err
 		}

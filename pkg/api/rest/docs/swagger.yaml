@@ -5,7 +5,36 @@ definitions:
       error:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes:
+    properties:
+      server:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer'
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes:
+    properties:
+      install_log:
+        type: string
+      migration_log:
+        type: string
+      uuid:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer:
+    properties:
+      connection_info_id:
+        type: string
+      errors:
+        items:
+          type: string
+        type: array
+      migration_list:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo'
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo:
     properties:
       order:
         type: integer
@@ -16,44 +45,6 @@ definitions:
       software_name:
         type: string
       software_version:
-        type: string
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq:
-    properties:
-      architecture:
-        type: string
-      os:
-        type: string
-      os_version:
-        type: string
-      software_info_list:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo'
-        type: array
-    required:
-    - architecture
-    - os
-    - os_version
-    - software_info_list
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes:
-    properties:
-      errors:
-        items:
-          type: string
-        type: array
-      execution_list:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution'
-        type: array
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes:
-    properties:
-      install_log:
-        type: string
-      migration_log:
-        type: string
-      uuid:
         type: string
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
@@ -107,16 +98,6 @@ definitions:
     - uuid
     - version
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo:
-    properties:
-      name:
-        type: string
-      version:
-        type: string
-    required:
-    - name
-    - version
-    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
     properties:
       software_ids:
@@ -138,7 +119,7 @@ definitions:
         type: string
       execution_list:
         items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo'
         type: array
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareRegisterReq:
@@ -331,37 +312,6 @@ paths:
       summary: Delete Software
       tags:
       - '[Software]'
-  /software/execution_list:
-    post:
-      consumes:
-      - application/json
-      description: Get software migration execution list.
-      operationId: get-execution-list
-      parameters:
-      - description: Software info list
-        in: body
-        name: getExecutionListReq
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully get migration execution list.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes'
-        "400":
-          description: Sent bad request.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-        "500":
-          description: Failed to get migration execution list.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Get Execution List
-      tags:
-      - '[Software]'
   /software/migrate:
     post:
       consumes:
@@ -411,7 +361,7 @@ paths:
         "200":
           description: Successfully get the software migration log
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes'
         "400":
           description: Sent bad request.
           schema:
@@ -421,6 +371,36 @@ paths:
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Get Software Migration Log
+      tags:
+      - '[Software]'
+  /software/migration_list/{sgId}:
+    get:
+      consumes:
+      - application/json
+      description: Get software migration list.
+      operationId: get-migration-list
+      parameters:
+      - description: ID of the SourceGroup
+        in: path
+        name: sgId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get software migration list.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get software migration list.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Get Migration List
       tags:
       - '[Software]'
   /software/register:

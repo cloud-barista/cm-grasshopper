@@ -155,53 +155,6 @@
                 }
             }
         },
-        "/software/execution_list": {
-            "post": {
-                "description": "Get software migration execution list.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "[Software]"
-                ],
-                "summary": "Get Execution List",
-                "operationId": "get-execution-list",
-                "parameters": [
-                    {
-                        "description": "Software info list",
-                        "name": "getExecutionListReq",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully get migration execution list.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes"
-                        }
-                    },
-                    "400": {
-                        "description": "Sent bad request.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to get migration execution list.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/software/migrate": {
             "post": {
                 "description": "Migrate pieces of software to target.",
@@ -276,7 +229,7 @@
                     "200": {
                         "description": "Successfully get the software migration log",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes"
                         }
                     },
                     "400": {
@@ -287,6 +240,51 @@
                     },
                     "500": {
                         "description": "Failed to get the software migration log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/software/migration_list/{sgId}": {
+            "get": {
+                "description": "Get software migration list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Software]"
+                ],
+                "summary": "Get Migration List",
+                "operationId": "get-migration-list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the SourceGroup",
+                        "name": "sgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully get software migration list.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get software migration list.",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }
@@ -396,7 +394,52 @@
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes": {
+            "type": "object",
+            "properties": {
+                "server": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes": {
+            "type": "object",
+            "properties": {
+                "install_log": {
+                    "type": "string"
+                },
+                "migration_log": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer": {
+            "type": "object",
+            "properties": {
+                "connection_info_id": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "migration_list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo": {
             "type": "object",
             "properties": {
                 "order": {
@@ -412,63 +455,6 @@
                     "type": "string"
                 },
                 "software_version": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListReq": {
-            "type": "object",
-            "required": [
-                "architecture",
-                "os",
-                "os_version",
-                "software_info_list"
-            ],
-            "properties": {
-                "architecture": {
-                    "type": "string"
-                },
-                "os": {
-                    "type": "string"
-                },
-                "os_version": {
-                    "type": "string"
-                },
-                "software_info_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo"
-                    }
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetExecutionListRes": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "execution_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution"
-                    }
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.GetMigrationLogRes": {
-            "type": "object",
-            "properties": {
-                "install_log": {
-                    "type": "string"
-                },
-                "migration_log": {
-                    "type": "string"
-                },
-                "uuid": {
                     "type": "string"
                 }
             }
@@ -545,21 +531,6 @@
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareInfo": {
-            "type": "object",
-            "required": [
-                "name",
-                "version"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
             "type": "object",
             "required": [
@@ -591,7 +562,7 @@
                 "execution_list": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Execution"
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo"
                     }
                 }
             }

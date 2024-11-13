@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func MigrateSoftware(executionID string, executionList *[]model.Execution,
+func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwareInfo,
 	sourceConnectionInfoID string, target *model.Target) error {
 	var executionStatusList []model.ExecutionStatus
 
@@ -50,7 +50,7 @@ func MigrateSoftware(executionID string, executionList *[]model.Execution,
 		return err
 	}
 
-	go func(id string, exList []model.Execution, exStatusList []model.ExecutionStatus,
+	go func(id string, exList []model.MigrationSoftwareInfo, exStatusList []model.ExecutionStatus,
 		s *ssh.Client, t *ssh.Client) {
 		defer func() {
 			_ = s.Close()

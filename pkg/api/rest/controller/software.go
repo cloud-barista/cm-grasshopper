@@ -237,34 +237,32 @@ func RegisterSoftware(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, dbSW, " ")
 }
 
-// GetExecutionList godoc
+// GetMigrationList godoc
 //
-//	@ID				get-execution-list
-//	@Summary		Get Execution List
-//	@Description	Get software migration execution list.
+//	@ID				get-migration-list
+//	@Summary		Get Migration List
+//	@Description	Get software migration list.
 //	@Tags			[Software]
 //	@Accept			json
 //	@Produce		json
-//	@Param			getExecutionListReq body model.GetExecutionListReq true "Software info list"
-//	@Success		200	{object}	model.GetExecutionListRes	"Successfully get migration execution list."
+//	@Param			sgId path string true "ID of the SourceGroup"
+//	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse		"Failed to get migration execution list."
-//	@Router			/software/execution_list [post]
-func GetExecutionList(c echo.Context) error {
-	var err error
-
-	getExecutionListReq := new(model.GetExecutionListReq)
-	err = c.Bind(getExecutionListReq)
-	if err != nil {
-		return err
+//	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
+//	@Router			/software/migration_list/{sgId} [get]
+func GetMigrationList(c echo.Context) error {
+	sgID := c.Param("sgId")
+	if sgID == "" {
+		return common.ReturnErrorMsg(c, "Please provide the sgId.")
 	}
+	fmt.Println(sgID)
 
-	executionListRes, err := software.MakeExecutionListRes(getExecutionListReq)
+	migrationListRes, err := software.MakeMigrationListRes(sgID)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	return c.JSONPretty(http.StatusOK, *executionListRes, " ")
+	return c.JSONPretty(http.StatusOK, *migrationListRes, " ")
 }
 
 // MigrateSoftware godoc
@@ -287,7 +285,7 @@ func MigrateSoftware(c echo.Context) error {
 		return err
 	}
 
-	var executionList []model.Execution
+	var executionList []model.MigrationSoftwareInfo
 
 	for i, id := range softwareInstallReq.SoftwareIDs {
 		sw, err := dao.SoftwareGet(id)
@@ -295,7 +293,7 @@ func MigrateSoftware(c echo.Context) error {
 			return common.ReturnErrorMsg(c, err.Error())
 		}
 
-		executionList = append(executionList, model.Execution{
+		executionList = append(executionList, model.MigrationSoftwareInfo{
 			Order:               i + 1,
 			SoftwareID:          sw.ID,
 			SoftwareName:        sw.Name,
@@ -327,7 +325,7 @@ func MigrateSoftware(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			executionId path string true "ID of the software migration execution."
-//	@Success		200	{object}	model.GetMigrationLogRes	"Successfully get the software migration log"
+//	@Success		200	{object}	model.MigrationLogRes	"Successfully get the software migration log"
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration log"
 //	@Router			/software/migrate/log/{executionId} [get]
@@ -346,7 +344,7 @@ func GetSoftwareMigrationLog(c echo.Context) error {
 		return common.ReturnErrorMsg(c, fmt.Sprintf("Log path for executionID %s not found", executionID))
 	}
 
-	response := model.GetMigrationLogRes{
+	response := model.MigrationLogRes{
 		UUID: executionID,
 	}
 
