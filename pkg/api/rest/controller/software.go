@@ -285,7 +285,7 @@ func MigrateSoftware(c echo.Context) error {
 		return err
 	}
 
-	var executionList []model.MigrationSoftwareInfo
+	var migrationList []model.MigrationSoftwareInfo
 
 	for i, id := range softwareInstallReq.SoftwareIDs {
 		sw, err := dao.SoftwareGet(id)
@@ -293,7 +293,7 @@ func MigrateSoftware(c echo.Context) error {
 			return common.ReturnErrorMsg(c, err.Error())
 		}
 
-		executionList = append(executionList, model.MigrationSoftwareInfo{
+		migrationList = append(migrationList, model.MigrationSoftwareInfo{
 			Order:               i + 1,
 			SoftwareID:          sw.ID,
 			SoftwareName:        sw.Name,
@@ -304,7 +304,7 @@ func MigrateSoftware(c echo.Context) error {
 
 	executionID := uuid.New().String()
 
-	err = software.MigrateSoftware(executionID, &executionList,
+	err = software.MigrateSoftware(executionID, &migrationList,
 		softwareInstallReq.SourceConnectionInfoID, &softwareInstallReq.Target)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
@@ -312,7 +312,7 @@ func MigrateSoftware(c echo.Context) error {
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:   executionID,
-		ExecutionList: executionList,
+		MigrationList: migrationList,
 	}, " ")
 }
 

@@ -566,7 +566,7 @@ const docTemplate = `{
                 "execution_id": {
                     "type": "string"
                 },
-                "execution_list": {
+                "migration_list": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo"

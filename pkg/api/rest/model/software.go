@@ -115,7 +115,7 @@ type SoftwareMigrateReq struct {
 
 type SoftwareMigrateRes struct {
 	ExecutionID   string                  `json:"execution_id"`
-	ExecutionList []MigrationSoftwareInfo `json:"execution_list"`
+	MigrationList []MigrationSoftwareInfo `json:"migration_list"`
 }
 
 type ExecutionStatus struct {
