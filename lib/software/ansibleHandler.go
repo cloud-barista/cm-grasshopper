@@ -15,12 +15,55 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
 var ansibleConfigPath string
 var inventoryFileName = "inventory.ini"
 var logFileName = "install.log"
+
+const requiredAnsibleMinimumMajor = 2
+const requiredAnsibleMinimumMinor = 16
+
+func CheckAnsibleVersion() error {
+	cmd := exec.Command("ansible", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get ansible version: %v", err)
+	}
+
+	re := regexp.MustCompile(`ansible (?:\[core )?(\d+\.\d+\.\d+)(?:\])?`)
+
+	matches := re.FindStringSubmatch(string(output))
+	if len(matches) < 2 {
+		return fmt.Errorf("failed to parse ansible version from output")
+	}
+
+	version := matches[1]
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid version format: %s", version)
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return fmt.Errorf("invalid major version: %s", parts[0])
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return fmt.Errorf("invalid minor version: %s", parts[1])
+	}
+
+	if major < requiredAnsibleMinimumMajor || minor < requiredAnsibleMinimumMinor {
+		return fmt.Errorf("please install ansible core version %d.%d or higher",
+			requiredAnsibleMinimumMajor, requiredAnsibleMinimumMinor)
+	}
+
+	return nil
+}
 
 func getAnsiblePlaybookFolderPath(softwareID string) (string, error) {
 	abs, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, softwareID))

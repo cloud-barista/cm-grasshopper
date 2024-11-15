@@ -6,6 +6,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
+	"github.com/cloud-barista/cm-grasshopper/lib/software"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/controller"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/server"
 	"github.com/jollaman999/utils/cmd"
@@ -34,6 +35,11 @@ func init() {
 	if err != nil {
 		logger.Panicln(logger.ERROR, false,
 			"'ansible-playbook' command not found please install Ansible!")
+	}
+
+	err = software.CheckAnsibleVersion()
+	if err != nil {
+		log.Panicln(err)
 	}
 
 	controller.OkMessage.Message = "API server is not ready"
