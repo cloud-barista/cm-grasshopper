@@ -14,7 +14,7 @@ var DB *gorm.DB
 func Open() error {
 	var err error
 
-	SoftwaresDB, err = gorm.Open(sqlite.Open("softwares.db"), &gorm.Config{})
+	SoftwaresDB, err = gorm.Open(sqlite.Open(common.RootPath+"/softwares.db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
@@ -24,7 +24,7 @@ func Open() error {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
-	DB, err = gorm.Open(sqlite.Open(common.ModuleName+".db"), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open(common.RootPath+"/"+common.ModuleName+".db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
