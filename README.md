@@ -37,17 +37,37 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
   - Configuration options
     - listen
       - port : Listen port of the API.
+    - software
+      - temp_folder: Temporary folder while running software migration. (Used for copying Ansible playbook files.)
+      - log_folder: Log folder used for logging software installation and migration.
+    - ansible
+      - playbook_root_path: Root path used for store Ansible playbook files.
     - honeybee
       - server_address : IP address of the honeybee server's API.
       - server_port : Port of the honeybee server's API.
+    - tumblebug
+        - server_address : IP address of the tumblebug server's API.
+        - server_port : Port of the tumblebug server's API.
+        - username: Username of the tumblebug authentication
+        - password: Password of the tumblebug authentication
   - Configuration file example
     ```yaml
     cm-grasshopper:
         listen:
             port: 8084
-        honeybee:
-            server_address: 127.0.0.1
-            server_port: 8081
+    software:
+        temp_folder: ./software_temp
+        log_folder: ./software_log
+    ansible:
+        playbook_root_path: ./playbook
+    honeybee:
+        server_address: 127.0.0.1
+        server_port: 8081
+    tumblebug:
+        server_address: 127.0.0.1
+        server_port: 1323
+        username: ****
+        password: ****
     ```
 
 ### 2. Copy honeybee private key file
