@@ -359,8 +359,8 @@ tmp_result=$(mktemp)
 
     # Search common config directories
     for base in "/etc" "/usr/local/etc"; do
-        find "$base" -type f -path "*/$pkg*" 2>/dev/null
-        find "$base/$pkg" -type f 2>/dev/null 2>/dev/null
+        find "$base" -type f -path "*/$pkg*" ! -path "/etc/apt/*" 2>/dev/null
+        find "$base/$pkg" -type f ! -path "/etc/apt/*" 2>/dev/null 2>/dev/null
     done
 
     # Search systemd and init.d configurations
