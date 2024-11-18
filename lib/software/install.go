@@ -90,12 +90,21 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 					return
 				}
 
-				err = configCopier(s, t, execution.SoftwareName, executionID)
+				migrationLogger, err := initLoggerWithUUID(executionID)
+				if err != nil {
+					errMsg := fmt.Sprintf("failed to initialize logger: %v", err)
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+errMsg)
+					updateStatus(i, "failed", errMsg, false)
+				}
+
+				err = configCopier(s, t, execution.SoftwareName, executionID, migrationLogger)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 
+					migrationLogger.Close()
 					return
 				}
 
@@ -105,6 +114,7 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 
+					migrationLogger.Close()
 					return
 				}
 
@@ -118,22 +128,24 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 							Status: "Custom",
 						})
 					}
-					err = copyConfigFiles(s, t, customConfigs)
+					err = copyConfigFiles(s, t, customConfigs, migrationLogger)
 					if err != nil {
 						logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 							", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 						updateStatus(i, "failed", err.Error(), false)
 
+						migrationLogger.Close()
 						return
 					}
 				}
 
-				err = serviceMigrator(s, t, execution.SoftwareName, executionID)
+				err = serviceMigrator(s, t, execution.SoftwareName, executionID, migrationLogger)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 
+					migrationLogger.Close()
 					return
 				}
 

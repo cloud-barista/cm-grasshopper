@@ -17,7 +17,7 @@ func sudoWrapper(cmd string, password string) string {
 	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.Replace(cmd, "'", "'\"'\"'", -1))
 }
 
-func findCertKeyPaths(client *ssh.Client, filePath string) ([]string, error) {
+func findCertKeyPaths(client *ssh.Client, filePath string, migrationLogger *Logger) ([]string, error) {
 	migrationLogger.Printf(INFO, "Finding certificate and key paths in file: %s\n", filePath)
 
 	cmd := fmt.Sprintf(`
@@ -104,7 +104,7 @@ func findCertKeyPaths(client *ssh.Client, filePath string) ([]string, error) {
 	return validPaths, nil
 }
 
-func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath string) error {
+func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting file copy process for: %s\n", filePath)
 
 	sourcePassword := sourceClient.SSHTarget.Password
@@ -269,7 +269,7 @@ EOL
 	return nil
 }
 
-func parseConfigLine(line string) ConfigFile {
+func parseConfigLine(line string, migrationLogger *Logger) ConfigFile {
 	migrationLogger.Printf(DEBUG, "Parsing config line: %s\n", line)
 
 	parts := strings.SplitN(line, " [", 2)
@@ -285,7 +285,7 @@ func parseConfigLine(line string) ConfigFile {
 	return conf
 }
 
-func findConfigs(client *ssh.Client, packageName string) ([]ConfigFile, error) {
+func findConfigs(client *ssh.Client, packageName string, migrationLogger *Logger) ([]ConfigFile, error) {
 	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
 
 	cmd := `#!/bin/sh
@@ -441,7 +441,7 @@ rm -f "$tmp_result"`
 	migrationLogger.Printf(DEBUG, "Processing found config files\n")
 	for _, line := range strings.Split(string(output), "\n") {
 		if line = strings.TrimSpace(line); line != "" {
-			conf := parseConfigLine(line)
+			conf := parseConfigLine(line, migrationLogger)
 			if !seen[conf.Path] {
 				seen[conf.Path] = true
 				configs = append(configs, conf)
@@ -454,7 +454,7 @@ rm -f "$tmp_result"`
 	return configs, nil
 }
 
-func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile) error {
+func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting config files copy process for %d files\n", len(configs))
 
 	for i, conf := range configs {
@@ -466,14 +466,14 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 		}
 
 		migrationLogger.Printf(INFO, "Copying config file: %s [Status: %s]\n", conf.Path, conf.Status)
-		err := copyFile(sourceClient, targetClient, conf.Path)
+		err := copyFile(sourceClient, targetClient, conf.Path, migrationLogger)
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to copy config file %s: %v\n", conf.Path, err)
 			return fmt.Errorf("failed to copy file %s: %v", conf.Path, err)
 		}
 
 		migrationLogger.Printf(DEBUG, "Searching for associated cert/key files for: %s\n", conf.Path)
-		certKeyPaths, err := findCertKeyPaths(sourceClient, conf.Path)
+		certKeyPaths, err := findCertKeyPaths(sourceClient, conf.Path, migrationLogger)
 		if err != nil {
 			migrationLogger.Printf(WARN, "Error finding cert/key paths for %s: %v\n", conf.Path, err)
 			continue
@@ -483,7 +483,7 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 			migrationLogger.Printf(INFO, "Found %d cert/key files for %s\n", len(certKeyPaths), conf.Path)
 			for j, path := range certKeyPaths {
 				migrationLogger.Printf(INFO, "Copying cert/key file %d/%d: %s\n", j+1, len(certKeyPaths), path)
-				err := copyFile(sourceClient, targetClient, path)
+				err := copyFile(sourceClient, targetClient, path, migrationLogger)
 				if err != nil {
 					migrationLogger.Printf(WARN, "Failed to copy cert/key file %s: %v\n", path, err)
 					continue
@@ -501,12 +501,7 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 	return nil
 }
 
-func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string) error {
-	if err := initLoggerWithUUID(uuid); err != nil {
-		return fmt.Errorf("failed to initialize logger: %v", err)
-	}
-	defer migrationLogger.Close()
-
+func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting config copier for package: %s (UUID: %s)\n", packageName, uuid)
 
 	if sourceClient == nil || targetClient == nil {
@@ -520,7 +515,7 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 	}
 
 	migrationLogger.Printf(INFO, "Finding configuration files for package: %s\n", packageName)
-	configs, err := findConfigs(sourceClient, packageName)
+	configs, err := findConfigs(sourceClient, packageName, migrationLogger)
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to find configs for package %s: %v\n", packageName, err)
 		return fmt.Errorf("failed to find configs: %v", err)
@@ -533,7 +528,7 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 
 	migrationLogger.Printf(INFO, "Found %d configuration files for package %s\n", len(configs), packageName)
 
-	if err := copyConfigFiles(sourceClient, targetClient, configs); err != nil {
+	if err := copyConfigFiles(sourceClient, targetClient, configs, migrationLogger); err != nil {
 		migrationLogger.Printf(ERROR, "Failed to copy config files for package %s: %v\n", packageName, err)
 		return fmt.Errorf("failed to copy config files: %v", err)
 	}

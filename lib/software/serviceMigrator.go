@@ -45,7 +45,7 @@ func cleanServiceName(name string) string {
 	return cleaned
 }
 
-func getRealServiceName(client *ssh.Client, name string) (string, error) {
+func getRealServiceName(client *ssh.Client, name string, migrationLogger *Logger) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
@@ -89,7 +89,7 @@ func getRealServiceName(client *ssh.Client, name string) (string, error) {
 	return name, nil
 }
 
-func getServiceInfo(client *ssh.Client, name string) ServiceInfo {
+func getServiceInfo(client *ssh.Client, name string, migrationLogger *Logger) ServiceInfo {
 	migrationLogger.Printf(INFO, "Getting service info for: %s\n", name)
 
 	info := ServiceInfo{
@@ -137,7 +137,7 @@ func getServiceInfo(client *ssh.Client, name string) ServiceInfo {
 					}
 				}
 			case "alias":
-				if realName, err := getRealServiceName(client, name); err == nil {
+				if realName, err := getRealServiceName(client, name, migrationLogger); err == nil {
 					info.Name = realName
 					newSession, err := client.NewSession()
 					if err == nil {
@@ -247,7 +247,7 @@ func findPackageRelatedServices(client *ssh.Client, packageName string) ([]strin
 	return services, nil
 }
 
-func findServices(client *ssh.Client, name string) []ServiceInfo {
+func findServices(client *ssh.Client, name string, migrationLogger *Logger) []ServiceInfo {
 	migrationLogger.Printf(INFO, "Finding services for package: %s\n", name)
 
 	var services []ServiceInfo
@@ -260,7 +260,7 @@ func findServices(client *ssh.Client, name string) []ServiceInfo {
 	if err != nil {
 		migrationLogger.Printf(WARN, "Failed to find services for package: %v\n", err)
 		migrationLogger.Printf(INFO, "Trying to find real service name for package: %s\n", name)
-		realName, err := getRealServiceName(client, name)
+		realName, err := getRealServiceName(client, name, migrationLogger)
 		if err != nil {
 			migrationLogger.Printf(WARN, "Failed to find real service name for package: %v\n", err)
 		}
@@ -277,7 +277,7 @@ func findServices(client *ssh.Client, name string) []ServiceInfo {
 	migrationLogger.Printf(INFO, "Found %d relevant services for package\n", len(filteredServices))
 
 	for _, serviceName := range filteredServices {
-		info := getServiceInfo(client, serviceName)
+		info := getServiceInfo(client, serviceName, migrationLogger)
 		services = append(services, info)
 	}
 
@@ -285,7 +285,7 @@ func findServices(client *ssh.Client, name string) []ServiceInfo {
 	return services
 }
 
-func getSystemType(client *ssh.Client) (SystemType, error) {
+func getSystemType(client *ssh.Client, migrationLogger *Logger) (SystemType, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
@@ -325,23 +325,18 @@ func getSystemType(client *ssh.Client) (SystemType, error) {
 	}
 }
 
-func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string) error {
-	if err := initLoggerWithUUID(uuid); err != nil {
-		return fmt.Errorf("failed to initialize logger: %v", err)
-	}
-	defer migrationLogger.Close()
-
+func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting service migration for package: %s (UUID: %s)\n", packageName, uuid)
 
 	migrationLogger.Printf(DEBUG, "Detecting source system type\n")
-	sourceType, err := getSystemType(sourceClient)
+	sourceType, err := getSystemType(sourceClient, migrationLogger)
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to detect source system type: %v\n", err)
 		return fmt.Errorf("failed to detect source system type: %v", err)
 	}
 
 	migrationLogger.Printf(DEBUG, "Detecting target system type\n")
-	targetType, err := getSystemType(targetClient)
+	targetType, err := getSystemType(targetClient, migrationLogger)
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to detect target system type: %v\n", err)
 		return fmt.Errorf("failed to detect target system type: %v", err)
@@ -352,7 +347,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		return fmt.Errorf("system type mismatch: source=%v, target=%v", sourceType, targetType)
 	}
 
-	services := findServices(sourceClient, packageName)
+	services := findServices(sourceClient, packageName, migrationLogger)
 	if len(services) == 0 {
 		migrationLogger.Printf(WARN, "No services found for package: %s\n", packageName)
 		return nil
@@ -486,7 +481,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		}
 		_ = session.Close()
 
-		err = listenPortsValidator(sourceClient, targetClient, service.Name, uuid)
+		err = listenPortsValidator(sourceClient, targetClient, service.Name, migrationLogger)
 		if err != nil {
 			issues = append(issues, err.Error())
 		}

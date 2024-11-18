@@ -16,10 +16,8 @@ type Logger struct {
 	fpLog  *os.File
 }
 
-var migrationLogger *Logger
-
-func initLoggerWithUUID(uuid string) error {
-	migrationLogger = &Logger{}
+func initLoggerWithUUID(uuid string) (*Logger, error) {
+	var migrationLogger = &Logger{}
 
 	logPath := filepath.Join(
 		config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder,
@@ -170,25 +168,25 @@ func (l *Logger) Panicf(logLevel string, format string, a ...any) {
 }
 
 // Init : Initialize log file
-func (l *Logger) Init(logPath, logFileName string) error {
+func (l *Logger) Init(logPath, logFileName string) (*Logger, error) {
 	var err error
 
 	if _, err = os.Stat(logPath); os.IsNotExist(err) {
 		err = fileutil.CreateDirIfNotExist(logPath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	l.fpLog, err = os.OpenFile(filepath.Join(logPath, logFileName), os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
 	if err != nil {
 		l.logger = log.New(io.Writer(os.Stdout), "", log.Ldate|log.Ltime)
-		return err
+		return nil, err
 	}
 
 	l.logger = log.New(io.Writer(l.fpLog), "", log.Ldate|log.Ltime)
 
-	return nil
+	return l, nil
 }
 
 // Close : Close log file

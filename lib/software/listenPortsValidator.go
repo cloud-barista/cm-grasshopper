@@ -196,7 +196,7 @@ func findPIDByInode(client *ssh.Client, password, inode string, pids []string) (
 	return 0, fmt.Errorf("failed to find PID for inode: %s", inode)
 }
 
-func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName string) error {
+func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting service migration for package: %s\n", serviceName)
 
 	migrationLogger.Printf(DEBUG, "Detecting source PID\n")
@@ -366,13 +366,8 @@ func readProgramName(client *ssh.Client, password string, pid int) string {
 	return strings.ReplaceAll(strings.TrimSpace(out.String()), "\x00", " ")
 }
 
-func listenPortsValidator(sourceClient *ssh.Client, targetClient *ssh.Client, serviceName, uuid string) error {
-	if err := initLoggerWithUUID(uuid); err != nil {
-		return fmt.Errorf("failed to initialize logger: %v", err)
-	}
-	defer migrationLogger.Close()
-
-	err := compareServicePorts(sourceClient, targetClient, serviceName)
+func listenPortsValidator(sourceClient *ssh.Client, targetClient *ssh.Client, serviceName string, migrationLogger *Logger) error {
+	err := compareServicePorts(sourceClient, targetClient, serviceName, migrationLogger)
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Error during comparison: %v\n", err)
 		return err
