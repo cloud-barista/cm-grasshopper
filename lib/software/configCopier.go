@@ -454,9 +454,113 @@ rm -f "$tmp_result"`
 	return configs, nil
 }
 
-func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile, migrationLogger *Logger) error {
-	migrationLogger.Printf(INFO, "Starting config files copy process for %d files\n", len(configs))
+type DirectoryRef struct {
+	Path  string
+	Perms string
+	UID   string
+	GID   string
+}
 
+func getDirInfo(client *ssh.Client, dirPath string, seen map[string]bool) DirectoryRef {
+	seen[dirPath] = true
+
+	statCmd := fmt.Sprintf("stat -c '%%a|%%u|%%g' '%s'", dirPath)
+	session, err := client.NewSession()
+	if err != nil {
+		return DirectoryRef{Path: dirPath, Perms: "755", UID: "0", GID: "0"}
+	}
+	defer func() {
+		_ = session.Close()
+	}()
+
+	statOutput, err := session.CombinedOutput(sudoWrapper(statCmd, client.SSHTarget.Password))
+	if err != nil {
+		return DirectoryRef{Path: dirPath, Perms: "755", UID: "0", GID: "0"}
+	}
+
+	parts := strings.Split(strings.TrimSpace(string(statOutput)), "|")
+	if len(parts) == 3 {
+		return DirectoryRef{
+			Path:  dirPath,
+			Perms: parts[0],
+			UID:   parts[1],
+			GID:   parts[2],
+		}
+	}
+
+	return DirectoryRef{Path: dirPath, Perms: "755", UID: "0", GID: "0"}
+}
+
+func isNfsExportContent(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && strings.HasPrefix(fields[0], "/") &&
+			strings.Contains(line, "(") && strings.Contains(line, ")") {
+			return true
+		}
+	}
+	return false
+}
+
+func findReferencedDirectories(sourceClient *ssh.Client, filePath string) ([]DirectoryRef, error) {
+	session, err := sourceClient.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("ssh session creation failed: %v", err)
+	}
+	defer func() {
+		_ = session.Close()
+	}()
+
+	catCmd := fmt.Sprintf("cat '%s'", filePath)
+	output, err := session.CombinedOutput(sudoWrapper(catCmd, sourceClient.SSHTarget.Password))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+
+	content := string(output)
+	var dirs []DirectoryRef
+	seen := make(map[string]bool)
+
+	if isNfsExportContent(content) {
+		for _, line := range strings.Split(content, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			fields := strings.Fields(line)
+			if len(fields) >= 2 && strings.HasPrefix(fields[0], "/") {
+				dirPath := fields[0]
+				if !seen[dirPath] {
+					dirs = append(dirs, getDirInfo(sourceClient, dirPath, seen))
+				}
+			}
+		}
+	} else {
+		dirPattern := regexp.MustCompile(`(?i)(directory|path|root|DocumentRoot|datadir|log_path|socket)\s*[=:]\s*["']?(/[^"'\s]+)`)
+		for _, line := range strings.Split(content, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			matches := dirPattern.FindStringSubmatch(line)
+			if len(matches) > 2 {
+				dirPath := matches[2]
+				if !seen[dirPath] {
+					dirs = append(dirs, getDirInfo(sourceClient, dirPath, seen))
+				}
+			}
+		}
+	}
+
+	return dirs, nil
+}
+
+func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile, migrationLogger *Logger) error {
 	for i, conf := range configs {
 		migrationLogger.Printf(INFO, "Processing config file %d/%d: %s\n", i+1, len(configs), conf.Path)
 
@@ -465,8 +569,33 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 			continue
 		}
 
-		migrationLogger.Printf(INFO, "Copying config file: %s [Status: %s]\n", conf.Path, conf.Status)
-		err := copyFile(sourceClient, targetClient, conf.Path, migrationLogger)
+		migrationLogger.Printf(INFO, "Finding referenced directories in %s\n", conf.Path)
+		dirs, err := findReferencedDirectories(sourceClient, conf.Path)
+		if err != nil {
+			migrationLogger.Printf(WARN, "Error finding referenced directories in %s: %v\n", conf.Path, err)
+		} else if len(dirs) > 0 {
+			for _, dir := range dirs {
+				cmd := fmt.Sprintf("mkdir -p '%s' && chown %s:%s '%s' && chmod %s '%s'",
+					dir.Path, dir.UID, dir.GID, dir.Path, dir.Perms, dir.Path)
+
+				migrationLogger.Printf(DEBUG, "Creating directory with permissions - Path: %s, UID: %s, GID: %s, Perms: %s\n",
+					dir.Path, dir.UID, dir.GID, dir.Perms)
+
+				session, err := targetClient.NewSession()
+				if err != nil {
+					continue
+				}
+
+				if output, err := session.CombinedOutput(sudoWrapper(cmd, targetClient.SSHTarget.Password)); err != nil {
+					migrationLogger.Printf(WARN, "Failed to create directory %s: %s\n", dir.Path, string(output))
+				} else {
+					migrationLogger.Printf(INFO, "Successfully created directory  %s\n", dir.Path)
+				}
+				_ = session.Close()
+			}
+		}
+
+		err = copyFile(sourceClient, targetClient, conf.Path, migrationLogger)
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to copy config file %s: %v\n", conf.Path, err)
 			return fmt.Errorf("failed to copy file %s: %v", conf.Path, err)
@@ -495,8 +624,8 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 		}
 
 		migrationLogger.Printf(INFO, "Successfully processed config file: %s\n", conf.Path)
-	}
 
+	}
 	migrationLogger.Printf(INFO, "Completed config files copy process\n")
 	return nil
 }
