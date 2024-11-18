@@ -1,39 +1,52 @@
 package db
 
 import (
-	"embed"
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/glebarez/sqlite"
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
 	"gorm.io/gorm"
+	"io"
 	"os"
 )
-
-//go:embed softwares.db
-var embeddedDB embed.FS
 
 var SoftwaresDB *gorm.DB
 var DB *gorm.DB
 
-func copyEmbeddedDB(dst string) error {
-	dbBytes, err := embeddedDB.ReadFile("softwares.db")
+func copyFile(src string, dst string) (err error) {
+	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = sourceFile.Close()
+	}()
 
-	return os.WriteFile(dst, dbBytes, 0644)
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = destFile.Close()
+	}()
+
+	_, err = io.Copy(destFile, sourceFile)
+
+	return err
 }
 
 func Open() error {
 	var err error
 
+	sourceDB := "softwares.db"
 	targetPath := common.RootPath + "/softwares.db"
 	if !fileutil.IsExist(targetPath) {
-		err := copyEmbeddedDB(targetPath)
-		if err != nil {
-			return err
+		if fileutil.IsExist(sourceDB) {
+			err := copyFile(sourceDB, targetPath)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
