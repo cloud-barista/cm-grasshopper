@@ -200,6 +200,17 @@ func RegisterSoftware(c echo.Context) error {
 		needToDeletePackages = needToDeletePackages[:len(needToDeletePackages)-1]
 	}
 
+	var customConfigs string
+	if len(softwareRegisterReq.CustomConfigs) > 0 {
+		for _, customConfig := range softwareRegisterReq.CustomConfigs {
+			if strings.Contains(customConfig, ",") {
+				return common.ReturnErrorMsg(c, "Each name of custom_configs should not contain ','")
+			}
+			customConfigs += customConfig + ","
+		}
+		customConfigs = customConfigs[:len(customConfigs)-1]
+	}
+
 	var id = uuid.New().String()
 
 	sw := model.Software{
@@ -213,6 +224,7 @@ func RegisterSoftware(c echo.Context) error {
 		MatchNames:           matchNames,
 		NeededPackages:       neededPackages,
 		NeedToDeletePackages: needToDeletePackages,
+		CustomConfigs:        customConfigs,
 		RepoURL:              softwareRegisterReq.RepoURL,
 		GPGKeyURL:            softwareRegisterReq.GPGKeyURL,
 		RepoUseOSVersionCode: softwareRegisterReq.RepoUseOSVersionCode,

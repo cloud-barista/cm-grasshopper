@@ -496,6 +496,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "custom_configs": {
+                    "type": "string"
+                },
                 "gpg_key_url": {
                     "type": "string"
                 },
@@ -589,6 +592,12 @@ const docTemplate = `{
             "properties": {
                 "architecture": {
                     "type": "string"
+                },
+                "custom_configs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "gpg_key_url": {
                     "type": "string"

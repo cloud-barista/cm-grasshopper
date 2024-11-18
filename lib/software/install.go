@@ -6,6 +6,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/jollaman999/utils/logger"
+	"strings"
 	"time"
 )
 
@@ -93,6 +94,32 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+					updateStatus(i, "failed", err.Error(), false)
+
+					return
+				}
+
+				sw, err := dao.SoftwareGet(execution.SoftwareID)
+				if err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+					updateStatus(i, "failed", err.Error(), false)
+
+					return
+				}
+
+				migrationLogger.Printf(INFO, "Starting to copy custom configs")
+				var customConfigs []ConfigFile
+				for _, customConfig := range strings.Split(sw.CustomConfigs, ",") {
+					customConfigs = append(customConfigs, ConfigFile{
+						Path:   customConfig,
+						Status: "Custom",
+					})
+				}
+				err = copyConfigFiles(s, t, customConfigs)
+				if err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
 					updateStatus(i, "failed", err.Error(), false)
 
 					return

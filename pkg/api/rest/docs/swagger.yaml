@@ -58,6 +58,8 @@ definitions:
         type: string
       created_at:
         type: string
+      custom_configs:
+        type: string
       gpg_key_url:
         type: string
       install_type:
@@ -126,6 +128,10 @@ definitions:
     properties:
       architecture:
         type: string
+      custom_configs:
+        items:
+          type: string
+        type: array
       gpg_key_url:
         type: string
       install_type:

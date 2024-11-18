@@ -9,6 +9,9 @@
   "needed_packages": [
     "nfs-kernel-server"
   ],
+  "custom_configs": [
+    "/etc/exports"
+  ],
   "os": "Ubuntu",
   "os_version": "22.04",
   "version": "latest"

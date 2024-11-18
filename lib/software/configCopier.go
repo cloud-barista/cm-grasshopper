@@ -269,6 +269,22 @@ EOL
 	return nil
 }
 
+func parseConfigLine(line string) ConfigFile {
+	migrationLogger.Printf(DEBUG, "Parsing config line: %s\n", line)
+
+	parts := strings.SplitN(line, " [", 2)
+	conf := ConfigFile{
+		Path: strings.TrimSpace(parts[0]),
+	}
+
+	if len(parts) > 1 {
+		conf.Status = strings.TrimSuffix(parts[1], "]")
+	}
+
+	migrationLogger.Printf(DEBUG, "Parsed config - Path: %s, Status: %s\n", conf.Path, conf.Status)
+	return conf
+}
+
 func findConfigs(client *ssh.Client, packageName string) ([]ConfigFile, error) {
 	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
 
@@ -438,21 +454,6 @@ rm -f "$tmp_result"`
 	return configs, nil
 }
 
-func parseConfigLine(line string) ConfigFile {
-	migrationLogger.Printf(DEBUG, "Parsing config line: %s\n", line)
-
-	parts := strings.SplitN(line, " [", 2)
-	conf := ConfigFile{
-		Path: strings.TrimSpace(parts[0]),
-	}
-
-	if len(parts) > 1 {
-		conf.Status = strings.TrimSuffix(parts[1], "]")
-	}
-
-	migrationLogger.Printf(DEBUG, "Parsed config - Path: %s, Status: %s\n", conf.Path, conf.Status)
-	return conf
-}
 func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs []ConfigFile) error {
 	migrationLogger.Printf(INFO, "Starting config files copy process for %d files\n", len(configs))
 

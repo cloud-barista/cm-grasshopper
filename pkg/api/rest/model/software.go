@@ -46,6 +46,7 @@ type Software struct {
 	MatchNames           string    `gorm:"match_names" json:"match_names" validate:"required"`
 	NeededPackages       string    `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages string    `json:"need_to_delete_packages"`
+	CustomConfigs        string    `json:"custom_configs"`
 	RepoURL              string    `json:"repo_url"`
 	GPGKeyURL            string    `json:"gpg_key_url"`
 	RepoUseOSVersionCode bool      `json:"repo_use_os_version_code" default:"false"`
@@ -73,6 +74,7 @@ type SoftwareRegisterReq struct {
 	MatchNames           []string `json:"match_names" validate:"required"`
 	NeededPackages       []string `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages []string `json:"need_to_delete_packages"`
+	CustomConfigs        []string `json:"custom_configs"`
 	RepoURL              string   `json:"repo_url"`
 	GPGKeyURL            string   `json:"gpg_key_url"`
 	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
