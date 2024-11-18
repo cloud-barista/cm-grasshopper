@@ -247,35 +247,42 @@ func findPackageRelatedServices(client *ssh.Client, packageName string) ([]strin
 	return services, nil
 }
 
-func findServices(client *ssh.Client, name string) ([]ServiceInfo, error) {
+func findServices(client *ssh.Client, name string) []ServiceInfo {
 	migrationLogger.Printf(INFO, "Finding services for package: %s\n", name)
 
 	var services []ServiceInfo
+	var foundServiceNames []string
+	var filteredServices []string
 	processedServices := make(map[string]bool)
-	var allServices []string
+	var err error
 
-	pkgServices, err := findPackageRelatedServices(client, name)
+	foundServiceNames, err = findPackageRelatedServices(client, name)
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to find services for package: %v\n", err)
-		return nil, err
+		migrationLogger.Printf(WARN, "Failed to find services for package: %v\n", err)
+		migrationLogger.Printf(INFO, "Trying to find real service name for package: %s\n", name)
+		realName, err := getRealServiceName(client, name)
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to find real service name for package: %v\n", err)
+		}
+		foundServiceNames = append(foundServiceNames, realName)
 	}
 
-	for _, serviceName := range pkgServices {
+	for _, serviceName := range foundServiceNames {
 		if !processedServices[serviceName] && !isSystemService(serviceName) {
-			allServices = append(allServices, serviceName)
+			filteredServices = append(filteredServices, serviceName)
 			processedServices[serviceName] = true
 		}
 	}
 
-	migrationLogger.Printf(INFO, "Found %d relevant services for package\n", len(allServices))
+	migrationLogger.Printf(INFO, "Found %d relevant services for package\n", len(filteredServices))
 
-	for _, serviceName := range allServices {
+	for _, serviceName := range filteredServices {
 		info := getServiceInfo(client, serviceName)
 		services = append(services, info)
 	}
 
 	migrationLogger.Printf(INFO, "Completed service discovery with %d services\n", len(services))
-	return services, nil
+	return services
 }
 
 func getSystemType(client *ssh.Client) (SystemType, error) {
@@ -345,15 +352,10 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		return fmt.Errorf("system type mismatch: source=%v, target=%v", sourceType, targetType)
 	}
 
-	services, err := findServices(sourceClient, packageName)
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to get services from source: %v\n", err)
-		return fmt.Errorf("failed to get services from source: %v", err)
-	}
-
+	services := findServices(sourceClient, packageName)
 	if len(services) == 0 {
-		migrationLogger.Printf(ERROR, "No services found for package: %s\n", packageName)
-		return fmt.Errorf("no services found for package: %s", packageName)
+		migrationLogger.Printf(WARN, "No services found for package: %s\n", packageName)
+		return nil
 	}
 
 	migrationLogger.Printf(INFO, "Stopping services in dependency order\n")
