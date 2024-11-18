@@ -108,21 +108,24 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 					return
 				}
 
-				migrationLogger.Printf(INFO, "Starting to copy custom configs")
-				var customConfigs []ConfigFile
-				for _, customConfig := range strings.Split(sw.CustomConfigs, ",") {
-					customConfigs = append(customConfigs, ConfigFile{
-						Path:   customConfig,
-						Status: "Custom",
-					})
-				}
-				err = copyConfigFiles(s, t, customConfigs)
-				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
+				customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
+				if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
+					migrationLogger.Printf(INFO, "Starting to copy custom configs")
+					var customConfigs []ConfigFile
+					for _, customConfig := range customConfigsSplit {
+						customConfigs = append(customConfigs, ConfigFile{
+							Path:   customConfig,
+							Status: "Custom",
+						})
+					}
+					err = copyConfigFiles(s, t, customConfigs)
+					if err != nil {
+						logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+							", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
+						updateStatus(i, "failed", err.Error(), false)
 
-					return
+						return
+					}
 				}
 
 				err = serviceMigrator(s, t, execution.SoftwareName, executionID)
