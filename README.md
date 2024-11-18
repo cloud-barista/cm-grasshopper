@@ -99,28 +99,12 @@ curl -X 'GET' \
     "match_names": "docker,docker-ce,docker.io",
     "needed_packages": "docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin",
     "need_to_delete_packages": "docker.io,docker-doc,docker-compose,docker-compose-v2,podman-docker,containerd,runc",
+    "custom_configs": "",
     "repo_url": "https://download.docker.com/linux/ubuntu",
     "gpg_key_url": "https://download.docker.com/linux/ubuntu/gpg",
     "repo_use_os_version_code": true,
     "created_at": "2024-11-04T19:04:03.192747727+09:00",
     "updated_at": "2024-11-04T19:04:03.192747727+09:00"
-  },
-  {
-    "uuid": "aaf49384-1a7c-4b91-9fdc-c7c46aed0882",
-    "install_type": "package",
-    "name": "nfs-kernel-server",
-    "version": "latest",
-    "os": "Ubuntu",
-    "os_version": "22.04",
-    "architecture": "x86_64",
-    "match_names": "nfs-server,nfs-kernel-server",
-    "needed_packages": "nfs-kernel-server",
-    "need_to_delete_packages": "",
-    "repo_url": "",
-    "gpg_key_url": "",
-    "repo_use_os_version_code": false,
-    "created_at": "2024-11-04T20:15:00.877746444+09:00",
-    "updated_at": "2024-11-04T20:15:00.877746444+09:00"
   },
   {
     "uuid": "aa34795f-3401-4c28-bbe9-157a5788fd75",
@@ -133,11 +117,30 @@ curl -X 'GET' \
     "match_names": "nginx",
     "needed_packages": "nginx",
     "need_to_delete_packages": "",
+    "custom_configs": "",
     "repo_url": "",
     "gpg_key_url": "",
     "repo_use_os_version_code": false,
     "created_at": "2024-11-04T20:19:03.437025609+09:00",
     "updated_at": "2024-11-04T20:19:03.437025609+09:00"
+  },
+  {
+    "uuid": "aaf49384-1a7c-4b91-9fdc-c7c46aed0882",
+    "install_type": "package",
+    "name": "nfs-kernel-server",
+    "version": "latest",
+    "os": "Ubuntu",
+    "os_version": "22.04",
+    "architecture": "x86_64",
+    "match_names": "nfs-server,nfs-kernel-server",
+    "needed_packages": "nfs-kernel-server",
+    "need_to_delete_packages": "",
+    "custom_configs": "/etc/exports",
+    "repo_url": "",
+    "gpg_key_url": "",
+    "repo_use_os_version_code": false,
+    "created_at": "2024-11-18T19:49:29.408259006+09:00",
+    "updated_at": "2024-11-18T19:49:29.408259006+09:00"
   }
 ]
 ```
