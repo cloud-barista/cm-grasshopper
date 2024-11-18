@@ -4,7 +4,8 @@ services:
     restart: always
     image: cloudbaristaorg/cm-grasshopper:edge
     volumes:
-      #- ./CM-GRASSHOPPER.db:/CM-GRASSHOPPER.db:rw
+      #- ./softwares.db:/root/.cm-grasshopper/softwares.db:rw
+      #- ./CM-GRASSHOPPER.db:/root/.cm-grasshopper/CM-GRASSHOPPER.db:rw
       #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       #- ./playbook:/playbook/:rw
       - ./software_temp:/software_temp:rw
