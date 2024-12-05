@@ -155,13 +155,19 @@ func RegisterSoftware(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the version")
 	}
 
-	if softwareRegisterReq.InstallType != "container" {
+	if softwareRegisterReq.InstallType == "package" {
 		if softwareRegisterReq.OS == "" {
 			return common.ReturnErrorMsg(c, "Please provide the os")
 		}
 
 		if softwareRegisterReq.OSVersion == "" {
 			return common.ReturnErrorMsg(c, "Please provide the os version")
+		}
+	}
+
+	if softwareRegisterReq.InstallType == "helm" {
+		if softwareRegisterReq.RepoURL == "" {
+			return common.ReturnErrorMsg(c, "Please provide the repo url")
 		}
 	}
 

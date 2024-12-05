@@ -13,6 +13,8 @@ func CheckInstallType(input string) error {
 		fallthrough
 	case "container":
 		fallthrough
+	case "helm":
+		fallthrough
 	case "script":
 		return nil
 	default:
