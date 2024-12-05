@@ -11,6 +11,8 @@ func CheckInstallType(input string) error {
 	switch input {
 	case "package":
 		fallthrough
+	case "container":
+		fallthrough
 	case "script":
 		return nil
 	default:
