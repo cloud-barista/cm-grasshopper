@@ -78,15 +78,13 @@ type SoftwareRegisterReq struct {
 	MatchNames           []string `json:"match_names" validate:"required"`
 	NeededPackages       []string `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages []string `json:"need_to_delete_packages"`
+	NeededLibraries      []string `json:"needed_libraries"`
+	BinaryPath           string   `json:"binary_path,omitempty"`
+	CustomDataPaths      []string `json:"custom_data_paths"`
 	CustomConfigs        []string `json:"custom_configs"`
 	RepoURL              string   `json:"repo_url"`
 	GPGKeyURL            string   `json:"gpg_key_url"`
 	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
-}
-
-type SoftwareInfo struct {
-	Name    string `json:"name" validate:"required"`
-	Version string `json:"version" validate:"required"`
 }
 
 type MigrationSoftwareInfo struct {
