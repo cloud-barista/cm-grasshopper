@@ -1,0 +1,4 @@
+packages_to_install:
+  - php8.1-fpm
+packages_to_delete: []
+repo_use_os_version_code: false

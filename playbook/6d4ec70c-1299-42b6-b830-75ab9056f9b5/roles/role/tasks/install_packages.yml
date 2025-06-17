@@ -1,0 +1,32 @@
+- name: Remove deb package (Debian family)
+  apt:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ packages_to_delete }}"
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - packages_to_delete | length > 0
+
+- name: Remove rpm package (Redhat family)
+  yum:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ packages_to_delete }}"
+  when:
+    - ansible_facts['os_family'] == "RedHat"
+    - packages_to_delete | length > 0
+
+- name: Install deb package (Debian family)
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop: "{{ packages_to_install }}"
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install rpm package (Redhat family)
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ packages_to_install }}"
+  when: ansible_facts['os_family'] == "RedHat"

@@ -1,0 +1,6 @@
+- name: Install php8.1-mbstring
+  hosts: 127.0.0.1
+  force_handlers: true
+
+  roles:
+    - role

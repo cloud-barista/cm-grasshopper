@@ -1,0 +1,136 @@
+- name: Add GPG key and repository for Debian-based systems
+  block:
+    - name: Check existing repository configuration
+      find:
+        paths: /etc/apt/sources.list.d
+        patterns: '*.list'
+      register: sources_files
+
+    - name: Check repository content
+      shell: "cat {{ item.path }} | grep -v '^#' | grep '{{ repo_url }}' || true"
+      register: repo_check
+      with_items: "{{ sources_files.files }}"
+      changed_when: false
+
+    - name: Set fact for repository existence
+      set_fact:
+        repo_exists: "{{ repo_check.results | map(attribute='stdout') | select('string') | list | length > 0 }}"
+
+    - name: Install repository and GPG key
+      block:
+        - name: Download GPG key to a temporary location
+          get_url:
+            url: "{{ gpg_key_url }}"
+            dest: "/tmp/php8.1-mbstring.gpg"
+            mode: '0644'
+            force: no
+          when: not repo_exists
+
+        - name: Get fingerprint of downloaded key
+          shell: gpg --with-fingerprint --with-colons /tmp/php8.1-mbstring.gpg | awk -F ':' '/fpr:/ { print $10; exit }'
+          register: new_key_fingerprint
+          changed_when: false
+          when: not repo_exists
+
+        - name: Find existing keyring files in /usr/share/keyrings
+          find:
+            paths: /usr/share/keyrings
+            patterns: "*.gpg"
+          register: usr_keyring_files
+          when: not repo_exists
+
+        - name: Find existing keyring files in trusted.gpg.d
+          find:
+            paths: /etc/apt/trusted.gpg.d
+            patterns: "*.gpg"
+          register: trusted_keyring_files
+          when: not repo_exists
+
+        - name: Check fingerprints in usr keyrings
+          shell: "gpg --with-fingerprint --with-colons {{ item.path }} | awk -F ':' '/fpr:/ { print $10; exit }' || true"
+          register: usr_keyring_fingerprints
+          with_items: "{{ usr_keyring_files.files }}"
+          changed_when: false
+          when: not repo_exists
+
+        - name: Check fingerprints in trusted keyrings
+          shell: "gpg --with-fingerprint --with-colons {{ item.path }} | awk -F ':' '/fpr:/ { print $10; exit }' || true"
+          register: trusted_keyring_fingerprints
+          with_items: "{{ trusted_keyring_files.files }}"
+          changed_when: false
+          when: not repo_exists
+
+        - name: Set fact for key existence
+          set_fact:
+            key_exists: >-
+              {{
+                new_key_fingerprint.stdout in (usr_keyring_fingerprints.results | map(attribute='stdout') | select('string') | list) or
+                new_key_fingerprint.stdout in (trusted_keyring_fingerprints.results | map(attribute='stdout') | select('string') | list)
+              }}
+          when: not repo_exists
+
+        - name: Create keyrings directory if it doesn't exist
+          file:
+            path: /usr/share/keyrings
+            state: directory
+            mode: '0755'
+          when: not repo_exists and not key_exists
+
+        - name: Dearmor and install GPG key if needed
+          shell: |
+            if file "/tmp/php8.1-mbstring.gpg" | grep -q -e "text" -e "PGP public key block"; then
+              gpg --dearmor < /tmp/php8.1-mbstring.gpg > /usr/share/keyrings/php8.1-mbstring.gpg
+            else
+              cp /tmp/php8.1-mbstring.gpg /usr/share/keyrings/php8.1-mbstring.gpg
+            fi
+          args:
+            executable: /bin/bash
+          when: not repo_exists and not key_exists
+
+        - name: Set correct permissions for GPG key
+          file:
+            path: /usr/share/keyrings/php8.1-mbstring.gpg
+            mode: '0644'
+          when: not repo_exists and not key_exists
+
+        - name: Get the codename of the OS
+          command: lsb_release -cs
+          register: os_codename
+          when: ansible_os_family == "Debian" and not repo_exists
+
+        - name: Add repository for Debian-based systems
+          lineinfile:
+            path: /etc/apt/sources.list.d/php8.1-mbstring.list
+            line: >
+              deb [signed-by=/usr/share/keyrings/php8.1-mbstring.gpg] {{ repo_url }} {{ os_codename.stdout + ' stable' if repo_use_os_version_code else 'stable main' }}
+            create: yes
+          when: not repo_exists
+
+        - name: Clean up temporary GPG key
+          file:
+            path: "/tmp/php8.1-mbstring.gpg"
+            state: absent
+          when: not repo_exists
+  when: ansible_os_family == "Debian"
+
+- name: Add GPG key and repository for Red Hat-based systems
+  block:
+    - name: Install yum-utils for Red Hat-based systems
+      yum:
+        name: yum-utils
+        state: present
+
+    - name: Add repository for Red Hat-based systems
+      command: yum-config-manager --add-repo {{ repo_url }}
+
+    - name: Import GPG key for Red Hat-based systems
+      rpm_key:
+        key: "{{ gpg_key_url }}"
+        state: present
+      when:
+        - gpg_key_url is defined
+        - gpg_key_url != ""
+
+    - name: Update yum cache for Red Hat-based systems
+      command: yum makecache
+  when: ansible_os_family == "RedHat"
