@@ -3,6 +3,7 @@ package software
 import (
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
+	"io"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -17,27 +18,21 @@ func sudoWrapper(cmd string, password string) string {
 	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.Replace(cmd, "'", "'\"'\"'", -1))
 }
 
+func getScript(scriptName string) (string, error) {
+	content, err := scriptsFS.ReadFile(fmt.Sprintf("scripts/%s", scriptName))
+	if err != nil {
+		return "", fmt.Errorf("failed to read script %s: %v", scriptName, err)
+	}
+	return string(content), nil
+}
+
 func findCertKeyPaths(client *ssh.Client, filePath string, migrationLogger *Logger) ([]string, error) {
 	migrationLogger.Printf(INFO, "Finding certificate and key paths in file: %s\n", filePath)
 
-	cmd := fmt.Sprintf(`
-        grep -i -E '(ssl|tls)_(certificate|key|trusted_certificate|client_certificate|dhparam)|key_file|cert_file|ca_file|private_key|public_key|certificate|keyfile|certfile|cafile' '%s' 2>/dev/null || true
-    `, filePath)
-
-	session, err := client.NewSession()
+	output, err := executeScript(client, "cert_key_finder.sh", filePath)
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
-		return nil, fmt.Errorf("ssh session creation failed: %v", err)
-	}
-	defer func() {
-		_ = session.Close()
-	}()
-
-	migrationLogger.Printf(DEBUG, "Executing grep command for cert/key paths\n")
-	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to execute grep command: %v\n", err)
-		return nil, fmt.Errorf("command execution failed: %v", err)
+		migrationLogger.Printf(ERROR, "Failed to execute cert key finder: %v\n", err)
+		return nil, fmt.Errorf("cert key finder failed: %v", err)
 	}
 
 	paths := make([]string, 0)
@@ -288,148 +283,7 @@ func parseConfigLine(line string, migrationLogger *Logger) ConfigFile {
 func findConfigs(client *ssh.Client, packageName string, migrationLogger *Logger) ([]ConfigFile, error) {
 	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
 
-	cmd := `#!/bin/sh
-# Package name from argument
-pkg="%s"
-
-# Find included config files and referenced directories
-check_includes() {
-    local file="$1"
-    {
-        # Find include directives with quotes
-        grep -i "include.*[\"'].*[\"']" "$file" 2>/dev/null | grep -o "[\"'][^\"']*[\"']" | tr -d "'\"" || true
-        # Find include directives without quotes
-        grep -i "^[[:space:]]*include[[:space:]]*[^\"']" "$file" 2>/dev/null | sed 's/.*include[[:space:]]*//g' | sed 's/#.*//g' || true
-        # Find configuration directories (.d pattern)
-        grep -i -E "(conf|config)\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
-        grep -i "\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
-    } | while read -r inc_path; do
-        # Convert relative paths to absolute
-        if [ "${inc_path#/}" = "$inc_path" ]; then
-            inc_path="$(dirname "$file")/$inc_path"
-        fi
-        # Handle wildcard patterns
-        if echo "$inc_path" | grep -q "[*]"; then
-            eval find $inc_path -type f 2>/dev/null || echo "$inc_path"
-        else
-            echo "$inc_path"
-        fi
-    done
-}
-
-# Check file status (Original/Modified/Custom)
-check_config_status() {
-    local file="$1"
-    local real_file=$(readlink -f "$file")
-    
-    if command -v dpkg >/dev/null 2>&1; then
-        # Find package that owns the file
-        local owner_pkg=$(dpkg -S "$real_file" 2>/dev/null | cut -d: -f1)
-        if [ -n "$owner_pkg" ]; then
-            if dpkg -V "$owner_pkg" 2>/dev/null | grep -q "^..5.* $real_file"; then
-                echo "$file [Modified]"
-            else
-                echo "$file"
-            fi
-        else
-            if [ "$file" != "$real_file" ] && dpkg -S "$file" >/dev/null 2>&1; then
-                echo "$file"
-            else
-                echo "$file [Custom]"
-            fi
-        fi
-    elif command -v rpm >/dev/null 2>&1; then
-        # Find package that owns the file
-        local owner_pkg=$(rpm -qf "$real_file" 2>/dev/null)
-        if [ -n "$owner_pkg" ]; then
-            if rpm -V "$owner_pkg" | grep -q "^..5.* $real_file"; then
-                echo "$file [Modified]"
-            else
-                echo "$file"
-            fi
-        else
-            if [ "$file" != "$real_file" ] && rpm -qf "$file" >/dev/null 2>&1; then
-                echo "$file"
-            else
-                echo "$file [Custom]"
-            fi
-        fi
-    else
-        echo "$file [Custom]"
-    fi
-}
-
-# Temporary file for collecting results
-tmp_result=$(mktemp)
-
-{
-    # Search using package manager
-    if command -v dpkg >/dev/null 2>&1; then
-        dpkg -L "$pkg" 2>/dev/null
-    elif command -v rpm >/dev/null 2>&1; then
-        rpm -ql "$pkg" 2>/dev/null
-    fi
-
-    # Search for config files in process arguments
-    ps aux | grep "$pkg" | grep -o '[[:space:]]/[^[:space:]]*'
-
-    # Search common config directories
-    for base in "/etc" "/usr/local/etc"; do
-        find "$base" -type f -path "*/$pkg*" ! -path "/etc/apt/*" 2>/dev/null
-        find "$base/$pkg" -type f ! -path "/etc/apt/*" 2>/dev/null 2>/dev/null
-    done
-
-    # Search systemd and init.d configurations
-    if [ -d "/etc/systemd" ]; then
-        find /etc/systemd -type f -exec grep -l "$pkg" {} \; 2>/dev/null
-    fi
-    
-    if [ -d "/etc/init.d" ]; then
-        find /etc/init.d -type f -exec grep -l "$pkg" {} \; 2>/dev/null
-    fi
-
-} | sort -u | while read -r file; do
-    # Filter config files by common patterns and backup files
-    if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
-        if [ -f "$file" ]; then
-            echo "$file" >> "$tmp_result"
-            check_includes "$file" | while read -r inc_file; do
-                if [ -f "$inc_file" ]; then
-                    echo "$inc_file" >> "$tmp_result"
-                fi
-            done
-        fi
-    # Check content of non-standard named files for config-like content
-    elif [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
-        if grep -i -E '(server|listen|port|host|config|ssl|virtual|root|location)' "$file" >/dev/null 2>&1; then
-            echo "$file" >> "$tmp_result"
-            check_includes "$file" | while read -r inc_file; do
-                if [ -f "$inc_file" ]; then
-                    echo "$inc_file" >> "$tmp_result"
-                fi
-            done
-        fi
-    fi
-done
-
-# Process and output unique results with status
-sort -u "$tmp_result" | while read -r file; do
-    check_config_status "$file"
-done
-
-rm -f "$tmp_result"`
-
-	migrationLogger.Printf(DEBUG, "Executing config search command\n")
-	session, err := client.NewSession()
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
-		return nil, fmt.Errorf("ssh session creation failed: %v", err)
-	}
-	defer func() {
-		_ = session.Close()
-	}()
-
-	output, err := session.CombinedOutput(sudoWrapper(fmt.Sprintf(cmd, packageName), client.SSHTarget.Password))
+	output, err := executeScript(client, "config_finder.sh", packageName)
 	if err != nil && len(output) == 0 {
 		migrationLogger.Printf(ERROR, "Failed to execute config search: %v\n", err)
 		return nil, fmt.Errorf("config search failed: %v", err)
@@ -627,6 +481,83 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 
 	}
 	migrationLogger.Printf(INFO, "Completed config files copy process\n")
+	return nil
+}
+
+func copyDirectoryWithTar(sourceClient *ssh.Client, targetClient *ssh.Client, dirPath string) error {
+	sourceSession, err := sourceClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create source session: %v", err)
+	}
+	defer func() {
+		_ = sourceSession.Close()
+	}()
+
+	targetSession, err := targetClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create target session: %v", err)
+	}
+	defer func() {
+		_ = targetSession.Close()
+	}()
+
+	createDirCmd := fmt.Sprintf("mkdir -p '%s'", dirPath)
+	if _, err := targetSession.CombinedOutput(sudoWrapper(createDirCmd, targetClient.SSHTarget.Password)); err != nil {
+		return fmt.Errorf("failed to create target directory: %v", err)
+	}
+
+	sourceCmd := sudoWrapper(fmt.Sprintf("cd '%s' && tar -czf - .", dirPath), sourceClient.SSHTarget.Password)
+	targetCmd := sudoWrapper(fmt.Sprintf("cd '%s' && tar -xzf -", dirPath), targetClient.SSHTarget.Password)
+
+	sourceSession2, err := sourceClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create source session: %v", err)
+	}
+	defer func() {
+		_ = sourceSession2.Close()
+	}()
+
+	targetSession2, err := targetClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create target session: %v", err)
+	}
+	defer func() {
+		_ = targetSession2.Close()
+	}()
+
+	sourceStdout, err := sourceSession2.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get source stdout pipe: %v", err)
+	}
+
+	targetStdin, err := targetSession2.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to get target stdin pipe: %v", err)
+	}
+
+	if err := sourceSession2.Start(sourceCmd); err != nil {
+		return fmt.Errorf("failed to start source command: %v", err)
+	}
+
+	if err := targetSession2.Start(targetCmd); err != nil {
+		return fmt.Errorf("failed to start target command: %v", err)
+	}
+
+	_, err = io.Copy(targetStdin, sourceStdout)
+	if err != nil {
+		return fmt.Errorf("failed to copy data: %v", err)
+	}
+
+	_ = targetStdin.Close()
+
+	if err := sourceSession2.Wait(); err != nil {
+		return fmt.Errorf("source command failed: %v", err)
+	}
+
+	if err := targetSession2.Wait(); err != nil {
+		return fmt.Errorf("target command failed: %v", err)
+	}
+
 	return nil
 }
 
