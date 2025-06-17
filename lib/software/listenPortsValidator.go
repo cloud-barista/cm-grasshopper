@@ -48,30 +48,25 @@ func GetServicePID(client *ssh.Client, serviceName, password string) (string, er
 func GetListeningConnections(client *ssh.Client, password string) ([]Connection, error) {
 	var connections []Connection
 
-	pids, err := getPIDs(client, password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pid list: %v", err)
-	}
-
-	tcpConnections, err := readProcNetFile(client, password, "tcp", false, pids)
+	tcpConnections, err := readProcNetFile(client, password, "tcp", false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TCPv4 connections: %v", err)
 	}
 	connections = append(connections, tcpConnections...)
 
-	tcp6Connections, err := readProcNetFile(client, password, "tcp6", true, pids)
+	tcp6Connections, err := readProcNetFile(client, password, "tcp6", true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TCPv6 connections: %v", err)
 	}
 	connections = append(connections, tcp6Connections...)
 
-	udpConnections, err := readProcNetFile(client, password, "udp", false, pids)
+	udpConnections, err := readProcNetFile(client, password, "udp", false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read UDPv4 connections: %v", err)
 	}
 	connections = append(connections, udpConnections...)
 
-	udp6Connections, err := readProcNetFile(client, password, "udp6", true, pids)
+	udp6Connections, err := readProcNetFile(client, password, "udp6", true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read UDPv6 connections: %v", err)
 	}
@@ -80,7 +75,7 @@ func GetListeningConnections(client *ssh.Client, password string) ([]Connection,
 	return connections, nil
 }
 
-func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool, pids []string) ([]Connection, error) {
+func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool) ([]Connection, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %v", err)
@@ -111,7 +106,7 @@ func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool,
 			state := fields[3]
 
 			if state == "0A" { // LISTEN state is represented as 0A in hex
-				pid, err := findPIDByInode(client, password, fields[9], pids)
+				pid, err := findPIDByInode(client, password, fields[9])
 				if err != nil {
 					continue
 				}
@@ -134,66 +129,31 @@ func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool,
 	return connections, nil
 }
 
-func getPIDs(client *ssh.Client, password string) ([]string, error) {
+func findPIDByInode(client *ssh.Client, password, inode string) (int, error) {
 	session, err := client.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %v", err)
+		return 0, err
 	}
 	defer func() {
 		_ = session.Close()
 	}()
 
-	cmd := sudoWrapper("ls /proc | grep -E '^[0-9]+$'", password)
+	cmd := sudoWrapper(fmt.Sprintf(`
+        find /proc/*/fd -lname '*%s*' 2>/dev/null | head -1 | cut -d'/' -f3`, inode), password)
+
 	var out bytes.Buffer
 	session.Stdout = &out
 
 	if err := session.Run(cmd); err != nil {
-		return nil, fmt.Errorf("failed to list /proc directory: %v", err)
+		return 0, err
 	}
 
-	pids := strings.Split(strings.TrimSpace(out.String()), "\n")
-
-	return pids, nil
-}
-
-func findPIDByInode(client *ssh.Client, password, inode string, pids []string) (int, error) {
-	for _, pid := range pids {
-		fdDir := fmt.Sprintf("/proc/%s/fd", pid)
-		fdsSession, err := client.NewSession()
-		if err != nil {
-			continue
-		}
-
-		var fdsOut bytes.Buffer
-		fdsSession.Stdout = &fdsOut
-
-		fdCmd := sudoWrapper(fmt.Sprintf("ls -l %s", fdDir), password)
-		if err := fdsSession.Run(fdCmd); err != nil {
-			_ = fdsSession.Close()
-			continue
-		}
-
-		_ = fdsSession.Close()
-
-		fdsOutput := strings.TrimSpace(fdsOut.String())
-		for _, line := range strings.Split(fdsOutput, "\n") {
-			fields := strings.Fields(line)
-			if len(fields) < 3 {
-				continue
-			}
-
-			link := fields[len(fields)-1]
-			if strings.Contains(link, inode) {
-				pidInt, err := strconv.Atoi(pid)
-				if err != nil {
-					continue
-				}
-				return pidInt, nil
-			}
-		}
+	pidStr := strings.TrimSpace(out.String())
+	if pidStr == "" {
+		return 0, fmt.Errorf("PID not found for inode: %s", inode)
 	}
 
-	return 0, fmt.Errorf("failed to find PID for inode: %s", inode)
+	return strconv.Atoi(pidStr)
 }
 
 func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName string, migrationLogger *Logger) error {
