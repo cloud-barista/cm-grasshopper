@@ -6,12 +6,74 @@ import (
 	"io"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 type ConfigFile struct {
 	Path   string `json:"path"`
 	Status string `json:"status,omitempty"` // Modified, Custom, or empty for default
+}
+
+var webServerDataDirs = map[string][]string{
+	"nginx": {
+		"/var/www",
+		"/usr/share/nginx",
+		"/var/log/nginx",
+		"/var/cache/nginx",
+	},
+	"apache2": {
+		"/var/www",
+		"/usr/share/apache2",
+		"/var/log/apache2",
+		"/var/cache/apache2",
+	},
+	"httpd": {
+		"/var/www",
+		"/usr/share/httpd",
+		"/var/log/httpd",
+		"/var/cache/httpd",
+	},
+}
+
+func isWebServer(packageName string) bool {
+	_, exists := webServerDataDirs[packageName]
+	return exists
+}
+
+func checkDirectorySize(client *ssh.Client, dirPath string, migrationLogger *Logger) (int64, error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		_ = session.Close()
+	}()
+
+	cmd := fmt.Sprintf("du -sb '%s' 2>/dev/null | cut -f1 || echo 0", dirPath)
+	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
+	if err != nil {
+		return 0, err
+	}
+
+	sizeStr := strings.TrimSpace(string(output))
+	if sizeStr == "" || sizeStr == "0" {
+		return 0, nil
+	}
+
+	return strconv.ParseInt(sizeStr, 10, 64)
+}
+
+func formatBytes(bytes int64) string {
+	if bytes < 1024 {
+		return fmt.Sprintf("%d B", bytes)
+	} else if bytes < 1024*1024 {
+		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
+	} else if bytes < 1024*1024*1024 {
+		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
+	} else {
+		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
+	}
 }
 
 func sudoWrapper(cmd string, password string) string {
@@ -561,6 +623,71 @@ func copyDirectoryWithTar(sourceClient *ssh.Client, targetClient *ssh.Client, di
 	return nil
 }
 
+func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string, migrationLogger *Logger) error {
+	isDataCopyNeeded := false
+
+	if isWebServer(packageName) {
+		isDataCopyNeeded = true
+	}
+
+	if !isDataCopyNeeded {
+		migrationLogger.Printf(DEBUG, "Package %s is not need to copy data directory, skipping data directory copy\n", packageName)
+		return nil
+	}
+
+	dataDirs := webServerDataDirs[packageName]
+	migrationLogger.Printf(INFO, "Starting data directory copy for web server: %s\n", packageName)
+
+	const MaxSizeBytes = 10 * 1024 * 1024 * 1024 // Limit Max to 10GB
+
+	for _, dirPath := range dataDirs {
+		migrationLogger.Printf(INFO, "Processing data directory: %s\n", dirPath)
+
+		checkCmd := fmt.Sprintf("test -d '%s'", dirPath)
+		session, err := sourceClient.NewSession()
+		if err != nil {
+			continue
+		}
+
+		_, err = session.CombinedOutput(sudoWrapper(checkCmd, sourceClient.SSHTarget.Password))
+		_ = session.Close()
+
+		if err != nil {
+			migrationLogger.Printf(DEBUG, "Directory %s does not exist, skipping\n", dirPath)
+			continue
+		}
+
+		size, err := checkDirectorySize(sourceClient, dirPath, migrationLogger)
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to check size of %s: %v\n", dirPath, err)
+			continue
+		}
+
+		if size > MaxSizeBytes {
+			migrationLogger.Printf(WARN, "Directory %s is too large (%s), skipping\n", dirPath, formatBytes(size))
+			continue
+		}
+
+		if size == 0 {
+			migrationLogger.Printf(DEBUG, "Directory %s is empty, skipping\n", dirPath)
+			continue
+		}
+
+		migrationLogger.Printf(INFO, "Copying directory %s (size: %s)\n", dirPath, formatBytes(size))
+
+		err = copyDirectoryWithTar(sourceClient, targetClient, dirPath)
+		if err != nil {
+			migrationLogger.Printf(ERROR, "Failed to copy directory %s: %v\n", dirPath, err)
+			// Continue other directories even if error occurred
+			continue
+		}
+
+		migrationLogger.Printf(INFO, "Successfully copied directory: %s\n", dirPath)
+	}
+
+	return nil
+}
+
 func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting config copier for package: %s (UUID: %s)\n", packageName, uuid)
 
@@ -591,6 +718,10 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 	if err := copyConfigFiles(sourceClient, targetClient, configs, migrationLogger); err != nil {
 		migrationLogger.Printf(ERROR, "Failed to copy config files for package %s: %v\n", packageName, err)
 		return fmt.Errorf("failed to copy config files: %v", err)
+	}
+
+	if err := copyDataDirectories(sourceClient, targetClient, packageName, migrationLogger); err != nil {
+		migrationLogger.Printf(WARN, "Failed to copy data directories for package %s: %v\n", packageName, err)
 	}
 
 	migrationLogger.Printf(INFO, "Successfully completed config copy process for package: %s\n", packageName)
