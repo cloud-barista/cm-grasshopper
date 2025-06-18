@@ -41,7 +41,7 @@ func isWebServer(packageName string) bool {
 	return exists
 }
 
-func checkDirectorySize(client *ssh.Client, dirPath string, migrationLogger *Logger) (int64, error) {
+func checkDirectorySize(client *ssh.Client, dirPath string) (int64, error) {
 	session, err := client.NewSession()
 	if err != nil {
 		return 0, err
@@ -71,9 +71,9 @@ func formatBytes(bytes int64) string {
 		return fmt.Sprintf("%.2f KB", float64(bytes)/1024)
 	} else if bytes < 1024*1024*1024 {
 		return fmt.Sprintf("%.2f MB", float64(bytes)/(1024*1024))
-	} else {
-		return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
 	}
+
+	return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
 }
 
 func sudoWrapper(cmd string, password string) string {
@@ -657,7 +657,7 @@ func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, pac
 			continue
 		}
 
-		size, err := checkDirectorySize(sourceClient, dirPath, migrationLogger)
+		size, err := checkDirectorySize(sourceClient, dirPath)
 		if err != nil {
 			migrationLogger.Printf(WARN, "Failed to check size of %s: %v\n", dirPath, err)
 			continue
