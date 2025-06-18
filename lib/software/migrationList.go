@@ -15,16 +15,16 @@ import (
 	"strings"
 )
 
-func findMatchedSoftware(os string, osVersion string,
-	architecture string, softwareName string, softwareVersion string) (*model.Software, error) {
-	list, err := dao.SoftwareGetList(&model.Software{
+func findMatchedPackageMigrationConfig(os string, osVersion string,
+	architecture string, softwareName string, softwareVersion string) (*model.PackageMigrationConfig, error) {
+	list, err := dao.PackageMigrationConfigGetList(&model.PackageMigrationConfig{
 		MatchNames: softwareName,
 	}, false, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	var matchedSoftwares []model.Software
+	var matchedConfigs []model.PackageMigrationConfig
 	for _, sw := range *list {
 		if sw.Architecture != "common" &&
 			(sw.OS != os || sw.OSVersion != osVersion || sw.Architecture != architecture) {
@@ -37,27 +37,27 @@ func findMatchedSoftware(os string, osVersion string,
 				if softwareVersion == sw.Version {
 					return &sw, nil
 				}
-				matchedSoftwares = append(matchedSoftwares, sw)
+				matchedConfigs = append(matchedConfigs, sw)
 			}
 		}
 	}
 
-	var latestSoftware model.Software
-	if len(matchedSoftwares) == 1 {
-		if matchedSoftwares[0].Version == softwareVersion {
+	var latestSoftware model.PackageMigrationConfig
+	if len(matchedConfigs) == 1 {
+		if matchedConfigs[0].Version == softwareVersion {
 			// Return if same version found
-			return &matchedSoftwares[0], nil
+			return &matchedConfigs[0], nil
 		}
-		latestSoftware = matchedSoftwares[0]
-	} else if len(matchedSoftwares) > 1 {
-		for i := 1; i < len(matchedSoftwares); i++ {
-			if matchedSoftwares[i].Version == softwareVersion {
+		latestSoftware = matchedConfigs[0]
+	} else if len(matchedConfigs) > 1 {
+		for i := 1; i < len(matchedConfigs); i++ {
+			if matchedConfigs[i].Version == softwareVersion {
 				// Return if same version found
-				return &matchedSoftwares[i], nil
+				return &matchedConfigs[i], nil
 			}
 
 			latestSoftwareVersionSplit := strings.Split(latestSoftware.Version, ".")
-			matchedSoftwareVersionSplit := strings.Split(matchedSoftwares[i].Version, ".")
+			matchedSoftwareVersionSplit := strings.Split(matchedConfigs[i].Version, ".")
 
 			// Check only up to the 2nd digit
 			// 13 vs blank			--> Pick blank as latest
@@ -73,7 +73,7 @@ func findMatchedSoftware(os string, osVersion string,
 				matchedSoftwareMajor, _ := strconv.Atoi(matchedSoftwareVersionSplit[0])
 
 				if latestMajor < matchedSoftwareMajor {
-					latestSoftware = matchedSoftwares[i]
+					latestSoftware = matchedConfigs[i]
 					latestSoftwareVersionSplit = strings.Split(latestSoftware.Version, ".")
 
 					// Pick 0.X.~~~ higher (Pick higher minor version)
@@ -82,7 +82,7 @@ func findMatchedSoftware(os string, osVersion string,
 						matchedSoftwareMinor, _ := strconv.Atoi(matchedSoftwareVersionSplit[1])
 
 						if latestMinor < matchedSoftwareMinor {
-							latestSoftware = matchedSoftwares[i]
+							latestSoftware = matchedConfigs[i]
 						}
 					}
 				}
@@ -258,7 +258,7 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 
 	var i int
 	for _, pkg := range packages {
-		sw, err := findMatchedSoftware(
+		sw, err := findMatchedPackageMigrationConfig(
 			infraInfo.Compute.OS.OS.Name,
 			infraInfo.Compute.OS.OS.VersionID,
 			infraInfo.Compute.OS.Kernel.Architecture,
@@ -278,10 +278,6 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 		}
 
 		if sw == nil {
-			continue
-		}
-
-		if existingByID[sw.ID] {
 			continue
 		}
 
@@ -305,11 +301,10 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 			SoftwareID:          sw.ID,
 			SoftwareName:        sw.Name,
 			SoftwareVersion:     sw.Version,
-			SoftwareInstallType: sw.InstallType,
+			SoftwareInstallType: "package",
 		}
 
 		migrationList = append(migrationList, newSoftware)
-		existingByID[sw.ID] = true
 		existingByName[sw.Name] = len(migrationList) - 1
 	}
 

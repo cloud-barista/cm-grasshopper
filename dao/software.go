@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-func SoftwareCreate(software *model.Software) (*model.Software, error) {
+func PackageMigrationConfigCreate(software *model.PackageMigrationConfig) (*model.PackageMigrationConfig, error) {
 	now := time.Now()
 	software.CreatedAt = now
 	software.UpdatedAt = now
 
-	result := db.SoftwaresDB.Create(software)
+	result := db.PackageMigrationConfigDB.Create(software)
 	err := result.Error
 	if err != nil {
 		return nil, err
@@ -22,19 +22,18 @@ func SoftwareCreate(software *model.Software) (*model.Software, error) {
 	return software, nil
 }
 
-func SoftwareGet(id string) (*model.Software, error) {
-	software := &model.Software{}
+func PackageMigrationConfigGet(id string) (*model.PackageMigrationConfig, error) {
+	software := &model.PackageMigrationConfig{}
 
-	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
-	if db.SoftwaresDB == nil {
-		return nil, errors.New("softwares database is not initialized")
+	if db.PackageMigrationConfigDB == nil {
+		return nil, errors.New("package migration config database is not initialized")
 	}
 
-	result := db.SoftwaresDB.Where("id = ?", id).First(software)
+	result := db.PackageMigrationConfigDB.Where("id = ?", id).First(software)
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("software not found with the provided id")
+			return nil, errors.New("package migration config not found with the provided id")
 		}
 		return nil, err
 	}
@@ -42,19 +41,19 @@ func SoftwareGet(id string) (*model.Software, error) {
 	return software, nil
 }
 
-func SoftwareGetByName(name string) (*model.Software, error) {
-	software := &model.Software{}
+func PackageMigrationConfigGetByName(name string) (*model.PackageMigrationConfig, error) {
+	software := &model.PackageMigrationConfig{}
 
-	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
-	if db.SoftwaresDB == nil {
-		return nil, errors.New("database connection is not initialized")
+	// Ensure db.PackageMigrationConfigDB is not nil to avoid runtime panics
+	if db.PackageMigrationConfigDB == nil {
+		return nil, errors.New("package migration config database is not initialized")
 	}
 
-	result := db.SoftwaresDB.Where("name = ?", name).First(software)
+	result := db.PackageMigrationConfigDB.Where("name = ?", name).First(software)
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("software not found with the provided name")
+			return nil, errors.New("package migration config not found with the provided name")
 		}
 		return nil, err
 	}
@@ -62,19 +61,15 @@ func SoftwareGetByName(name string) (*model.Software, error) {
 	return software, nil
 }
 
-func SoftwareGetList(software *model.Software, isRepoUseOSVersionCodeSet bool, page int, row int) (*[]model.Software, error) {
-	SoftwareList := &[]model.Software{}
-	// Ensure db.SoftwaresDB is not nil to avoid runtime panics
-	if db.SoftwaresDB == nil {
-		return nil, errors.New("database connection is not initialized")
+func PackageMigrationConfigGetList(software *model.PackageMigrationConfig, isRepoUseOSVersionCodeSet bool, page int, row int) (*[]model.PackageMigrationConfig, error) {
+	SoftwareList := &[]model.PackageMigrationConfig{}
+	// Ensure db.PackageMigrationConfigDB is not nil to avoid runtime panics
+	if db.PackageMigrationConfigDB == nil {
+		return nil, errors.New("package migration config database is not initialized")
 	}
 
-	result := db.SoftwaresDB.Scopes(func(d *gorm.DB) *gorm.DB {
+	result := db.PackageMigrationConfigDB.Scopes(func(d *gorm.DB) *gorm.DB {
 		var filtered = d
-
-		if len(software.InstallType) != 0 {
-			filtered = filtered.Where("install_type LIKE ?", "%"+software.InstallType+"%")
-		}
 
 		if len(software.Name) != 0 {
 			filtered = filtered.Where("name LIKE ?", "%"+software.Name+"%")
@@ -142,20 +137,8 @@ func SoftwareGetList(software *model.Software, isRepoUseOSVersionCodeSet bool, p
 	return SoftwareList, nil
 }
 
-func SoftwareUpdate(software *model.Software) error {
-	software.UpdatedAt = time.Now()
-
-	result := db.SoftwaresDB.Model(&model.Software{}).Where("id = ?", software.ID).Updates(software)
-	err := result.Error
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func SoftwareDelete(software *model.Software) error {
-	result := db.SoftwaresDB.Delete(software)
+func PackageMigrationConfigDelete(software *model.PackageMigrationConfig) error {
+	result := db.PackageMigrationConfigDB.Delete(software)
 	err := result.Error
 	if err != nil {
 		return err

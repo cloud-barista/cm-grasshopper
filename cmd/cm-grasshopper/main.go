@@ -53,7 +53,7 @@ func init() {
 		server.Init()
 	}()
 
-	controller.OkMessage.Message = "Database is not ready"
+	controller.OkMessage.Message = "Package Migration Config Database is not ready"
 	err = db.Open()
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err.Error())

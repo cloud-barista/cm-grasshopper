@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-var SoftwaresDB *gorm.DB
+var PackageMigrationConfigDB *gorm.DB
 var DB *gorm.DB
 
 func copyFile(src string, dst string) (err error) {
@@ -39,8 +39,8 @@ func copyFile(src string, dst string) (err error) {
 func Open() error {
 	var err error
 
-	sourceDB := "softwares.db"
-	targetPath := common.RootPath + "/softwares.db"
+	sourceDB := "package_migration_config.db"
+	targetPath := common.RootPath + "/package_migration_config.db"
 	if !fileutil.IsExist(targetPath) {
 		if fileutil.IsExist(sourceDB) {
 			err := copyFile(sourceDB, targetPath)
@@ -50,12 +50,12 @@ func Open() error {
 		}
 	}
 
-	SoftwaresDB, err = gorm.Open(sqlite.Open(common.RootPath+"/softwares.db"), &gorm.Config{})
+	PackageMigrationConfigDB, err = gorm.Open(sqlite.Open(common.RootPath+"/package_migration_config.db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
-	err = SoftwaresDB.AutoMigrate(&model.Software{})
+	err = PackageMigrationConfigDB.AutoMigrate(&model.PackageMigrationConfig{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}
@@ -74,8 +74,8 @@ func Open() error {
 }
 
 func Close() {
-	if SoftwaresDB != nil {
-		sqlDB, _ := SoftwaresDB.DB()
+	if PackageMigrationConfigDB != nil {
+		sqlDB, _ := PackageMigrationConfigDB.DB()
 		_ = sqlDB.Close()
 	}
 

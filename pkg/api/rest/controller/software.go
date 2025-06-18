@@ -116,7 +116,7 @@ func writePlaybookFiles(softwareName string, destDir string, neededPackages []st
 	return nil
 }
 
-// RegisterSoftware godoc
+// RegisterPackageMigrationConfig godoc
 //
 //	@ID				register-software
 //	@Summary		Register Software
@@ -124,58 +124,58 @@ func writePlaybookFiles(softwareName string, destDir string, neededPackages []st
 //	@Tags			[Software]
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareRegisterReq body model.SoftwareRegisterReq true "Software info"
-//	@Success		200	{object}	model.SoftwareRegisterReq	"Successfully registered the software."
+//	@Param			softwareRegisterReq body model.PackageMigrationConfigReq true "Software info"
+//	@Success		200	{object}	model.PackageMigrationConfigReq	"Successfully registered the software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
-//	@Router			/software/register [post]
-func RegisterSoftware(c echo.Context) error {
+//	@Router			/software/package/migration_config/register [post]
+func RegisterPackageMigrationConfig(c echo.Context) error {
 	var err error
 
-	softwareRegisterReq := new(model.SoftwareRegisterReq)
-	err = c.Bind(softwareRegisterReq)
+	packageMigrationConfigRegisterReq := new(model.PackageMigrationConfigReq)
+	err = c.Bind(packageMigrationConfigRegisterReq)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	err = model.CheckInstallType(softwareRegisterReq.InstallType)
+	err = model.CheckInstallType(packageMigrationConfigRegisterReq.InstallType)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
-	err = model.CheckArchitecture(softwareRegisterReq.Architecture)
+	err = model.CheckArchitecture(packageMigrationConfigRegisterReq.Architecture)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	if softwareRegisterReq.Name == "" {
+	if packageMigrationConfigRegisterReq.Name == "" {
 		return common.ReturnErrorMsg(c, "Please provide the name")
 	}
 
-	if softwareRegisterReq.Version == "" {
+	if packageMigrationConfigRegisterReq.Version == "" {
 		return common.ReturnErrorMsg(c, "Please provide the version")
 	}
 
-	if softwareRegisterReq.InstallType == "package" {
-		if softwareRegisterReq.OS == "" {
+	if packageMigrationConfigRegisterReq.InstallType == "package" {
+		if packageMigrationConfigRegisterReq.OS == "" {
 			return common.ReturnErrorMsg(c, "Please provide the os")
 		}
 
-		if softwareRegisterReq.OSVersion == "" {
+		if packageMigrationConfigRegisterReq.OSVersion == "" {
 			return common.ReturnErrorMsg(c, "Please provide the os version")
 		}
 	}
 
-	if softwareRegisterReq.InstallType == "helm" {
-		if softwareRegisterReq.RepoURL == "" {
+	if packageMigrationConfigRegisterReq.InstallType == "helm" {
+		if packageMigrationConfigRegisterReq.RepoURL == "" {
 			return common.ReturnErrorMsg(c, "Please provide the repo url")
 		}
 	}
 
-	if len(softwareRegisterReq.MatchNames) == 0 {
+	if len(packageMigrationConfigRegisterReq.MatchNames) == 0 {
 		return common.ReturnErrorMsg(c, "Please provide the match names")
 	}
 	var matchNames string
-	for _, matchName := range softwareRegisterReq.MatchNames {
+	for _, matchName := range packageMigrationConfigRegisterReq.MatchNames {
 		if strings.Contains(matchName, ",") {
 			return common.ReturnErrorMsg(c, "Match name should not contain ','")
 		}
@@ -183,12 +183,12 @@ func RegisterSoftware(c echo.Context) error {
 	}
 	matchNames = matchNames[:len(matchNames)-1]
 
-	if len(softwareRegisterReq.NeededPackages) == 0 {
+	if len(packageMigrationConfigRegisterReq.NeededPackages) == 0 {
 		return common.ReturnErrorMsg(c, "Please provide the needed packages")
 	}
 	var neededPackages string
-	if len(softwareRegisterReq.NeededPackages) > 0 {
-		for _, neededPackage := range softwareRegisterReq.NeededPackages {
+	if len(packageMigrationConfigRegisterReq.NeededPackages) > 0 {
+		for _, neededPackage := range packageMigrationConfigRegisterReq.NeededPackages {
 			if strings.Contains(neededPackage, ",") {
 				return common.ReturnErrorMsg(c, "Each name of needed_packages should not contain ','")
 			}
@@ -199,7 +199,7 @@ func RegisterSoftware(c echo.Context) error {
 
 	var needToDeletePackages string
 	if len(needToDeletePackages) > 0 {
-		for _, needToDeletePackage := range softwareRegisterReq.NeedToDeletePackages {
+		for _, needToDeletePackage := range packageMigrationConfigRegisterReq.NeedToDeletePackages {
 			if strings.Contains(needToDeletePackage, ",") {
 				return common.ReturnErrorMsg(c, "Each name of need_to_delete_packages should not contain ','")
 			}
@@ -209,8 +209,8 @@ func RegisterSoftware(c echo.Context) error {
 	}
 
 	var customConfigs string
-	if len(softwareRegisterReq.CustomConfigs) > 0 {
-		for _, customConfig := range softwareRegisterReq.CustomConfigs {
+	if len(packageMigrationConfigRegisterReq.CustomConfigs) > 0 {
+		for _, customConfig := range packageMigrationConfigRegisterReq.CustomConfigs {
 			if strings.Contains(customConfig, ",") {
 				return common.ReturnErrorMsg(c, "Each name of custom_configs should not contain ','")
 			}
@@ -221,40 +221,127 @@ func RegisterSoftware(c echo.Context) error {
 
 	var id = uuid.New().String()
 
-	sw := model.Software{
+	sw := model.PackageMigrationConfig{
 		ID:                   id,
-		InstallType:          softwareRegisterReq.InstallType,
-		Name:                 softwareRegisterReq.Name,
-		Version:              softwareRegisterReq.Version,
-		OS:                   softwareRegisterReq.OS,
-		OSVersion:            softwareRegisterReq.OSVersion,
-		Architecture:         softwareRegisterReq.Architecture,
+		Name:                 packageMigrationConfigRegisterReq.Name,
+		Version:              packageMigrationConfigRegisterReq.Version,
+		OS:                   packageMigrationConfigRegisterReq.OS,
+		OSVersion:            packageMigrationConfigRegisterReq.OSVersion,
+		Architecture:         packageMigrationConfigRegisterReq.Architecture,
 		MatchNames:           matchNames,
 		NeededPackages:       neededPackages,
 		NeedToDeletePackages: needToDeletePackages,
 		CustomConfigs:        customConfigs,
-		RepoURL:              softwareRegisterReq.RepoURL,
-		GPGKeyURL:            softwareRegisterReq.GPGKeyURL,
-		RepoUseOSVersionCode: softwareRegisterReq.RepoUseOSVersionCode,
+		RepoURL:              packageMigrationConfigRegisterReq.RepoURL,
+		GPGKeyURL:            packageMigrationConfigRegisterReq.GPGKeyURL,
+		RepoUseOSVersionCode: packageMigrationConfigRegisterReq.RepoUseOSVersionCode,
 	}
 
-	dbSW, err := dao.SoftwareCreate(&sw)
+	dbSW, err := dao.PackageMigrationConfigCreate(&sw)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	destDir := filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, sw.ID)
-	err = writePlaybookFiles(softwareRegisterReq.Name, destDir,
-		softwareRegisterReq.NeededPackages, softwareRegisterReq.NeedToDeletePackages,
-		softwareRegisterReq.RepoURL, softwareRegisterReq.GPGKeyURL, softwareRegisterReq.RepoUseOSVersionCode)
+	err = writePlaybookFiles(packageMigrationConfigRegisterReq.Name, destDir,
+		packageMigrationConfigRegisterReq.NeededPackages, packageMigrationConfigRegisterReq.NeedToDeletePackages,
+		packageMigrationConfigRegisterReq.RepoURL, packageMigrationConfigRegisterReq.GPGKeyURL, packageMigrationConfigRegisterReq.RepoUseOSVersionCode)
 	if err != nil {
 		_ = fileutil.DeleteDir(destDir)
-		_ = dao.SoftwareDelete(&sw)
+		_ = dao.PackageMigrationConfigDelete(&sw)
 
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	return c.JSONPretty(http.StatusOK, dbSW, " ")
+}
+
+// ListPackageMigrationConfig godoc
+//
+//	@ID				list-package-migration-config
+//	@Summary		List package migration config
+//	@Description	Get a list of package migration config.
+//	@Tags			[Software]
+//	@Accept			json
+//	@Produce		json
+//	@Param			install_type query string false "Installation type of the software"
+//	@Param			name query string false "Name of the software"
+//	@Param			version query string false "Version of the software"
+//	@Param			os query string false "Operating system of the software"
+//	@Param			os_version query string false "Operating system version"
+//	@Param			architecture query string false "Architecture of the software"
+//	@Param			match_names query string false "Matching names of the software"
+//	@Param			needed_packages query string false "Packages needed to install for the software"
+//	@Param			need_to_delete_packages query string false "Packages that need to be deleted for the software"
+//	@Param			repo_url query string false "Repository URL for install the software"
+//	@Param			gpg_key_url query string false "GPG key URL for install the software"
+//	@Param			repo_use_os_version_code query bool false "If repository URL uses OS version code. (For debian based OSs.)"
+//	@Success		200	{object}	[]model.PackageMigrationConfig	"Successfully get a list of software."
+//	@Failure		400	{object}	common.ErrorResponse			"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse			"Failed to get a list of software."
+//	@Router			/software/package/migration_config [get]
+func ListPackageMigrationConfig(c echo.Context) error {
+	page, row, err := common.CheckPageRow(c)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	sw := &model.PackageMigrationConfig{
+		Name:                 c.QueryParam("name"),
+		Version:              c.QueryParam("version"),
+		OS:                   c.QueryParam("os"),
+		OSVersion:            c.QueryParam("os_version"),
+		Architecture:         c.QueryParam("architecture"),
+		MatchNames:           c.QueryParam("match_names"),
+		NeededPackages:       c.QueryParam("needed_packages"),
+		NeedToDeletePackages: c.QueryParam("need_to_delete_packages"),
+		RepoURL:              c.QueryParam("repo_url"),
+		GPGKeyURL:            c.QueryParam("gpg_key_url"),
+	}
+	var isRepoUseOSVersionCodeSet bool
+	sw.RepoUseOSVersionCode, err = strconv.ParseBool(c.QueryParam("repo_use_os_version_code"))
+	if err == nil {
+		isRepoUseOSVersionCodeSet = true
+	}
+
+	softwares, err := dao.PackageMigrationConfigGetList(sw, isRepoUseOSVersionCodeSet, page, row)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	return c.JSONPretty(http.StatusOK, &softwares, " ")
+}
+
+// DeletePackageMigrationConfig godoc
+//
+//	@ID				delete-software
+//	@Summary		Delete Software
+//	@Description	Delete the software.
+//	@Tags			[Software]
+//	@Accept			json
+//	@Produce		json
+//	@Param			softwareId path string true "ID of the software."
+//	@Success		200	{object}	model.SimpleMsg			"Successfully update the software"
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to delete the software"
+//	@Router			/software/package/migration_config/{migrationConfigId} [delete]
+func DeletePackageMigrationConfig(c echo.Context) error {
+	swID := c.Param("migrationConfigId")
+	if swID == "" {
+		return common.ReturnErrorMsg(c, "Please provide the migrationConfigId.")
+	}
+
+	sw, err := dao.PackageMigrationConfigGet(swID)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	err = dao.PackageMigrationConfigDelete(sw)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	return c.JSONPretty(http.StatusOK, model.SimpleMsg{Message: "success"}, " ")
 }
 
 // GetMigrationList godoc
@@ -299,20 +386,15 @@ func GetMigrationList(c echo.Context) error {
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
 //	@Router			/software/migrate [post]
 func MigrateSoftware(c echo.Context) error {
-	softwareInstallReq := new(model.SoftwareMigrateReq)
-	err := c.Bind(softwareInstallReq)
+	softwareMigrateReq := new(model.SoftwareMigrateReq)
+	err := c.Bind(softwareMigrateReq)
 	if err != nil {
 		return err
 	}
 
 	var migrationList []model.MigrationSoftwareInfo
 
-	for i, id := range softwareInstallReq.SoftwareIDs {
-		sw, err := dao.SoftwareGet(id)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-
+	for i, sw := range softwareMigrateReq.Softwares {
 		migrationList = append(migrationList, model.MigrationSoftwareInfo{
 			Order:               i + 1,
 			SoftwareID:          sw.ID,
@@ -325,7 +407,7 @@ func MigrateSoftware(c echo.Context) error {
 	executionID := uuid.New().String()
 
 	err = software.MigrateSoftware(executionID, &migrationList,
-		softwareInstallReq.SourceConnectionInfoID, &softwareInstallReq.Target)
+		softwareMigrateReq.SourceConnectionInfoID, &softwareMigrateReq.Target)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -381,100 +463,4 @@ func GetSoftwareMigrationLog(c echo.Context) error {
 	}
 
 	return c.JSONPretty(http.StatusOK, response, " ")
-}
-
-// ListSoftware godoc
-//
-//	@ID				list-software
-//	@Summary		List Software
-//	@Description	Get a list of connection information.
-//	@Tags			[Software]
-//	@Accept			json
-//	@Produce		json
-//	@Param			install_type query string false "Installation type of the software"
-//	@Param			name query string false "Name of the software"
-//	@Param			version query string false "Version of the software"
-//	@Param			os query string false "Operating system of the software"
-//	@Param			os_version query string false "Operating system version"
-//	@Param			architecture query string false "Architecture of the software"
-//	@Param			match_names query string false "Matching names of the software"
-//	@Param			needed_packages query string false "Packages needed to install for the software"
-//	@Param			need_to_delete_packages query string false "Packages that need to be deleted for the software"
-//	@Param			repo_url query string false "Repository URL for install the software"
-//	@Param			gpg_key_url query string false "GPG key URL for install the software"
-//	@Param			repo_use_os_version_code query bool false "If repository URL uses OS version code. (For debian based OSs.)"
-//	@Success		200	{object}	[]model.Software	"Successfully get a list of software."
-//	@Failure		400	{object}	common.ErrorResponse			"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse			"Failed to get a list of software."
-//	@Router			/software [get]
-func ListSoftware(c echo.Context) error {
-	page, row, err := common.CheckPageRow(c)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
-
-	sw := &model.Software{
-		InstallType:          c.QueryParam("install_type"),
-		Name:                 c.QueryParam("name"),
-		Version:              c.QueryParam("version"),
-		OS:                   c.QueryParam("os"),
-		OSVersion:            c.QueryParam("os_version"),
-		Architecture:         c.QueryParam("architecture"),
-		MatchNames:           c.QueryParam("match_names"),
-		NeededPackages:       c.QueryParam("needed_packages"),
-		NeedToDeletePackages: c.QueryParam("need_to_delete_packages"),
-		RepoURL:              c.QueryParam("repo_url"),
-		GPGKeyURL:            c.QueryParam("gpg_key_url"),
-	}
-	var isRepoUseOSVersionCodeSet bool
-	sw.RepoUseOSVersionCode, err = strconv.ParseBool(c.QueryParam("repo_use_os_version_code"))
-	if err == nil {
-		isRepoUseOSVersionCodeSet = true
-	}
-
-	softwares, err := dao.SoftwareGetList(sw, isRepoUseOSVersionCodeSet, page, row)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
-
-	return c.JSONPretty(http.StatusOK, &softwares, " ")
-}
-
-// DeleteSoftware godoc
-//
-//	@ID				delete-software
-//	@Summary		Delete Software
-//	@Description	Delete the software.
-//	@Tags			[Software]
-//	@Accept			json
-//	@Produce		json
-//	@Param			softwareId path string true "ID of the software."
-//	@Success		200	{object}	model.SimpleMsg			"Successfully update the software"
-//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse	"Failed to delete the software"
-//	@Router			/software/{softwareId} [delete]
-func DeleteSoftware(c echo.Context) error {
-	swID := c.Param("softwareId")
-	if swID == "" {
-		return common.ReturnErrorMsg(c, "Please provide the softwareId.")
-	}
-
-	sw, err := dao.SoftwareGet(swID)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
-
-	if sw.InstallType == "ansible" {
-		err = software.DeletePlaybook(swID)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-	}
-
-	err = dao.SoftwareDelete(sw)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
-
-	return c.JSONPretty(http.StatusOK, model.SimpleMsg{Message: "success"}, " ")
 }

@@ -50,12 +50,18 @@ type Software struct {
 	MatchNames           string    `gorm:"match_names" json:"match_names" validate:"required"`
 	NeededPackages       string    `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages string    `json:"need_to_delete_packages"`
+	NeededLibraries      []string  `json:"needed_libraries"`
+	BinaryPath           string    `json:"binary_path,omitempty"`
+	CustomDataPaths      []string  `json:"custom_data_paths"`
 	CustomConfigs        string    `json:"custom_configs"`
 	RepoURL              string    `json:"repo_url"`
 	GPGKeyURL            string    `json:"gpg_key_url"`
 	RepoUseOSVersionCode bool      `json:"repo_use_os_version_code" default:"false"`
 	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
 	UpdatedAt            time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
+}
+
+type MigrateSoftwareReq struct {
 }
 
 type Source struct {
@@ -68,7 +74,25 @@ type Target struct {
 	VMID        string `json:"vm_id" validate:"required"`
 }
 
-type SoftwareRegisterReq struct {
+type PackageMigrationConfig struct {
+	ID                   string    `gorm:"primaryKey" json:"uuid" validate:"required"`
+	Name                 string    `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
+	Version              string    `gorm:"version" json:"version" validate:"required"`
+	OS                   string    `gorm:"os" json:"os" validate:"required"`
+	OSVersion            string    `gorm:"os_version" json:"os_version" validate:"required"`
+	Architecture         string    `gorm:"architecture" json:"architecture" validate:"required"`
+	MatchNames           string    `gorm:"match_names" json:"match_names" validate:"required"`
+	NeededPackages       string    `json:"needed_packages" validate:"required"`
+	NeedToDeletePackages string    `json:"need_to_delete_packages"`
+	CustomConfigs        string    `json:"custom_configs"`
+	RepoURL              string    `json:"repo_url"`
+	GPGKeyURL            string    `json:"gpg_key_url"`
+	RepoUseOSVersionCode bool      `json:"repo_use_os_version_code" default:"false"`
+	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at" validate:"required"`
+	UpdatedAt            time.Time `gorm:"column:updated_at" json:"updated_at" validate:"required"`
+}
+
+type PackageMigrationConfigReq struct {
 	InstallType          string   `json:"install_type" validate:"required"`
 	Name                 string   `json:"name" validate:"required"`
 	Version              string   `json:"version" validate:"required"`
@@ -78,9 +102,6 @@ type SoftwareRegisterReq struct {
 	MatchNames           []string `json:"match_names" validate:"required"`
 	NeededPackages       []string `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages []string `json:"need_to_delete_packages"`
-	NeededLibraries      []string `json:"needed_libraries"`
-	BinaryPath           string   `json:"binary_path,omitempty"`
-	CustomDataPaths      []string `json:"custom_data_paths"`
 	CustomConfigs        []string `json:"custom_configs"`
 	RepoURL              string   `json:"repo_url"`
 	GPGKeyURL            string   `json:"gpg_key_url"`
@@ -112,9 +133,9 @@ type MigrationLogRes struct {
 }
 
 type SoftwareMigrateReq struct {
-	SourceConnectionInfoID string   `json:"source_connection_info_id" validate:"required"`
-	Target                 Target   `json:"target" validate:"required"`
-	SoftwareIDs            []string `json:"software_ids" validate:"required"`
+	SourceConnectionInfoID string     `json:"source_connection_info_id" validate:"required"`
+	Target                 Target     `json:"target" validate:"required"`
+	Softwares              []Software `json:"softwares" validate:"required"`
 }
 
 type SoftwareMigrateRes struct {

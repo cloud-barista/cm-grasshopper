@@ -108,7 +108,7 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 					return
 				}
 
-				sw, err := dao.SoftwareGet(execution.SoftwareID)
+				sw, err := dao.PackageMigrationConfigGet(execution.SoftwareID)
 				if err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
