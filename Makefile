@@ -8,7 +8,7 @@ GOPROXY_OPTION := GOPROXY=direct
 GO_COMMAND := ${GOPROXY_OPTION} go
 GOPATH := $(shell go env GOPATH)
 
-.PHONY: all dependency lint test race coverage coverhtml gofmt update swag swagger build run run_docker stop stop_docker clean help
+.PHONY: all dependency lint test race coverage coverhtml gofmt update swag swagger build build-only run run_docker stop stop_docker clean help
 
 all: build
 
@@ -74,6 +74,21 @@ swag swagger: ## Generate Swagger Documentation
 	  $$go_path/bin/swag init -g ./pkg/api/rest/server/server.go --pd -o ./pkg/api/rest/docs/ > /dev/null
 
 build: lint swag ## Build the binary file
+	@echo Building...
+	@kernel_name=`uname -s` && \
+	  if [[ $$kernel_name == "Linux" ]]; then \
+	    cd cmd/${MODULE_NAME} && CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go; \
+	  elif [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
+	    cd cmd/${MODULE_NAME} && GOOS=windows CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME}.exe main.go; \
+	  else \
+	    echo $$kernel_name; \
+	    echo "Not supported Operating System. ($$kernel_name)"; \
+	  fi
+	@git diff > .diff_last_build
+	@git rev-parse HEAD > .git_hash_last_build
+	@echo Build finished!
+
+build-only: swag ## Build the binary file without running linter
 	@echo Building...
 	@kernel_name=`uname -s` && \
 	  if [[ $$kernel_name == "Linux" ]]; then \
