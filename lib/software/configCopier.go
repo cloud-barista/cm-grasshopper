@@ -77,7 +77,7 @@ func formatBytes(bytes int64) string {
 }
 
 func sudoWrapper(cmd string, password string) string {
-	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.Replace(cmd, "'", "'\"'\"'", -1))
+	return fmt.Sprintf("echo '%s' | sudo -S sh -c '%s'", password, strings.ReplaceAll(cmd, "'", "'\"'\"'"))
 }
 
 func getScript(scriptName string) (string, error) {
@@ -624,7 +624,7 @@ func copyDirectoryWithTar(sourceClient *ssh.Client, targetClient *ssh.Client, di
 }
 
 func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string, migrationLogger *Logger) error {
-	isDataCopyNeeded := false
+	var isDataCopyNeeded = false
 
 	if isWebServer(packageName) {
 		isDataCopyNeeded = true

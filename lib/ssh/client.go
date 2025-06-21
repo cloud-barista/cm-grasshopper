@@ -3,12 +3,12 @@ package ssh
 import (
 	"encoding/json"
 	"errors"
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
-
 	comm "github.com/cloud-barista/cm-grasshopper/common"
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
+
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 	"net"
@@ -41,7 +41,8 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 	var client *goph.Client
 	var sshTarget *model.SSHTarget
 
-	if connectionType == ConnectionTypeSource {
+	switch connectionType {
+	case ConnectionTypeSource:
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
@@ -103,7 +104,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 			Password:   connectionInfo.Password,
 			PrivateKey: connectionInfo.PrivateKey,
 		}
-	} else if connectionType == ConnectionTypeTarget {
+	case ConnectionTypeTarget:
 		if id == "" {
 			return nil, errors.New("id is required")
 		}
@@ -177,7 +178,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 			Password:   "",
 			PrivateKey: sshKeyInfo.PrivateKey,
 		}
-	} else {
+	default:
 		return nil, errors.New("invalid connection type")
 	}
 

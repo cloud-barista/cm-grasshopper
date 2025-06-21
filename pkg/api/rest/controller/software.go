@@ -119,12 +119,12 @@ func writePlaybookFiles(softwareName string, destDir string, neededPackages []st
 // RegisterPackageMigrationConfig godoc
 //
 //	@ID				register-software
-//	@Summary		Register Software
+//	@Summary		Register Package
 //	@Description	Register the software.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareRegisterReq body model.PackageMigrationConfigReq true "Software info"
+//	@Param			softwareRegisterReq body model.PackageMigrationConfigReq true "Package info"
 //	@Success		200	{object}	model.PackageMigrationConfigReq	"Successfully registered the software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to sent SSH command."
@@ -138,10 +138,6 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	err = model.CheckInstallType(packageMigrationConfigRegisterReq.InstallType)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
 	err = model.CheckArchitecture(packageMigrationConfigRegisterReq.Architecture)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
@@ -155,20 +151,12 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the version")
 	}
 
-	if packageMigrationConfigRegisterReq.InstallType == "package" {
-		if packageMigrationConfigRegisterReq.OS == "" {
-			return common.ReturnErrorMsg(c, "Please provide the os")
-		}
-
-		if packageMigrationConfigRegisterReq.OSVersion == "" {
-			return common.ReturnErrorMsg(c, "Please provide the os version")
-		}
+	if packageMigrationConfigRegisterReq.OS == "" {
+		return common.ReturnErrorMsg(c, "Please provide the os")
 	}
 
-	if packageMigrationConfigRegisterReq.InstallType == "helm" {
-		if packageMigrationConfigRegisterReq.RepoURL == "" {
-			return common.ReturnErrorMsg(c, "Please provide the repo url")
-		}
+	if packageMigrationConfigRegisterReq.OSVersion == "" {
+		return common.ReturnErrorMsg(c, "Please provide the os version")
 	}
 
 	if len(packageMigrationConfigRegisterReq.MatchNames) == 0 {
@@ -261,7 +249,7 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 //	@ID				list-package-migration-config
 //	@Summary		List package migration config
 //	@Description	Get a list of package migration config.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
 //	@Param			install_type query string false "Installation type of the software"
@@ -291,7 +279,7 @@ func ListPackageMigrationConfig(c echo.Context) error {
 		Version:              c.QueryParam("version"),
 		OS:                   c.QueryParam("os"),
 		OSVersion:            c.QueryParam("os_version"),
-		Architecture:         c.QueryParam("architecture"),
+		Architecture:         model.SoftwareArchitecture(c.QueryParam("architecture")),
 		MatchNames:           c.QueryParam("match_names"),
 		NeededPackages:       c.QueryParam("needed_packages"),
 		NeedToDeletePackages: c.QueryParam("need_to_delete_packages"),
@@ -315,9 +303,9 @@ func ListPackageMigrationConfig(c echo.Context) error {
 // DeletePackageMigrationConfig godoc
 //
 //	@ID				delete-software
-//	@Summary		Delete Software
+//	@Summary		Delete Package
 //	@Description	Delete the software.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
 //	@Param			softwareId path string true "ID of the software."
@@ -349,7 +337,7 @@ func DeletePackageMigrationConfig(c echo.Context) error {
 //	@ID				get-migration-list
 //	@Summary		Get Migration List
 //	@Description	Get software migration list.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
 //	@Param			sgId path string true "ID of the SourceGroup"
@@ -375,12 +363,12 @@ func GetMigrationList(c echo.Context) error {
 // MigrateSoftware godoc
 //
 //	@ID				migrate-software
-//	@Summary		Migrate Software
+//	@Summary		Migrate Package
 //	@Description	Migrate pieces of software to target.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Software migrate request."
+//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Package migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
@@ -392,21 +380,9 @@ func MigrateSoftware(c echo.Context) error {
 		return err
 	}
 
-	var migrationList []model.MigrationSoftwareInfo
-
-	for i, sw := range softwareMigrateReq.Softwares {
-		migrationList = append(migrationList, model.MigrationSoftwareInfo{
-			Order:               i + 1,
-			SoftwareID:          sw.ID,
-			SoftwareName:        sw.Name,
-			SoftwareVersion:     sw.Version,
-			SoftwareInstallType: sw.InstallType,
-		})
-	}
-
 	executionID := uuid.New().String()
 
-	err = software.MigrateSoftware(executionID, &migrationList,
+	err = software.MigrateSoftware(executionID, &softwareMigrateReq.MigrationList,
 		softwareMigrateReq.SourceConnectionInfoID, &softwareMigrateReq.Target)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
@@ -414,16 +390,16 @@ func MigrateSoftware(c echo.Context) error {
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:   executionID,
-		MigrationList: migrationList,
+		MigrationList: softwareMigrateReq.MigrationList,
 	}, " ")
 }
 
 // GetSoftwareMigrationLog godoc
 //
 //	@ID				get-software-migration-log
-//	@Summary		Get Software Migration Log
+//	@Summary		Get Package Migration Log
 //	@Description	Get the software migration log.
-//	@Tags			[Software]
+//	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
 //	@Param			executionId path string true "ID of the software migration execution."

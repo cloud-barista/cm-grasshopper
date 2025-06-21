@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwareInfo,
+func MigrateSoftware(executionID string, executionList *model.MigrationList,
 	sourceConnectionInfoID string, target *model.Target) error {
 	var executionStatusList []model.ExecutionStatus
 
@@ -26,13 +26,24 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 		return fmt.Errorf("failed to connect to target host: %v", err)
 	}
 
-	for _, execution := range *executionList {
+	for _, execution := range executionList.Packages {
 		executionStatusList = append(executionStatusList, model.ExecutionStatus{
 			Order:               execution.Order,
-			SoftwareID:          execution.SoftwareID,
-			SoftwareName:        execution.SoftwareName,
-			SoftwareVersion:     execution.SoftwareVersion,
-			SoftwareInstallType: execution.SoftwareInstallType,
+			SoftwareName:        execution.Name,
+			SoftwareVersion:     execution.Version,
+			SoftwareInstallType: model.SoftwareTypePackage,
+			Status:              "ready",
+			StartedAt:           time.Time{},
+			ErrorMessage:        "",
+		})
+	}
+
+	for _, execution := range executionList.Containers {
+		executionStatusList = append(executionStatusList, model.ExecutionStatus{
+			Order:               execution.Order,
+			SoftwareName:        execution.Name,
+			SoftwareVersion:     execution.ContainerImage.ImageVersion,
+			SoftwareInstallType: model.SoftwareTypeContainer,
 			Status:              "ready",
 			StartedAt:           time.Time{},
 			ErrorMessage:        "",
@@ -51,7 +62,7 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 		return err
 	}
 
-	go func(id string, exList []model.MigrationSoftwareInfo, exStatusList []model.ExecutionStatus,
+	go func(id string, exList *model.MigrationList, exStatusList []model.ExecutionStatus,
 		s *ssh.Client, t *ssh.Client) {
 		defer func() {
 			_ = s.Close()
@@ -77,84 +88,80 @@ func MigrateSoftware(executionID string, executionList *[]model.MigrationSoftwar
 			}
 		}
 
-		for i, execution := range exList {
-			if execution.SoftwareInstallType == "package" {
-				updateStatus(i, "installing", "", true)
+		for i, execution := range exList.Packages {
+			updateStatus(i, "installing", "", true)
 
-				err := runPlaybook(id, execution.SoftwareID, t.SSHTarget)
-				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
+			err := runPlaybook(id, execution.PackageMigrationConfigID, execution.Name, t.SSHTarget)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(i, "failed", err.Error(), false)
 
-					return
-				}
-
-				migrationLogger, err := initLoggerWithUUID(executionID)
-				if err != nil {
-					errMsg := fmt.Sprintf("failed to initialize logger: %v", err)
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+errMsg)
-					updateStatus(i, "failed", errMsg, false)
-				}
-
-				err = configCopier(s, t, execution.SoftwareName, executionID, migrationLogger)
-				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
-
-					migrationLogger.Close()
-					return
-				}
-
-				sw, err := dao.PackageMigrationConfigGet(execution.SoftwareID)
-				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
-
-					migrationLogger.Close()
-					return
-				}
-
-				customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
-				if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
-					migrationLogger.Printf(INFO, "Starting to copy custom configs")
-					var customConfigs []ConfigFile
-					for _, customConfig := range customConfigsSplit {
-						customConfigs = append(customConfigs, ConfigFile{
-							Path:   customConfig,
-							Status: "Custom",
-						})
-					}
-					err = copyConfigFiles(s, t, customConfigs, migrationLogger)
-					if err != nil {
-						logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-							", SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-						updateStatus(i, "failed", err.Error(), false)
-
-						migrationLogger.Close()
-						return
-					}
-				}
-
-				err = serviceMigrator(s, t, execution.SoftwareName, executionID, migrationLogger)
-				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", InstallType=package, SoftwareID="+execution.SoftwareID+", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
-
-					migrationLogger.Close()
-					return
-				}
-
-				updateStatus(i, "finished", "", true)
-			} else {
-				updateStatus(i, "failed", "not supported install type", false)
+				return
 			}
+
+			migrationLogger, err := initLoggerWithUUID(executionID)
+			if err != nil {
+				errMsg := fmt.Sprintf("failed to initialize logger: %v", err)
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+errMsg)
+				updateStatus(i, "failed", errMsg, false)
+			}
+
+			err = configCopier(s, t, execution.Name, executionID, migrationLogger)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(i, "failed", err.Error(), false)
+
+				migrationLogger.Close()
+				return
+			}
+
+			sw, err := dao.PackageMigrationConfigGet(execution.PackageMigrationConfigID)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", Error="+err.Error())
+				updateStatus(i, "failed", err.Error(), false)
+
+				migrationLogger.Close()
+				return
+			}
+
+			customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
+			if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
+				migrationLogger.Printf(INFO, "Starting to copy custom configs")
+				var customConfigs []ConfigFile
+				for _, customConfig := range customConfigsSplit {
+					customConfigs = append(customConfigs, ConfigFile{
+						Path:   customConfig,
+						Status: "Custom",
+					})
+				}
+				err = copyConfigFiles(s, t, customConfigs, migrationLogger)
+				if err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+						", Error="+err.Error())
+					updateStatus(i, "failed", err.Error(), false)
+
+					migrationLogger.Close()
+					return
+				}
+			}
+
+			err = serviceMigrator(s, t, execution.Name, executionID, migrationLogger)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(i, "failed", err.Error(), false)
+
+				migrationLogger.Close()
+				return
+			}
+
+			updateStatus(i, "finished", "", true)
 		}
-	}(executionID, *executionList, executionStatusList, sourceClient, targetClient)
+	}(executionID, executionList, executionStatusList, sourceClient, targetClient)
 
 	return nil
 }

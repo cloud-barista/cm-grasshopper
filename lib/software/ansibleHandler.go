@@ -308,7 +308,7 @@ func checkAnsibleConfig() error {
 	return nil
 }
 
-func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarget) error {
+func runPlaybook(executionID string, packageMigrationConfigID string, softwareName string, sshTarget *model.SSHTarget) error {
 	err := checkAnsibleConfig()
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
@@ -316,7 +316,11 @@ func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarg
 		return err
 	}
 
-	pwd, err := getTemporaryAnsiblePlaybookFolderPath(executionID, softwareID)
+	if packageMigrationConfigID == "" {
+		packageMigrationConfigID = "common"
+	}
+
+	pwd, err := getTemporaryAnsiblePlaybookFolderPath(executionID, packageMigrationConfigID)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -326,7 +330,64 @@ func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarg
 		deleteDir(pwd)
 	}()
 
-	playbookFile, err := findPlaybookFile(softwareID)
+	if packageMigrationConfigID == "common" {
+		err := filepath.Walk(pwd, func(path string, d os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			destPath, _ := filepath.Rel(pwd, path)
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			if strings.HasSuffix(destPath, "playbook.yml") {
+				dataStr := string(data)
+				dataStr = strings.ReplaceAll(dataStr, "SOFTWARE_NAME", softwareName)
+				data = []byte(dataStr)
+			} else if strings.HasSuffix(destPath, filepath.Join("tasks", "add_repo.yml")) {
+				softwareName = strings.ReplaceAll(softwareName, "/", "_")
+				softwareName = strings.ReplaceAll(softwareName, "\\", "_")
+				softwareName = strings.ReplaceAll(softwareName, "\n", "_")
+				softwareName = strings.ReplaceAll(softwareName, " ", "_")
+
+				dataStr := string(data)
+				dataStr = strings.ReplaceAll(dataStr, "SOFTWARE_NAME", softwareName)
+				data = []byte(dataStr)
+			} else if strings.HasSuffix(destPath, filepath.Join("tasks", "main.yml")) {
+				dataStr := string(data)
+				dataStr = strings.ReplaceAll(dataStr, "- import_tasks: add_repo.yml\n", "")
+				data = []byte(dataStr)
+			}
+
+			if err := os.WriteFile(destPath, data, 0644); err != nil {
+				return err
+			}
+
+			if strings.HasSuffix(destPath, filepath.Join("vars", "main.yml")) {
+				var content string
+
+				content += "packages_to_install: []\n"
+				content += "packages_to_delete: []\n"
+
+				content += "repo_use_os_version_code: false\n"
+
+				return fileutil.WriteFileAppend(destPath, content)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	playbookFile, err := findPlaybookFile(packageMigrationConfigID)
 	if err != nil {
 		logger.Logger.Println(logger.ERROR, true, err)
 		return err
@@ -383,7 +444,7 @@ func runPlaybook(executionID string, softwareID string, sshTarget *model.SSHTarg
 
 	err = cmd.Run()
 	if err != nil {
-		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + softwareID + ", Error: " + err.Error() + ")"
+		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + packageMigrationConfigID + ", Error: " + err.Error() + ")"
 		logger.Logger.Println(logger.ERROR, true, errMsg)
 	}
 

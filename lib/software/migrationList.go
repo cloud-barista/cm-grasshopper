@@ -16,7 +16,7 @@ import (
 )
 
 func findMatchedPackageMigrationConfig(os string, osVersion string,
-	architecture string, softwareName string, softwareVersion string) (*model.PackageMigrationConfig, error) {
+	architecture model.SoftwareArchitecture, softwareName string, softwareVersion string) (*model.PackageMigrationConfig, error) {
 	list, err := dao.PackageMigrationConfigGetList(&model.PackageMigrationConfig{
 		MatchNames: softwareName,
 	}, false, 0, 0)
@@ -26,7 +26,7 @@ func findMatchedPackageMigrationConfig(os string, osVersion string,
 
 	var matchedConfigs []model.PackageMigrationConfig
 	for _, sw := range *list {
-		if sw.Architecture != "common" &&
+		if sw.Architecture != model.SoftwareArchitectureCommon &&
 			(sw.OS != os || sw.OSVersion != osVersion || sw.Architecture != architecture) {
 			continue
 		}
@@ -131,25 +131,20 @@ func getConnectionInfoSoftware(sgID string, connectionID string) (*software.Soft
 	return &softwareInfo, nil
 }
 
-type softwarePackage struct {
-	Name    string
-	Version string
-}
-
-func convertToPackages(packages interface{}) []softwarePackage {
-	var result []softwarePackage
+func convertToPackages(packages interface{}) []model.Package {
+	var result []model.Package
 
 	switch p := packages.(type) {
 	case []software.DEB:
 		for _, pkg := range p {
-			result = append(result, softwarePackage{
+			result = append(result, model.Package{
 				Name:    pkg.Package,
 				Version: pkg.Version,
 			})
 		}
 	case []software.RPM:
 		for _, pkg := range p {
-			result = append(result, softwarePackage{
+			result = append(result, model.Package{
 				Name:    pkg.Name,
 				Version: pkg.Version,
 			})
@@ -159,7 +154,7 @@ func convertToPackages(packages interface{}) []softwarePackage {
 	return result
 }
 
-func getSoftwarePackages(idLike string, softwareInfo *software.Software) ([]softwarePackage, error) {
+func getSoftwarePackages(idLike string, softwareInfo *software.Software) ([]model.Package, error) {
 	switch {
 	case strings.Contains(idLike, "debian"), strings.Contains(idLike, "ubuntu"):
 		return convertToPackages(softwareInfo.DEB), nil
@@ -249,11 +244,10 @@ func compareVersions(v1, v2 string) int {
 	return 0
 }
 
-func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage) ([]model.MigrationSoftwareInfo, []string) {
-	migrationList := make([]model.MigrationSoftwareInfo, 0)
+func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) ([]model.PackageMigrationInfo, []string) {
+	migrationPackages := make([]model.PackageMigrationInfo, 0)
 	errMsgs := make([]string, 0)
 
-	existingByID := make(map[string]bool)
 	existingByName := make(map[string]int)
 
 	var i int
@@ -261,13 +255,13 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 		sw, err := findMatchedPackageMigrationConfig(
 			infraInfo.Compute.OS.OS.Name,
 			infraInfo.Compute.OS.OS.VersionID,
-			infraInfo.Compute.OS.Kernel.Architecture,
+			model.SoftwareArchitecture(infraInfo.Compute.OS.Kernel.Architecture),
 			pkg.Name,
 			pkg.Version,
 		)
 		if err != nil {
 			errMsg := fmt.Sprintf(
-				"Software: Name=%s, Version=%s, Error=%s",
+				"Package: Name=%s, Version=%s, Error=%s",
 				pkg.Name,
 				pkg.Version,
 				err.Error(),
@@ -278,11 +272,27 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 		}
 
 		if sw == nil {
+			i++
+
+			migrationPackages = append(migrationPackages, model.PackageMigrationInfo{
+				Order:                    i,
+				Name:                     pkg.Name,
+				Version:                  pkg.Version,
+				NeededPackages:           pkg.NeededPackages,
+				NeedToDeletePackages:     pkg.NeedToDeletePackages,
+				CustomDataPaths:          []string{},
+				CustomConfigs:            pkg.CustomConfigs,
+				RepoURL:                  pkg.RepoURL,
+				GPGKeyURL:                pkg.GPGKeyURL,
+				RepoUseOSVersionCode:     pkg.RepoUseOSVersionCode,
+				PackageMigrationConfigID: "",
+			})
+
 			continue
 		}
 
 		if idx, exists := existingByName[sw.Name]; exists {
-			existingVersion := migrationList[idx].SoftwareVersion
+			existingVersion := migrationPackages[idx].Version
 			// Skip if existingVersion is greater than or equal to sw.Version
 			// e.g: existingVersion="1.2.0", sw.Version="1.1.0" => compareVersions returns 1  => skip
 			// e.g: existingVersion="1.2.0", sw.Version="1.2.0" => compareVersions returns 0  => skip
@@ -290,25 +300,30 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []softwarePackage)
 			if compareVersions(existingVersion, sw.Version) >= 0 {
 				continue
 			}
-			migrationList = append(migrationList[:idx], migrationList[idx+1:]...)
-			delete(existingByID, migrationList[idx].SoftwareID)
+			migrationPackages = append(migrationPackages[:idx], migrationPackages[idx+1:]...)
 		}
 
 		i++
 
-		newSoftware := model.MigrationSoftwareInfo{
-			Order:               i,
-			SoftwareID:          sw.ID,
-			SoftwareName:        sw.Name,
-			SoftwareVersion:     sw.Version,
-			SoftwareInstallType: "package",
+		newSoftware := model.PackageMigrationInfo{
+			Order:                    i,
+			Name:                     sw.Name,
+			Version:                  sw.Version,
+			NeededPackages:           strings.Split(sw.NeededPackages, ","),
+			NeedToDeletePackages:     strings.Split(sw.NeedToDeletePackages, ","),
+			CustomDataPaths:          []string{},
+			CustomConfigs:            sw.CustomConfigs,
+			RepoURL:                  sw.RepoURL,
+			GPGKeyURL:                sw.GPGKeyURL,
+			RepoUseOSVersionCode:     sw.RepoUseOSVersionCode,
+			PackageMigrationConfigID: sw.ID,
 		}
 
-		migrationList = append(migrationList, newSoftware)
-		existingByName[sw.Name] = len(migrationList) - 1
+		migrationPackages = append(migrationPackages, newSoftware)
+		existingByName[sw.Name] = len(migrationPackages) - 1
 	}
 
-	return migrationList, errMsgs
+	return migrationPackages, errMsgs
 }
 
 func MakeMigrationListRes(sgID string) (*model.MigrationListRes, error) {
@@ -345,12 +360,12 @@ func MakeMigrationListRes(sgID string) (*model.MigrationListRes, error) {
 			return nil, err
 		}
 
+		server.MigrationList.Packages, server.Errors = processSoftwarePackages(infraInfo, packages)
 		server.ConnectionInfoID = encryptedConnectionInfo.ID
-		server.MigrationList, server.Errors = processSoftwarePackages(infraInfo, packages)
 		servers = append(servers, server)
 	}
 
 	return &model.MigrationListRes{
-		Server: servers,
+		Servers: servers,
 	}, nil
 }
