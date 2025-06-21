@@ -59,13 +59,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
-                "summary": "Migrate Software",
+                "summary": "Migrate Package",
                 "operationId": "migrate-software",
                 "parameters": [
                     {
-                        "description": "Software migrate request.",
+                        "description": "Package migrate request.",
                         "name": "softwareMigrateReq",
                         "in": "body",
                         "required": true,
@@ -106,9 +106,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
-                "summary": "Get Software Migration Log",
+                "summary": "Get Package Migration Log",
                 "operationId": "get-software-migration-log",
                 "parameters": [
                     {
@@ -151,7 +151,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
                 "summary": "Get Migration List",
                 "operationId": "get-migration-list",
@@ -196,7 +196,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
                 "summary": "List package migration config",
                 "operationId": "list-package-migration-config",
@@ -309,13 +309,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
-                "summary": "Register Software",
+                "summary": "Register Package",
                 "operationId": "register-software",
                 "parameters": [
                     {
-                        "description": "Software info",
+                        "description": "Package info",
                         "name": "softwareRegisterReq",
                         "in": "body",
                         "required": true,
@@ -356,9 +356,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "[Software]"
+                    "[Package]"
                 ],
-                "summary": "Delete Software",
+                "summary": "Delete Package",
                 "operationId": "delete-software",
                 "parameters": [
                     {
@@ -401,10 +401,210 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo": {
+            "type": "object",
+            "required": [
+                "name",
+                "version"
+            ],
+            "properties": {
+                "binary_path": {
+                    "type": "string"
+                },
+                "custom_configs": {
+                    "type": "string"
+                },
+                "custom_data_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "needed_libraries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage": {
+            "type": "object",
+            "required": [
+                "image_architecture",
+                "image_hash",
+                "image_name",
+                "image_version"
+            ],
+            "properties": {
+                "image_architecture": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture"
+                },
+                "image_hash": {
+                    "type": "string"
+                },
+                "image_name": {
+                    "type": "string"
+                },
+                "image_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo": {
+            "type": "object",
+            "required": [
+                "container_image",
+                "container_status",
+                "name",
+                "network_mode",
+                "restart_policy",
+                "runtime"
+            ],
+            "properties": {
+                "container_image": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage"
+                },
+                "container_ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort"
+                    }
+                },
+                "container_status": {
+                    "type": "string"
+                },
+                "docker_compose_path": {
+                    "type": "string"
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env"
+                    }
+                },
+                "mount_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network_mode": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "restart_policy": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "Which runtime uses for the container (Docker, Podman, ...)",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort": {
+            "type": "object",
+            "required": [
+                "container_port",
+                "host_ip",
+                "host_port",
+                "protocol"
+            ],
+            "properties": {
+                "container_port": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Port}",
+                    "type": "integer"
+                },
+                "host_ip": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostIp",
+                    "type": "string"
+                },
+                "host_port": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostPort",
+                    "type": "integer"
+                },
+                "protocol": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Protocol}",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo": {
+            "type": "object",
+            "required": [
+                "version"
+            ],
+            "properties": {
+                "order": {
+                    "type": "integer"
+                },
+                "version": {
+                    "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList": {
+            "type": "object",
+            "properties": {
+                "binaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo"
+                    }
+                },
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo"
+                    }
+                },
+                "kubernetes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo"
+                    }
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo"
+                    }
+                }
+            }
+        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes": {
             "type": "object",
             "properties": {
-                "server": {
+                "servers": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer"
@@ -439,30 +639,7 @@ const docTemplate = `{
                     }
                 },
                 "migration_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo"
-                    }
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo": {
-            "type": "object",
-            "properties": {
-                "order": {
-                    "type": "integer"
-                },
-                "software_id": {
-                    "type": "string"
-                },
-                "software_install_type": {
-                    "type": "string"
-                },
-                "software_name": {
-                    "type": "string"
-                },
-                "software_version": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
                 }
             }
         },
@@ -482,7 +659,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "architecture": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture"
                 },
                 "created_at": {
                     "type": "string"
@@ -533,17 +710,17 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "architecture",
-                "install_type",
                 "match_names",
                 "name",
                 "needed_packages",
                 "os",
                 "os_version",
+                "uuid",
                 "version"
             ],
             "properties": {
                 "architecture": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture"
                 },
                 "custom_configs": {
                     "type": "array",
@@ -552,9 +729,6 @@ const docTemplate = `{
                     }
                 },
                 "gpg_key_url": {
-                    "type": "string"
-                },
-                "install_type": {
                     "type": "string"
                 },
                 "match_names": {
@@ -582,6 +756,62 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "os_version": {
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "repo_use_os_version_code": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo": {
+            "type": "object",
+            "required": [
+                "name",
+                "needed_packages",
+                "version"
+            ],
+            "properties": {
+                "custom_configs": {
+                    "type": "string"
+                },
+                "custom_data_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gpg_key_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "need_to_delete_packages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "needed_packages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "package_migration_config_id": {
                     "type": "string"
                 },
                 "repo_url": {
@@ -604,101 +834,32 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software": {
-            "type": "object",
-            "required": [
-                "architecture",
-                "created_at",
-                "install_type",
-                "match_names",
-                "name",
-                "needed_packages",
-                "os",
-                "os_version",
-                "updated_at",
-                "uuid",
-                "version"
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture": {
+            "type": "string",
+            "enum": [
+                "common",
+                "x86_64",
+                "x86",
+                "arm",
+                "arm64"
             ],
-            "properties": {
-                "architecture": {
-                    "type": "string"
-                },
-                "binary_path": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "custom_configs": {
-                    "type": "string"
-                },
-                "custom_data_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "gpg_key_url": {
-                    "type": "string"
-                },
-                "install_type": {
-                    "type": "string"
-                },
-                "match_names": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "need_to_delete_packages": {
-                    "type": "string"
-                },
-                "needed_libraries": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "needed_packages": {
-                    "type": "string"
-                },
-                "os": {
-                    "type": "string"
-                },
-                "os_version": {
-                    "type": "string"
-                },
-                "repo_url": {
-                    "type": "string"
-                },
-                "repo_use_os_version_code": {
-                    "type": "boolean",
-                    "default": false
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "uuid": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
+            "x-enum-varnames": [
+                "SoftwareArchitectureCommon",
+                "SoftwareArchitectureX8664",
+                "SoftwareArchitectureX86",
+                "SoftwareArchitectureARM",
+                "SoftwareArchitectureARM64"
+            ]
         },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
             "type": "object",
             "required": [
-                "softwares",
                 "source_connection_info_id",
                 "target"
             ],
             "properties": {
-                "softwares": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software"
-                    }
+                "migration_list": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
                 },
                 "source_connection_info_id": {
                     "type": "string"
@@ -715,10 +876,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "migration_list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo"
-                    }
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
                 }
             }
         },

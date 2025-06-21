@@ -5,9 +5,146 @@ definitions:
       error:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo:
+    properties:
+      binary_path:
+        type: string
+      custom_configs:
+        type: string
+      custom_data_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      needed_libraries:
+        items:
+          type: string
+        type: array
+      order:
+        type: integer
+      version:
+        type: string
+    required:
+    - name
+    - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage:
+    properties:
+      image_architecture:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
+      image_hash:
+        type: string
+      image_name:
+        type: string
+      image_version:
+        type: string
+    required:
+    - image_architecture
+    - image_hash
+    - image_name
+    - image_version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo:
+    properties:
+      container_image:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage'
+      container_ports:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort'
+        type: array
+      container_status:
+        type: string
+      docker_compose_path:
+        type: string
+      envs:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env'
+        type: array
+      mount_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      network_mode:
+        type: string
+      order:
+        type: integer
+      restart_policy:
+        type: string
+      runtime:
+        description: Which runtime uses for the container (Docker, Podman, ...)
+        type: string
+    required:
+    - container_image
+    - container_status
+    - name
+    - network_mode
+    - restart_policy
+    - runtime
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort:
+    properties:
+      container_port:
+        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Port}
+        type: integer
+      host_ip:
+        description: NetworkSettings.Ports.{Port}/{Protocol}.HostIp
+        type: string
+      host_port:
+        description: NetworkSettings.Ports.{Port}/{Protocol}.HostPort
+        type: integer
+      protocol:
+        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Protocol}
+        type: string
+    required:
+    - container_port
+    - host_ip
+    - host_port
+    - protocol
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo:
+    properties:
+      order:
+        type: integer
+      version:
+        description: Same as release
+        type: string
+    required:
+    - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList:
+    properties:
+      binaries:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo'
+        type: array
+      containers:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo'
+        type: array
+      kubernetes:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo'
+        type: array
+      packages:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo'
+        type: array
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes:
     properties:
-      server:
+      servers:
         items:
           $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer'
         type: array
@@ -30,27 +167,12 @@ definitions:
           type: string
         type: array
       migration_list:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo'
-        type: array
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo:
-    properties:
-      order:
-        type: integer
-      software_id:
-        type: string
-      software_install_type:
-        type: string
-      software_name:
-        type: string
-      software_version:
-        type: string
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfig:
     properties:
       architecture:
-        type: string
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
       created_at:
         type: string
       custom_configs:
@@ -95,14 +217,12 @@ definitions:
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfigReq:
     properties:
       architecture:
-        type: string
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
       custom_configs:
         items:
           type: string
         type: array
       gpg_key_url:
-        type: string
-      install_type:
         type: string
       match_names:
         items:
@@ -127,31 +247,22 @@ definitions:
       repo_use_os_version_code:
         default: false
         type: boolean
+      uuid:
+        type: string
       version:
         type: string
     required:
     - architecture
-    - install_type
     - match_names
     - name
     - needed_packages
     - os
     - os_version
+    - uuid
     - version
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo:
     properties:
-      message:
-        type: string
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software:
-    properties:
-      architecture:
-        type: string
-      binary_path:
-        type: string
-      created_at:
-        type: string
       custom_configs:
         type: string
       custom_data_paths:
@@ -160,60 +271,60 @@ definitions:
         type: array
       gpg_key_url:
         type: string
-      install_type:
-        type: string
-      match_names:
-        type: string
       name:
         type: string
       need_to_delete_packages:
-        type: string
-      needed_libraries:
         items:
           type: string
         type: array
       needed_packages:
-        type: string
-      os:
-        type: string
-      os_version:
+        items:
+          type: string
+        type: array
+      order:
+        type: integer
+      package_migration_config_id:
         type: string
       repo_url:
         type: string
       repo_use_os_version_code:
         default: false
         type: boolean
-      updated_at:
-        type: string
-      uuid:
-        type: string
       version:
         type: string
     required:
-    - architecture
-    - created_at
-    - install_type
-    - match_names
     - name
     - needed_packages
-    - os
-    - os_version
-    - updated_at
-    - uuid
     - version
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
+    properties:
+      message:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture:
+    enum:
+    - common
+    - x86_64
+    - x86
+    - arm
+    - arm64
+    type: string
+    x-enum-varnames:
+    - SoftwareArchitectureCommon
+    - SoftwareArchitectureX8664
+    - SoftwareArchitectureX86
+    - SoftwareArchitectureARM
+    - SoftwareArchitectureARM64
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
     properties:
-      softwares:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Software'
-        type: array
+      migration_list:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
       source_connection_info_id:
         type: string
       target:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
     required:
-    - softwares
     - source_connection_info_id
     - target
     type: object
@@ -222,9 +333,7 @@ definitions:
       execution_id:
         type: string
       migration_list:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationSoftwareInfo'
-        type: array
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
     properties:
@@ -275,7 +384,7 @@ paths:
       description: Migrate pieces of software to target.
       operationId: migrate-software
       parameters:
-      - description: Software migrate request.
+      - description: Package migrate request.
         in: body
         name: softwareMigrateReq
         required: true
@@ -296,9 +405,9 @@ paths:
           description: Failed to migrate pieces of software.
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Migrate Software
+      summary: Migrate Package
       tags:
-      - '[Software]'
+      - '[Package]'
   /software/migrate/log/{executionId}:
     get:
       consumes:
@@ -326,9 +435,9 @@ paths:
           description: Failed to get the software migration log
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Get Software Migration Log
+      summary: Get Package Migration Log
       tags:
-      - '[Software]'
+      - '[Package]'
   /software/migration_list/{sgId}:
     get:
       consumes:
@@ -358,7 +467,7 @@ paths:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Get Migration List
       tags:
-      - '[Software]'
+      - '[Package]'
   /software/package/migration_config:
     get:
       consumes:
@@ -433,7 +542,7 @@ paths:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: List package migration config
       tags:
-      - '[Software]'
+      - '[Package]'
   /software/package/migration_config/{migrationConfigId}:
     delete:
       consumes:
@@ -461,9 +570,9 @@ paths:
           description: Failed to delete the software
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Delete Software
+      summary: Delete Package
       tags:
-      - '[Software]'
+      - '[Package]'
   /software/package/migration_config/register:
     post:
       consumes:
@@ -471,7 +580,7 @@ paths:
       description: Register the software.
       operationId: register-software
       parameters:
-      - description: Software info
+      - description: Package info
         in: body
         name: softwareRegisterReq
         required: true
@@ -492,7 +601,7 @@ paths:
           description: Failed to sent SSH command.
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Register Software
+      summary: Register Package
       tags:
-      - '[Software]'
+      - '[Package]'
 swagger: "2.0"
