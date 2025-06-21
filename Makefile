@@ -4,7 +4,7 @@ MODULE_NAME := "cm-grasshopper"
 PROJECT_NAME := "github.com/cloud-barista/${MODULE_NAME}"
 PKG_LIST := $(shell go list ${PROJECT_NAME}/... 2>&1)
 
-GOPROXY_OPTION := GOPROXY=direct GOSUMDB=off
+GOPROXY_OPTION := GOPROXY=direct
 GO_COMMAND := ${GOPROXY_OPTION} go
 GOPATH := $(shell go env GOPATH)
 
@@ -27,7 +27,7 @@ lint: dependency ## Lint the files
 	    go_path=`echo $$cygdrive_prefix/$$drive/$$path | sed 's@\/\/@\/@g'`; \
 	  fi; \
 	  if [ ! -f "$$go_path/bin/golangci-lint" ]; then \
-	    ${GO_COMMAND} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6; \
+	    ${GO_COMMAND} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@feat/go1.25; \
 	  fi; \
 	  $$go_path/bin/golangci-lint run
 
