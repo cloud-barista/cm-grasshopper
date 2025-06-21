@@ -4,8 +4,6 @@ import (
 	"errors"
 )
 
-///
-
 type SoftwareArchitecture string
 
 const (
@@ -42,27 +40,6 @@ const (
 	SoftwareTypeBinary     SoftwareType = "binary"     // Moving the software as a binary executable.
 )
 
-type Binary struct {
-	Name            string   `json:"name" validate:"required"`
-	Version         string   `gorm:"version" json:"version" validate:"required"`
-	NeededLibraries []string `json:"needed_libraries"`
-	BinaryPath      string   `json:"binary_path,omitempty"`
-	CustomDataPaths []string `json:"custom_data_paths"`
-	CustomConfigs   string   `json:"custom_configs"`
-}
-
-type Package struct {
-	Name                 string   `json:"name" validate:"required"`
-	Version              string   `gorm:"version" json:"version" validate:"required"`
-	NeededPackages       []string `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages []string `json:"need_to_delete_packages"`
-	CustomDataPaths      []string `json:"custom_data_paths"`
-	CustomConfigs        string   `json:"custom_configs"`
-	RepoURL              string   `json:"repo_url"`
-	GPGKeyURL            string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
-}
-
 type ContainerImage struct {
 	ImageName         string               `json:"image_name" validate:"required"`
 	ImageVersion      string               `json:"image_version" validate:"required"`
@@ -82,6 +59,27 @@ type Env struct {
 	Value string `json:"value,omitempty"`
 }
 
+type Binary struct {
+	Name            string   `json:"name" validate:"required"`
+	Version         string   `gorm:"version" json:"version" validate:"required"`
+	NeededLibraries []string `json:"needed_libraries"`
+	BinaryPath      string   `json:"binary_path,omitempty"`
+	CustomDataPaths []string `json:"custom_data_paths"`
+	CustomConfigs   string   `json:"custom_configs"`
+}
+
+type Package struct {
+	Name                 string   `json:"name" validate:"required"`
+	Version              string   `gorm:"version" json:"version" validate:"required"`
+	NeededPackages       string   `json:"needed_packages" validate:"required"`
+	NeedToDeletePackages string   `json:"need_to_delete_packages"`
+	CustomDataPaths      []string `json:"custom_data_paths"`
+	CustomConfigs        string   `json:"custom_configs"`
+	RepoURL              string   `json:"repo_url"`
+	GPGKeyURL            string   `json:"gpg_key_url"`
+	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
+}
+
 type Container struct {
 	Name              string          `json:"name,omitempty" validate:"required"`
 	Runtime           string          `json:"runtime,omitempty" validate:"required"` // Which runtime uses for the container (Docker, Podman, ...)
@@ -96,6 +94,7 @@ type Container struct {
 }
 
 type Kubernetes struct {
-	Version string `json:"version,omitempty" validate:"required"` // Same as release
-	// TODO - K8s Credential Information
+	Version    string                 `json:"version,omitempty" validate:"required"` // Same as release
+	KubeConfig string                 `json:"kube_config" validate:"required"`
+	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
 }

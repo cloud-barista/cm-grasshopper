@@ -560,14 +560,55 @@ const docTemplate = `{
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo": {
             "type": "object",
             "required": [
+                "kube_config",
+                "resources",
+                "velero",
                 "version"
             ],
             "properties": {
+                "kube_config": {
+                    "type": "string"
+                },
                 "order": {
                     "type": "integer"
                 },
+                "resources": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "velero": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero"
+                },
                 "version": {
                     "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero": {
+            "type": "object",
+            "required": [
+                "backup_location_config",
+                "bucket",
+                "provider"
+            ],
+            "properties": {
+                "backup_location_config": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "features": {
+                    "type": "string"
+                },
+                "plugins": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "secret_file": {
                     "type": "string"
                 }
             }

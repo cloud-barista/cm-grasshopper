@@ -89,10 +89,21 @@ type ContainerMigrationInfo struct {
 	RestartPolicy     string          `json:"restart_policy,omitempty" validate:"required"`
 }
 
+type KubernetesVelero struct {
+	Provider             string `json:"provider" validate:"required"`
+	Plugins              string `json:"plugins,omitempty"`
+	Bucket               string `json:"bucket" validate:"required"`
+	SecretFile           string `json:"secret_file"`
+	BackupLocationConfig string `json:"backup_location_config" validate:"required"`
+	Features             string `json:"features"`
+}
+
 type KubernetesMigrationInfo struct {
-	Order   int    `json:"order"`
-	Version string `json:"version,omitempty" validate:"required"` // Same as release
-	// TODO - K8s Credential Information
+	Order      int                    `json:"order"`
+	Version    string                 `json:"version,omitempty" validate:"required"` // Same as release
+	KubeConfig string                 `json:"kube_config" validate:"required"`
+	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
+	Velero     KubernetesVelero       `json:"velero" validate:"required"`
 }
 
 type MigrationList struct {

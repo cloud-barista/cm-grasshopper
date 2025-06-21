@@ -115,13 +115,42 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo:
     properties:
+      kube_config:
+        type: string
       order:
         type: integer
+      resources:
+        additionalProperties: true
+        type: object
+      velero:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero'
       version:
         description: Same as release
         type: string
     required:
+    - kube_config
+    - resources
+    - velero
     - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero:
+    properties:
+      backup_location_config:
+        type: string
+      bucket:
+        type: string
+      features:
+        type: string
+      plugins:
+        type: string
+      provider:
+        type: string
+      secret_file:
+        type: string
+    required:
+    - backup_location_config
+    - bucket
+    - provider
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList:
     properties:
