@@ -61,58 +61,6 @@ type BinaryMigrationInfo struct {
 	CustomConfigs   string   `json:"custom_configs"`
 }
 
-type PackageMigrationInfo struct {
-	Order                    int      `json:"order"`
-	Name                     string   `json:"name" validate:"required"`
-	Version                  string   `gorm:"version" json:"version" validate:"required"`
-	NeededPackages           []string `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages     []string `json:"need_to_delete_packages"`
-	CustomDataPaths          []string `json:"custom_data_paths"`
-	CustomConfigs            string   `json:"custom_configs"`
-	RepoURL                  string   `json:"repo_url"`
-	GPGKeyURL                string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode     bool     `json:"repo_use_os_version_code" default:"false"`
-	PackageMigrationConfigID string   `json:"package_migration_config_id"`
-}
-
-type ContainerMigrationInfo struct {
-	Order             int             `json:"order"`
-	Name              string          `json:"name,omitempty" validate:"required"`
-	Runtime           string          `json:"runtime,omitempty" validate:"required"` // Which runtime uses for the container (Docker, Podman, ...)
-	ContainerImage    ContainerImage  `json:"container_image,omitempty" validate:"required"`
-	ContainerPorts    []ContainerPort `json:"container_ports"`
-	ContainerStatus   string          `json:"container_status" validate:"required"`
-	DockerComposePath string          `json:"docker_compose_path"`
-	MountPaths        []string        `json:"mount_paths"`
-	Envs              []Env           `json:"envs"`
-	NetworkMode       string          `json:"network_mode,omitempty" validate:"required"`
-	RestartPolicy     string          `json:"restart_policy,omitempty" validate:"required"`
-}
-
-type KubernetesVelero struct {
-	Provider             string `json:"provider" validate:"required"`
-	Plugins              string `json:"plugins,omitempty"`
-	Bucket               string `json:"bucket" validate:"required"`
-	SecretFile           string `json:"secret_file"`
-	BackupLocationConfig string `json:"backup_location_config" validate:"required"`
-	Features             string `json:"features"`
-}
-
-type KubernetesMigrationInfo struct {
-	Order      int                    `json:"order"`
-	Version    string                 `json:"version,omitempty" validate:"required"` // Same as release
-	KubeConfig string                 `json:"kube_config" validate:"required"`
-	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
-	Velero     KubernetesVelero       `json:"velero" validate:"required"`
-}
-
-type MigrationList struct {
-	Binaries   []BinaryMigrationInfo     `json:"binaries"`
-	Packages   []PackageMigrationInfo    `json:"packages"`
-	Containers []ContainerMigrationInfo  `json:"containers"`
-	Kubernetes []KubernetesMigrationInfo `json:"kubernetes"`
-}
-
 type MigrationServer struct {
 	ConnectionInfoID string        `json:"connection_info_id"`
 	MigrationList    MigrationList `json:"migration_list"`
