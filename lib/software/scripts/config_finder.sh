@@ -3,6 +3,18 @@
 # Package name from argument
 pkg="$1"
 
+# Check if package is likely a library package
+is_library_package() {
+     case "$pkg" in
+         lib*[0-9]|*-dev|*-devel|*-headers|*-doc|*-man|*-common|*-locale|*-dbg|*-data)
+             return 0
+             ;;
+         *)
+             return 1
+             ;;
+     esac
+ }
+
 # Find included config files and referenced directories
 check_includes() {
     local file="$1"
@@ -69,6 +81,11 @@ check_config_status() {
         echo "$file [Custom]"
     fi
 }
+
+# Early exit for library packages
+if is_library_package; then
+    exit 0
+fi
 
 # Temporary file for collecting results
 tmp_result=$(mktemp)

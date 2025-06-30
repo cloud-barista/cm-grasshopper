@@ -688,6 +688,29 @@ func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, pac
 	return nil
 }
 
+var libraryPackagePatterns = []string{
+	"lib.*-dev",
+	"lib.*[0-9]+$",
+	".*-devel",
+	".*-headers",
+	".*-doc",
+	".*-man",
+	".*-common",
+	".*-locale",
+	".*-dbg",
+	".*-data$",
+}
+
+func isLibraryPackage(packageName string) bool {
+	for _, pattern := range libraryPackagePatterns {
+		matched, _ := regexp.MatchString(pattern, packageName)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
 func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting config copier for package: %s (UUID: %s)\n", packageName, uuid)
 
@@ -699,6 +722,11 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 	if packageName == "" {
 		migrationLogger.Printf(ERROR, "Empty package name provided\n")
 		return fmt.Errorf("package name cannot be empty")
+	}
+
+	if isLibraryPackage(packageName) {
+		migrationLogger.Printf(INFO, "Package %s appears to be a library package, skipping config copy\n", packageName)
+		return nil
 	}
 
 	migrationLogger.Printf(INFO, "Finding configuration files for package: %s\n", packageName)
