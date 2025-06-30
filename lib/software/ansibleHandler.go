@@ -363,21 +363,21 @@ func runPlaybook(executionID string, packageMigrationConfigID string, softwareNa
 				dataStr := string(data)
 				dataStr = strings.ReplaceAll(dataStr, "- import_tasks: add_repo.yml\n", "")
 				data = []byte(dataStr)
-			}
-
-			if err := os.WriteFile(destPath, data, 0644); err != nil {
-				return err
-			}
-
-			if strings.HasSuffix(destPath, filepath.Join("vars", "main.yml")) {
+			} else if strings.HasSuffix(destPath, filepath.Join("vars", "main.yml")) {
 				var content string
 
-				content += "packages_to_install: []\n"
+				content += "packages_to_install:\n" +
+					"  - " + softwareName + "\n" +
+					"\n"
 				content += "packages_to_delete: []\n"
 
 				content += "repo_use_os_version_code: false\n"
 
-				return fileutil.WriteFileAppend(destPath, content)
+				return fileutil.WriteFileAppend(path, content)
+			}
+
+			if err := os.WriteFile(path, data, 0644); err != nil {
+				return err
 			}
 
 			return nil

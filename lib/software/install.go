@@ -118,34 +118,35 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 				return
 			}
 
-			sw, err := dao.PackageMigrationConfigGet(execution.PackageMigrationConfigID)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-					", Error="+err.Error())
-				updateStatus(i, "failed", err.Error(), false)
-
-				migrationLogger.Close()
-				return
-			}
-
-			customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
-			if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
-				migrationLogger.Printf(INFO, "Starting to copy custom configs")
-				var customConfigs []ConfigFile
-				for _, customConfig := range customConfigsSplit {
-					customConfigs = append(customConfigs, ConfigFile{
-						Path:   customConfig,
-						Status: "Custom",
-					})
-				}
-				err = copyConfigFiles(s, t, customConfigs, migrationLogger)
+			if execution.PackageMigrationConfigID != "" {
+				sw, err := dao.PackageMigrationConfigGet(execution.PackageMigrationConfigID)
 				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-						", Error="+err.Error())
-					updateStatus(i, "failed", err.Error(), false)
+					msg := "migrateSoftware: ExecutionID=" + executionID +
+						", Error=" + err.Error()
+					logger.Println(logger.WARN, true, msg)
+					migrationLogger.Printf(WARN, msg)
+				}
+				if sw != nil {
+					customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
+					if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
+						migrationLogger.Printf(INFO, "Starting to copy custom configs")
+						var customConfigs []ConfigFile
+						for _, customConfig := range customConfigsSplit {
+							customConfigs = append(customConfigs, ConfigFile{
+								Path:   customConfig,
+								Status: "Custom",
+							})
+						}
+						err = copyConfigFiles(s, t, customConfigs, migrationLogger)
+						if err != nil {
+							logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+								", Error="+err.Error())
+							updateStatus(i, "failed", err.Error(), false)
 
-					migrationLogger.Close()
-					return
+							migrationLogger.Close()
+							return
+						}
+					}
 				}
 			}
 
@@ -153,10 +154,10 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(i, "failed", err.Error(), false)
-
-				migrationLogger.Close()
-				return
+				//updateStatus(i, "failed", err.Error(), false)
+				//
+				//migrationLogger.Close()
+				//return
 			}
 
 			updateStatus(i, "finished", "", true)

@@ -415,13 +415,6 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 				_ = session.Close()
 				return fmt.Errorf("failed to start service %s: %v", service.Name, err)
 			}
-			_ = session.Close()
-
-			session, err = targetClient.NewSession()
-			if err != nil {
-				migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
-				return fmt.Errorf("failed to create session: %v", err)
-			}
 
 			cmd = fmt.Sprintf("systemctl is-active %s", service.Name)
 			output, err := session.CombinedOutput(sudoWrapper(cmd, targetClient.SSHTarget.Password))
