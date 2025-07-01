@@ -8,17 +8,18 @@ tmp_result=$(mktemp)
 tmp_processed=$(mktemp)
 tmp_includes=$(mktemp)
 
-# Check if package is likely a library package
-is_library_package() {
-     case "$pkg" in
-         lib*[0-9]|*-dev|*-devel|*-headers|*-doc|*-man|*-common|*-locale|*-dbg|*-data)
-             return 0
-             ;;
-         *)
-             return 1
-             ;;
-     esac
- }
+# Check if path should be skipped (virtual filesystems)
+should_skip_path() {
+    local path="$1"
+    case "$path" in
+        /proc/*|/dev/*|/sys/*|/run/*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
 # Extract includes from a single file
 extract_includes() {
@@ -38,6 +39,11 @@ extract_includes() {
         # Convert relative paths to absolute
         if [ "${inc_path#/}" = "$inc_path" ]; then
             inc_path="$(dirname "$file")/$inc_path"
+        fi
+
+        # Skip virtual filesystem paths
+        if should_skip_path "$inc_path"; then
+            continue
         fi
 
         # Handle wildcard patterns
@@ -146,11 +152,6 @@ cleanup() {
 # Set trap for cleanup
 trap cleanup EXIT
 
-# Early exit for library packages
-if is_library_package; then
-    exit 0
-fi
-
 {
     # Search using package manager
     if command -v dpkg >/dev/null 2>&1; then
@@ -178,6 +179,11 @@ fi
     fi
 
 } | sort -u | while read -r file; do
+    # Skip virtual filesystem paths
+    if should_skip_path "$file"; then
+        continue
+    fi
+
     # Filter config files by common patterns and backup files
     if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
         if [ -f "$file" ]; then

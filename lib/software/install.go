@@ -6,9 +6,33 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/jollaman999/utils/logger"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var libraryPackagePatterns = []string{
+	"lib.*-dev",
+	"lib.*[0-9]+$",
+	".*-devel",
+	".*-headers",
+	".*-doc",
+	".*-man",
+	".*-common",
+	".*-locale",
+	".*-dbg",
+	".*-data$",
+}
+
+func isLibraryPackage(packageName string) bool {
+	for _, pattern := range libraryPackagePatterns {
+		matched, _ := regexp.MatchString(pattern, packageName)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
 
 func MigrateSoftware(executionID string, executionList *model.MigrationList,
 	sourceConnectionInfoID string, target *model.Target) error {
@@ -106,6 +130,10 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+errMsg)
 				updateStatus(i, "failed", errMsg, false)
+			}
+
+			if isLibraryPackage(execution.Name) {
+				migrationLogger.Printf(INFO, "Package %s appears to be a library package, skipping migration\n", execution.Name)
 			}
 
 			err = configCopier(s, t, execution.Name, executionID, migrationLogger)
