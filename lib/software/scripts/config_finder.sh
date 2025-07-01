@@ -3,10 +3,33 @@
 # Package name from argument
 pkg="$1"
 
+# Validate package name
+if [ -z "$pkg" ]; then
+    echo "Usage: $0 <package_name>" >&2
+    exit 1
+fi
+
+# Check if package exists
+if command -v dpkg >/dev/null 2>&1; then
+    if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
+        echo "Package '$pkg' is not installed" >&2
+        exit 1
+    fi
+elif command -v rpm >/dev/null 2>&1; then
+    if ! rpm -q "$pkg" >/dev/null 2>&1; then
+        echo "Package '$pkg' is not installed" >&2
+        exit 1
+    fi
+else
+    echo "Neither dpkg nor rpm found. Unsupported system." >&2
+    exit 1
+fi
+
 # Global variables for tracking
 tmp_result=$(mktemp)
 tmp_processed=$(mktemp)
 tmp_includes=$(mktemp)
+tmp_dep_packages=$(mktemp)
 
 # Check if path should be skipped (virtual filesystems)
 should_skip_path() {
@@ -19,6 +42,56 @@ should_skip_path() {
             return 1
             ;;
     esac
+}
+
+# Get dependency packages for Debian-based systems
+get_debian_dependencies() {
+    local pkg="$1"
+
+    # Get dependencies using dpkg-query
+    dpkg-query -Wf='${Depends}\n${Pre-Depends}\n' "$pkg" 2>/dev/null | \
+    tr ',' '\n' | \
+    sed 's/|.*//' | \
+    sed 's/(.*//' | \
+    sed 's/^[[:space:]]*//' | \
+    sed 's/[[:space:]]*$//' | \
+    grep -v '^$' | \
+    while read -r dep; do
+        if dpkg -l "$dep" 2>/dev/null | grep -q "^ii"; then
+            echo "$dep"
+        fi
+    done
+}
+
+# Get dependency packages for RPM-based systems
+get_rpm_dependencies() {
+    local pkg="$1"
+
+    # Get requires using rpm
+    rpm -qR "$pkg" 2>/dev/null | \
+    grep -v 'rpmlib\|/bin/sh\|/usr/bin\|libc\|ld-linux' | \
+    sed 's/(.*//' | \
+    sed 's/>=.*//' | \
+    sed 's/<=.*//' | \
+    sed 's/=.*//' | \
+    sed 's/^[[:space:]]*//' | \
+    sed 's/[[:space:]]*$//' | \
+    while read -r dep; do
+        if rpm -q "$dep" >/dev/null 2>&1; then
+            echo "$dep"
+        fi
+    done
+}
+
+# Get all dependency packages
+get_dependency_packages() {
+    local pkg="$1"
+
+    if command -v dpkg >/dev/null 2>&1; then
+        get_debian_dependencies "$pkg"
+    elif command -v rpm >/dev/null 2>&1; then
+        get_rpm_dependencies "$pkg"
+    fi
 }
 
 # Extract includes from a single file
@@ -144,58 +217,131 @@ check_config_status() {
     fi
 }
 
+# Find files in directories where config files are located
+find_files_in_config_locations() {
+    local pkg="$1"
+
+    # Get actual config files from package first
+    if command -v dpkg >/dev/null 2>&1; then
+        config_files=$(dpkg -L "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml)$|/config$')
+    elif command -v rpm >/dev/null 2>&1; then
+        config_files=$(rpm -ql "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml)$|/config$')
+    fi
+
+    # Extract unique directories from config files
+    echo "$config_files" | while read -r config_file; do
+        if [ -n "$config_file" ] && [ -f "$config_file" ]; then
+            config_dir=$(dirname "$config_file")
+            echo "$config_dir"
+        fi
+    done | sort -u | while read -r dir; do
+        if [ -n "$dir" ] && [ -d "$dir" ]; then
+            # Find all files in this specific config directory
+            find "$dir" -type f 2>/dev/null
+        fi
+    done
+
+    # Add common config directories for well-known packages
+    case "$pkg" in
+        nginx*|apache*|httpd*)
+            for dir in /etc/nginx /etc/apache2 /etc/httpd; do
+                if [ -d "$dir" ]; then
+                    find "$dir" -type f 2>/dev/null
+                fi
+            done
+            ;;
+        mysql*|mariadb*)
+            for dir in /etc/mysql /etc/my.cnf.d; do
+                if [ -d "$dir" ]; then
+                    find "$dir" -type f 2>/dev/null
+                fi
+            done
+            ;;
+        postgresql*)
+            for dir in /etc/postgresql; do
+                if [ -d "$dir" ]; then
+                    find "$dir" -type f 2>/dev/null
+                fi
+            done
+            ;;
+        ssh*|openssh*)
+            for dir in /etc/ssh; do
+                if [ -d "$dir" ]; then
+                    find "$dir" -type f 2>/dev/null
+                fi
+            done
+            ;;
+    esac
+}
+
+# Process config files for a single package
+process_package_configs() {
+    local pkg="$1"
+
+    {
+        # Search using package manager (get actual config files)
+        if command -v dpkg >/dev/null 2>&1; then
+            dpkg -L "$pkg" 2>/dev/null
+        elif command -v rpm >/dev/null 2>&1; then
+            rpm -ql "$pkg" 2>/dev/null
+        fi
+
+        # Find additional files in directories where config files are located
+        find_files_in_config_locations "$pkg"
+
+    } | sort -u | while read -r file; do
+        # Skip virtual filesystem paths
+        if should_skip_path "$file"; then
+            continue
+        fi
+
+        # Skip if not a valid file path (starts with /, exists)
+        if [ "${file#/}" = "$file" ] || [ ! -f "$file" ]; then
+            continue
+        fi
+
+        # Skip documentation and copyright files
+        case "$file" in
+            */doc/*|*/man/*|*copyright*|*LICENSE*|*README*|*CHANGELOG*)
+                continue
+                ;;
+        esac
+
+        # Filter config files by common patterns and backup files
+        if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
+            if [ -f "$file" ]; then
+                process_includes "$file"
+            fi
+        # Check content of non-standard named files for config-like content
+        elif [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
+            if grep -i -E '(server|listen|port|host|config|ssl|virtual|root|location)' "$file" >/dev/null 2>&1; then
+                process_includes "$file"
+            fi
+        fi
+    done
+}
+
 # Cleanup function
 cleanup() {
-    rm -f "$tmp_result" "$tmp_processed" "$tmp_includes"
+    rm -f "$tmp_result" "$tmp_processed" "$tmp_includes" "$tmp_dep_packages"
 }
 
 # Set trap for cleanup
 trap cleanup EXIT
 
-{
-    # Search using package manager
-    if command -v dpkg >/dev/null 2>&1; then
-        dpkg -L "$pkg" 2>/dev/null
-    elif command -v rpm >/dev/null 2>&1; then
-        rpm -ql "$pkg" 2>/dev/null
-    fi
+# Get dependency packages silently
+get_dependency_packages "$pkg" > "$tmp_dep_packages"
 
-    # Search for config files in process arguments
-    ps aux | grep "$pkg" | grep -o '[[:space:]]/[^[:space:]]*'
+# Process main package
+process_package_configs "$pkg"
 
-    # Search common config directories
-    for base in "/etc" "/usr/local/etc"; do
-        find "$base" -type f -path "*/$pkg*" ! -path "/etc/apt/*" 2>/dev/null
-        find "$base/$pkg" -type f ! -path "/etc/apt/*" 2>/dev/null 2>/dev/null
-    done
-
-    # Search systemd and init.d configurations
-    if [ -d "/etc/systemd" ]; then
-        find /etc/systemd -type f -exec grep -l "$pkg" {} \; 2>/dev/null
-    fi
-
-    if [ -d "/etc/init.d" ]; then
-        find /etc/init.d -type f -exec grep -l "$pkg" {} \; 2>/dev/null
-    fi
-
-} | sort -u | while read -r file; do
-    # Skip virtual filesystem paths
-    if should_skip_path "$file"; then
-        continue
-    fi
-
-    # Filter config files by common patterns and backup files
-    if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
-        if [ -f "$file" ]; then
-            process_includes "$file"
-        fi
-    # Check content of non-standard named files for config-like content
-    elif [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
-        if grep -i -E '(server|listen|port|host|config|ssl|virtual|root|location)' "$file" >/dev/null 2>&1; then
-            process_includes "$file"
-        fi
-    fi
-done
+# Process dependency packages
+if [ -s "$tmp_dep_packages" ]; then
+    while read -r dep_pkg; do
+        [ -z "$dep_pkg" ] && continue
+        process_package_configs "$dep_pkg"
+    done < "$tmp_dep_packages"
+fi
 
 # Process and output unique results with status
 sort -u "$tmp_result" | while read -r file; do
