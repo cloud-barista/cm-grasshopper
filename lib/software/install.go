@@ -112,10 +112,10 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(i, "failed", err.Error(), false)
-
-				migrationLogger.Close()
-				return
+				//updateStatus(i, "failed", err.Error(), false)
+				//
+				//migrationLogger.Close()
+				//return
 			}
 
 			if execution.PackageMigrationConfigID != "" {
@@ -141,10 +141,10 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 						if err != nil {
 							logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 								", Error="+err.Error())
-							updateStatus(i, "failed", err.Error(), false)
-
-							migrationLogger.Close()
-							return
+							//updateStatus(i, "failed", err.Error(), false)
+							//
+							//migrationLogger.Close()
+							//return
 						}
 					}
 				}
