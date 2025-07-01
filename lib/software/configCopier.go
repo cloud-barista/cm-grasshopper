@@ -1,9 +1,9 @@
 package software
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
-	"io"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -546,7 +546,8 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 	return nil
 }
 
-func copyDirectoryWithTar(sourceClient *ssh.Client, targetClient *ssh.Client, dirPath string) error {
+func transferChunk(sourceClient, targetClient *ssh.Client, sourceDir, targetDir, chunkName string, migrationLogger *Logger) error {
+	readChunkCmd := fmt.Sprintf("cat '%s/%s'", sourceDir, chunkName)
 	sourceSession, err := sourceClient.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create source session: %v", err)
@@ -555,75 +556,212 @@ func copyDirectoryWithTar(sourceClient *ssh.Client, targetClient *ssh.Client, di
 		_ = sourceSession.Close()
 	}()
 
-	targetSession, err := targetClient.NewSession()
+	chunkData, err := sourceSession.CombinedOutput(sudoWrapper(readChunkCmd, sourceClient.SSHTarget.Password))
 	if err != nil {
-		return fmt.Errorf("failed to create target session: %v", err)
+		return fmt.Errorf("failed to read chunk: %v", err)
 	}
-	defer func() {
+
+	migrationLogger.Printf(DEBUG, "Read %d bytes from source chunk %s\n", len(chunkData), chunkName)
+
+	base64Data := base64.StdEncoding.EncodeToString(chunkData)
+
+	const maxEchoLength = 100000 // 100KB
+	targetPath := fmt.Sprintf("%s/%s", targetDir, chunkName)
+
+	for i := 0; i < len(base64Data); i += maxEchoLength {
+		end := i + maxEchoLength
+		if end > len(base64Data) {
+			end = len(base64Data)
+		}
+		part := base64Data[i:end]
+
+		var writeCmd string
+		if i == 0 {
+			writeCmd = fmt.Sprintf("echo '%s' | base64 -d > '%s'", part, targetPath)
+		} else {
+			writeCmd = fmt.Sprintf("echo '%s' | base64 -d >> '%s'", part, targetPath)
+		}
+
+		targetSession, err := targetClient.NewSession()
+		if err != nil {
+			return fmt.Errorf("failed to create target session: %v", err)
+		}
+
+		if _, err := targetSession.CombinedOutput(sudoWrapper(writeCmd, targetClient.SSHTarget.Password)); err != nil {
+			_ = targetSession.Close()
+			return fmt.Errorf("failed to write chunk part: %v", err)
+		}
 		_ = targetSession.Close()
-	}()
-
-	createDirCmd := fmt.Sprintf("mkdir -p '%s'", dirPath)
-	if _, err := targetSession.CombinedOutput(sudoWrapper(createDirCmd, targetClient.SSHTarget.Password)); err != nil {
-		return fmt.Errorf("failed to create target directory: %v", err)
 	}
 
-	sourceCmd := sudoWrapper(fmt.Sprintf("cd '%s' && tar -czf - .", dirPath), sourceClient.SSHTarget.Password)
-	targetCmd := sudoWrapper(fmt.Sprintf("cd '%s' && tar -xzf -", dirPath), targetClient.SSHTarget.Password)
+	migrationLogger.Printf(DEBUG, "Wrote %d bytes to target chunk %s\n", len(chunkData), chunkName)
+	return nil
+}
 
-	sourceSession2, err := sourceClient.NewSession()
+func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath string, uuid string, migrationLogger *Logger) error {
+	chunkSize := "5M"
+	tempDir := fmt.Sprintf("/tmp/grasshopper_%s", uuid)
+	chunkPrefix := fmt.Sprintf("%s/chunk_", tempDir)
+
+	migrationLogger.Printf(INFO, "Starting chunked copy of %s\n", dirPath)
+
+	createChunksCmd := fmt.Sprintf(`
+        mkdir -p '%s' &&
+        cd '%s' &&
+        tar --numeric-owner -czf - . | split -d -b %s - '%s'
+    `, tempDir, dirPath, chunkSize, chunkPrefix)
+
+	session1, err := sourceClient.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create source session: %v", err)
 	}
 	defer func() {
-		_ = sourceSession2.Close()
+		_ = session1.Close()
 	}()
 
-	targetSession2, err := targetClient.NewSession()
+	if _, err := session1.CombinedOutput(sudoWrapper(createChunksCmd, sourceClient.SSHTarget.Password)); err != nil {
+		return fmt.Errorf("failed to create chunks: %v", err)
+	}
+
+	verifyChunksCmd := fmt.Sprintf("ls -la '%s'*", chunkPrefix)
+	session2, err := sourceClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create session: %v", err)
+	}
+	defer func() {
+		_ = session2.Close()
+	}()
+
+	verifyOutput, err := session2.CombinedOutput(sudoWrapper(verifyChunksCmd, sourceClient.SSHTarget.Password))
+	if err != nil {
+		return fmt.Errorf("failed to verify chunks: %v", err)
+	}
+	migrationLogger.Printf(DEBUG, "Source chunks created:\n%s\n", string(verifyOutput))
+
+	listChunksCmd := fmt.Sprintf("ls -1 '%s'* 2>/dev/null | wc -l", chunkPrefix)
+	session3, err := sourceClient.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create session: %v", err)
+	}
+	defer func() {
+		_ = session3.Close()
+	}()
+
+	output, err := session3.CombinedOutput(sudoWrapper(listChunksCmd, sourceClient.SSHTarget.Password))
+	if err != nil {
+		return fmt.Errorf("failed to list chunks: %v", err)
+	}
+
+	chunkCount, _ := strconv.Atoi(strings.TrimSpace(string(output)))
+	migrationLogger.Printf(INFO, "Created %d chunks for transfer\n", chunkCount)
+
+	if chunkCount == 0 {
+		return fmt.Errorf("no chunks were created")
+	}
+
+	targetTempDir := fmt.Sprintf("/tmp/grasshopper_%s", uuid)
+	createTargetDirCmd := fmt.Sprintf("mkdir -p '%s'", targetTempDir)
+
+	session4, err := targetClient.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create target session: %v", err)
 	}
 	defer func() {
-		_ = targetSession2.Close()
+		_ = session4.Close()
 	}()
 
-	sourceStdout, err := sourceSession2.StdoutPipe()
+	if _, err := session4.CombinedOutput(sudoWrapper(createTargetDirCmd, targetClient.SSHTarget.Password)); err != nil {
+		return fmt.Errorf("failed to create target temp dir: %v", err)
+	}
+
+	for i := 0; i < chunkCount; i++ {
+		chunkName := fmt.Sprintf("chunk_%02d", i)
+		migrationLogger.Printf(DEBUG, "Transferring chunk %d/%d: %s\n", i+1, chunkCount, chunkName)
+
+		checkChunkSizeCmd := fmt.Sprintf("stat -c '%%s' '%s/%s'", tempDir, chunkName)
+		sourceSession, err := sourceClient.NewSession()
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to create session for chunk size check: %v\n", err)
+			continue
+		}
+
+		sizeOutput, err := sourceSession.CombinedOutput(sudoWrapper(checkChunkSizeCmd, sourceClient.SSHTarget.Password))
+		_ = sourceSession.Close()
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to get chunk size: %v\n", err)
+			continue
+		}
+
+		chunkSize, _ := strconv.Atoi(strings.TrimSpace(string(sizeOutput)))
+		migrationLogger.Printf(DEBUG, "Source chunk %s size: %d bytes\n", chunkName, chunkSize)
+
+		if chunkSize == 0 {
+			migrationLogger.Printf(WARN, "Source chunk %s is empty, skipping\n", chunkName)
+			continue
+		}
+
+		if err := transferChunk(sourceClient, targetClient, tempDir, targetTempDir, chunkName, migrationLogger); err != nil {
+			migrationLogger.Printf(WARN, "Failed to transfer chunk %s: %v\n", chunkName, err)
+			continue
+		}
+
+		verifyTargetChunkCmd := fmt.Sprintf("stat -c '%%s' '%s/%s'", targetTempDir, chunkName)
+		targetSession, err := targetClient.NewSession()
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to create session for target chunk verify: %v\n", err)
+			continue
+		}
+
+		targetSizeOutput, err := targetSession.CombinedOutput(sudoWrapper(verifyTargetChunkCmd, targetClient.SSHTarget.Password))
+		_ = targetSession.Close()
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to verify target chunk size: %v\n", err)
+			continue
+		}
+
+		targetChunkSize, _ := strconv.Atoi(strings.TrimSpace(string(targetSizeOutput)))
+		migrationLogger.Printf(DEBUG, "Target chunk %s size: %d bytes\n", chunkName, targetChunkSize)
+
+		if targetChunkSize != chunkSize {
+			migrationLogger.Printf(WARN, "Chunk size mismatch for %s: source=%d, target=%d\n", chunkName, chunkSize, targetChunkSize)
+		}
+
+		migrationLogger.Printf(DEBUG, "Successfully transferred chunk %d/%d\n", i+1, chunkCount)
+	}
+
+	reassembleCmd := fmt.Sprintf(`
+        mkdir -p '%s' &&
+        cd '%s' &&
+        for i in $(seq -f "%%02g" 0 %d); do
+            cat '%s'/chunk_$i
+        done | tar --numeric-owner -xzf - &&
+        rm -rf '%s'
+    `, dirPath, dirPath, chunkCount-1, targetTempDir, targetTempDir)
+
+	session5, err := targetClient.NewSession()
 	if err != nil {
-		return fmt.Errorf("failed to get source stdout pipe: %v", err)
+		return fmt.Errorf("failed to create final session: %v", err)
+	}
+	defer func() {
+		_ = session5.Close()
+	}()
+
+	if _, err := session5.CombinedOutput(sudoWrapper(reassembleCmd, targetClient.SSHTarget.Password)); err != nil {
+		return fmt.Errorf("failed to reassemble chunks: %v", err)
 	}
 
-	targetStdin, err := targetSession2.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("failed to get target stdin pipe: %v", err)
+	cleanupCmd := fmt.Sprintf("rm -rf '%s'", tempDir)
+	session6, err := sourceClient.NewSession()
+	if err == nil {
+		_, _ = session6.CombinedOutput(sudoWrapper(cleanupCmd, sourceClient.SSHTarget.Password))
+		_ = session6.Close()
 	}
 
-	if err := sourceSession2.Start(sourceCmd); err != nil {
-		return fmt.Errorf("failed to start source command: %v", err)
-	}
-
-	if err := targetSession2.Start(targetCmd); err != nil {
-		return fmt.Errorf("failed to start target command: %v", err)
-	}
-
-	_, err = io.Copy(targetStdin, sourceStdout)
-	if err != nil {
-		return fmt.Errorf("failed to copy data: %v", err)
-	}
-
-	_ = targetStdin.Close()
-
-	if err := sourceSession2.Wait(); err != nil {
-		return fmt.Errorf("source command failed: %v", err)
-	}
-
-	if err := targetSession2.Wait(); err != nil {
-		return fmt.Errorf("target command failed: %v", err)
-	}
-
+	migrationLogger.Printf(INFO, "Successfully completed chunked copy of %s\n", dirPath)
 	return nil
 }
 
-func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string, migrationLogger *Logger) error {
+func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, packageName string, uuid string, migrationLogger *Logger) error {
 	var isDataCopyNeeded = false
 
 	if isWebServer(packageName) {
@@ -675,7 +813,7 @@ func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, pac
 
 		migrationLogger.Printf(INFO, "Copying directory %s (size: %s)\n", dirPath, formatBytes(size))
 
-		err = copyDirectoryWithTar(sourceClient, targetClient, dirPath)
+		err = copyDirectoryWithChunks(sourceClient, targetClient, dirPath, uuid, migrationLogger)
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to copy directory %s: %v\n", dirPath, err)
 			// Continue other directories even if error occurred
@@ -720,7 +858,7 @@ func configCopier(sourceClient *ssh.Client, targetClient *ssh.Client, packageNam
 		return fmt.Errorf("failed to copy config files: %v", err)
 	}
 
-	if err := copyDataDirectories(sourceClient, targetClient, packageName, migrationLogger); err != nil {
+	if err := copyDataDirectories(sourceClient, targetClient, packageName, uuid, migrationLogger); err != nil {
 		migrationLogger.Printf(WARN, "Failed to copy data directories for package %s: %v\n", packageName, err)
 	}
 
