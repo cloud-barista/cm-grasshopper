@@ -1,27 +1,55 @@
 package software
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"strings"
+	"time"
 )
 
 //go:embed scripts/*.sh
 var scriptsFS embed.FS
 
-func executeScript(client *ssh.Client, scriptName string, args ...string) (string, error) {
+func executeScript(client *ssh.Client, migrationLogger *Logger, scriptName string, args ...string) ([]byte, error) {
 	script, err := getScript(scriptName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	session, err := client.NewSession()
 	if err != nil {
-		return "", fmt.Errorf("failed to create session: %v", err)
+		return nil, err
 	}
 	defer func() {
 		_ = session.Close()
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				migrationLogger.Printf(DEBUG, "Sending SSH keep-alive for script: %s\n", scriptName)
+
+				keepAliveSession, err := client.NewSession()
+				if err != nil {
+					migrationLogger.Printf(DEBUG, "Keep-alive session creation failed: %v\n", err)
+					continue
+				}
+
+				_, _ = keepAliveSession.CombinedOutput("echo keepalive")
+				_ = keepAliveSession.Close()
+			}
+		}
 	}()
 
 	var cmd string
@@ -30,7 +58,12 @@ func executeScript(client *ssh.Client, scriptName string, args ...string) (strin
 	} else {
 		cmd = fmt.Sprintf("cat << 'EOF' | sh\n%s\nEOF", script)
 	}
+	wrappedCmd := sudoWrapper(cmd, client.SSHTarget.Password)
 
-	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
-	return string(output), err
+	migrationLogger.Printf(DEBUG, "Executing script with keep-alive enabled\n")
+	output, err := session.CombinedOutput(wrappedCmd)
+
+	cancel()
+
+	return output, err
 }

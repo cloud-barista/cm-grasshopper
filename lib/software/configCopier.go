@@ -91,7 +91,7 @@ func getScript(scriptName string) (string, error) {
 func findCertKeyPaths(client *ssh.Client, filePath string, migrationLogger *Logger) ([]string, error) {
 	migrationLogger.Printf(INFO, "Finding certificate and key paths in file: %s\n", filePath)
 
-	output, err := executeScript(client, "cert_key_finder.sh", filePath)
+	output, err := executeScript(client, migrationLogger, "cert_key_finder.sh", filePath)
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to execute cert key finder: %v\n", err)
 		return nil, fmt.Errorf("cert key finder failed: %v", err)
@@ -345,7 +345,7 @@ func parseConfigLine(line string, migrationLogger *Logger) ConfigFile {
 func findConfigs(client *ssh.Client, packageName string, migrationLogger *Logger) ([]ConfigFile, error) {
 	migrationLogger.Printf(INFO, "Starting config search for package: %s\n", packageName)
 
-	output, err := executeScript(client, "config_finder.sh", packageName)
+	output, err := executeScript(client, migrationLogger, "config_finder.sh", packageName)
 	if err != nil && len(output) == 0 {
 		migrationLogger.Printf(ERROR, "Failed to execute config search: %v\n", err)
 		return nil, fmt.Errorf("config search failed: %v", err)
