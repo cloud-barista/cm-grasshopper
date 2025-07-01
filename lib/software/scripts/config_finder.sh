@@ -152,8 +152,8 @@ process_includes() {
         # Mark as processed
         echo "$real_current" >> "$tmp_processed"
 
-        # Add to results if it's a real file
-        if [ -f "$current_file" ]; then
+        # Add to results if it's a real file or symlink
+        if [ -f "$current_file" ] || [ -L "$current_file" ]; then
             echo "$current_file" >> "$tmp_result"
 
             # Extract includes from this file
@@ -179,6 +179,12 @@ process_includes() {
 check_config_status() {
     local file="$1"
     local real_file=$(readlink -f "$file")
+
+    # Symlink
+    if [ -L "$file" ]; then
+        echo "$file [Symlink]"
+        return
+    fi
 
     if command -v dpkg >/dev/null 2>&1; then
         # Find package that owns the file
@@ -237,7 +243,7 @@ find_files_in_config_locations() {
     done | sort -u | while read -r dir; do
         if [ -n "$dir" ] && [ -d "$dir" ]; then
             # Find all files in this specific config directory
-            find "$dir" -type f 2>/dev/null
+            find "$dir" -type f -o -type l 2>/dev/null
         fi
     done
 
@@ -246,28 +252,28 @@ find_files_in_config_locations() {
         nginx*|apache*|httpd*)
             for dir in /etc/nginx /etc/apache2 /etc/httpd; do
                 if [ -d "$dir" ]; then
-                    find "$dir" -type f 2>/dev/null
+                    find "$dir" -type f -o -type l 2>/dev/null
                 fi
             done
             ;;
         mysql*|mariadb*)
             for dir in /etc/mysql /etc/my.cnf.d; do
                 if [ -d "$dir" ]; then
-                    find "$dir" -type f 2>/dev/null
+                    find "$dir" -type f -o -type l 2>/dev/null
                 fi
             done
             ;;
         postgresql*)
             for dir in /etc/postgresql; do
                 if [ -d "$dir" ]; then
-                    find "$dir" -type f 2>/dev/null
+                    find "$dir" -type f -o -type l 2>/dev/null
                 fi
             done
             ;;
         ssh*|openssh*)
             for dir in /etc/ssh; do
                 if [ -d "$dir" ]; then
-                    find "$dir" -type f 2>/dev/null
+                    find "$dir" -type f -o -type l 2>/dev/null
                 fi
             done
             ;;
@@ -296,7 +302,7 @@ process_package_configs() {
         fi
 
         # Skip if not a valid file path (starts with /, exists)
-        if [ "${file#/}" = "$file" ] || [ ! -f "$file" ]; then
+        if [ "${file#/}" = "$file" ] || [ ! -f "$file" ] && [ ! -L "$file" ]; then
             continue
         fi
 
