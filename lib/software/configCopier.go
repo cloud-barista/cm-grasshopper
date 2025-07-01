@@ -480,7 +480,7 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 	for i, conf := range configs {
 		migrationLogger.Printf(INFO, "Processing config file %d/%d: %s\n", i+1, len(configs), conf.Path)
 
-		if conf.Status == "" {
+		if strings.Contains(conf.Status, "Unmodified") {
 			migrationLogger.Printf(DEBUG, "Skipping unmodified config: %s\n", conf.Path)
 			continue
 		}

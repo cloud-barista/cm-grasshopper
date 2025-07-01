@@ -187,11 +187,11 @@ check_config_status() {
             if dpkg -V "$owner_pkg" 2>/dev/null | grep -q "^..5.* $real_file"; then
                 echo "$file [Modified]"
             else
-                echo "$file"
+                echo "$file [Unmodified]"
             fi
         else
             if [ "$file" != "$real_file" ] && dpkg -S "$file" >/dev/null 2>&1; then
-                echo "$file"
+                echo "$file [Unmodified]"
             else
                 echo "$file [Custom]"
             fi
@@ -203,11 +203,11 @@ check_config_status() {
             if rpm -V "$owner_pkg" | grep -q "^..5.* $real_file"; then
                 echo "$file [Modified]"
             else
-                echo "$file"
+                echo "$file [Unmodified]"
             fi
         else
             if [ "$file" != "$real_file" ] && rpm -qf "$file" >/dev/null 2>&1; then
-                echo "$file"
+                echo "$file [Unmodified]"
             else
                 echo "$file [Custom]"
             fi
