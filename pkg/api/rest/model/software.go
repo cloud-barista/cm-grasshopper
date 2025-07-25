@@ -99,6 +99,16 @@ type Kubernetes struct {
 	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
 }
 
+type BinaryMigrationInfo struct {
+	Order           int      `json:"order"`
+	Name            string   `json:"name" validate:"required"`
+	Version         string   `gorm:"version" json:"version" validate:"required"`
+	NeededLibraries []string `json:"needed_libraries"`
+	BinaryPath      string   `json:"binary_path,omitempty"`
+	CustomDataPaths []string `json:"custom_data_paths"`
+	CustomConfigs   string   `json:"custom_configs"`
+}
+
 type PackageMigrationInfo struct {
 	Order                    int      `json:"order"`
 	Name                     string   `json:"name" validate:"required"`

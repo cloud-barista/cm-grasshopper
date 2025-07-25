@@ -51,16 +51,6 @@ type PackageMigrationConfigReq struct {
 	RepoUseOSVersionCode bool                 `json:"repo_use_os_version_code" default:"false"`
 }
 
-type BinaryMigrationInfo struct {
-	Order           int      `json:"order"`
-	Name            string   `json:"name" validate:"required"`
-	Version         string   `gorm:"version" json:"version" validate:"required"`
-	NeededLibraries []string `json:"needed_libraries"`
-	BinaryPath      string   `json:"binary_path,omitempty"`
-	CustomDataPaths []string `json:"custom_data_paths"`
-	CustomConfigs   string   `json:"custom_configs"`
-}
-
 type MigrationServer struct {
 	ConnectionInfoID string        `json:"connection_info_id"`
 	MigrationList    MigrationList `json:"migration_list"`
