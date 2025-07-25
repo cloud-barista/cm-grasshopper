@@ -229,9 +229,9 @@ find_files_in_config_locations() {
 
     # Get actual config files from package first
     if command -v dpkg >/dev/null 2>&1; then
-        config_files=$(dpkg -L "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml)$|/config$')
+        config_files=$(dpkg -L "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$')
     elif command -v rpm >/dev/null 2>&1; then
-        config_files=$(rpm -ql "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml)$|/config$')
+        config_files=$(rpm -ql "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$')
     fi
 
     # Extract unique directories from config files
@@ -247,62 +247,17 @@ find_files_in_config_locations() {
         fi
     done
 
-    # Add common config directories for well-known packages
-    case "$pkg" in
-        nginx*|apache*|httpd*)
-            for dir in /etc/nginx /etc/apache2 /etc/httpd; do
-                if [ -d "$dir" ]; then
-                    find "$dir" -type f -o -type l 2>/dev/null
-                fi
-            done
-            ;;
-        mysql*|mariadb*)
-            for dir in /etc/mysql /etc/my.cnf.d; do
-                if [ -d "$dir" ]; then
-                    find "$dir" -type f -o -type l 2>/dev/null
-                fi
-            done
-            ;;
-        postgresql*)
-            for dir in /etc/postgresql; do
-                if [ -d "$dir" ]; then
-                    find "$dir" -type f -o -type l 2>/dev/null
-                fi
-            done
-            ;;
-        ssh*|openssh*)
-            for dir in /etc/ssh; do
-                if [ -d "$dir" ]; then
-                    find "$dir" -type f -o -type l 2>/dev/null
-                fi
-            done
-            ;;
-    esac
+    # Add common config files
+    find "/etc/$pkg" -type f -o -type l 2>/dev/null
 }
 
 # Process config files for a single package
 process_package_configs() {
     local pkg="$1"
 
-    {
-        # Search using package manager (get actual config files)
-        if command -v dpkg >/dev/null 2>&1; then
-            dpkg -L "$pkg" 2>/dev/null
-        elif command -v rpm >/dev/null 2>&1; then
-            rpm -ql "$pkg" 2>/dev/null
-        fi
-
-        # Find additional files in directories where config files are located
-        find_files_in_config_locations "$pkg"
-
-    } | sort -u | while read -r file; do
+    find_files_in_config_locations "$pkg" | sort -u | while read -r file; do
         # Skip virtual filesystem paths
         if should_skip_path "$file"; then
-            continue
-        fi
-
-        # Skip if not a valid file path (starts with /, exists)
-        if [ "${file#/}" = "$file" ] || [ ! -f "$file" ] && [ ! -L "$file" ]; then
             continue
         fi
 
@@ -313,16 +268,9 @@ process_package_configs() {
                 ;;
         esac
 
-        # Filter config files by common patterns and backup files
-        if echo "$file" | grep -i -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$' >/dev/null 2>&1; then
-            if [ -f "$file" ]; then
-                process_includes "$file"
-            fi
         # Check content of non-standard named files for config-like content
-        elif [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
-            if grep -i -E '(server|listen|port|host|config|ssl|virtual|root|location)' "$file" >/dev/null 2>&1; then
-                process_includes "$file"
-            fi
+        if [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
+            process_includes "$file"
         fi
     done
 }
