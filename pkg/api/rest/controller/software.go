@@ -332,7 +332,7 @@ func DeletePackageMigrationConfig(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, model.SimpleMsg{Message: "success"}, " ")
 }
 
-// GetMigrationList godoc
+// GetPackageMigrationList godoc
 //
 //	@ID				get-migration-list
 //	@Summary		Get Migration List
@@ -344,8 +344,8 @@ func DeletePackageMigrationConfig(c echo.Context) error {
 //	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
-//	@Router			/software/migration_list/{sgId} [get]
-func GetMigrationList(c echo.Context) error {
+//	@Router			/software/package/migration_list/{sgId} [get]
+func GetPackageMigrationList(c echo.Context) error {
 	sgID := c.Param("sgId")
 	if sgID == "" {
 		return common.ReturnErrorMsg(c, "Please provide the sgId.")
@@ -360,7 +360,7 @@ func GetMigrationList(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, *migrationListRes, " ")
 }
 
-// MigrateSoftware godoc
+// MigratePackageSoftware godoc
 //
 //	@ID				migrate-software
 //	@Summary		Migrate Package
@@ -372,8 +372,8 @@ func GetMigrationList(c echo.Context) error {
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
-//	@Router			/software/migrate [post]
-func MigrateSoftware(c echo.Context) error {
+//	@Router			/software/package/migrate [post]
+func MigratePackageSoftware(c echo.Context) error {
 	softwareMigrateReq := new(model.SoftwareMigrateReq)
 	err := c.Bind(softwareMigrateReq)
 	if err != nil {
@@ -394,7 +394,7 @@ func MigrateSoftware(c echo.Context) error {
 	}, " ")
 }
 
-// GetSoftwareMigrationLog godoc
+// GetPackageSoftwareMigrationLog godoc
 //
 //	@ID				get-software-migration-log
 //	@Summary		Get Package Migration Log
@@ -406,8 +406,8 @@ func MigrateSoftware(c echo.Context) error {
 //	@Success		200	{object}	model.MigrationLogRes	"Successfully get the software migration log"
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration log"
-//	@Router			/software/migrate/log/{executionId} [get]
-func GetSoftwareMigrationLog(c echo.Context) error {
+//	@Router			/software/package/migrate/log/{executionId} [get]
+func GetPackageSoftwareMigrationLog(c echo.Context) error {
 	executionID := c.Param("executionId")
 	if executionID == "" {
 		return common.ReturnErrorMsg(c, "Please provide the executionId.")
