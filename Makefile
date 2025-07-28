@@ -88,7 +88,7 @@ build: lint swag ## Build the binary file
 	@git rev-parse HEAD > .git_hash_last_build
 	@echo Build finished!
 
-build-only: swag ## Build the binary file without running linter
+build-only: ## Build the binary file without running linter
 	@echo Building...
 	@kernel_name=`uname -s` && \
 	  if [[ $$kernel_name == "Linux" ]]; then \
