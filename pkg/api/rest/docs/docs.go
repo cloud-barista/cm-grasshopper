@@ -49,7 +49,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/migrate": {
+        "/software/package/migrate": {
             "post": {
                 "description": "Migrate pieces of software to target.",
                 "consumes": [
@@ -96,7 +96,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/migrate/log/{executionId}": {
+        "/software/package/migrate/log/{executionId}": {
             "get": {
                 "description": "Get the software migration log.",
                 "consumes": [
@@ -134,51 +134,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to get the software migration log",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/software/migration_list/{sgId}": {
-            "get": {
-                "description": "Get software migration list.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "[Package]"
-                ],
-                "summary": "Get Migration List",
-                "operationId": "get-migration-list",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the SourceGroup",
-                        "name": "sgId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully get software migration list.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes"
-                        }
-                    },
-                    "400": {
-                        "description": "Sent bad request.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to get software migration list.",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }
@@ -384,6 +339,51 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to delete the software",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/software/package/migration_list/{sgId}": {
+            "get": {
+                "description": "Get software migration list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Package]"
+                ],
+                "summary": "Get Migration List",
+                "operationId": "get-migration-list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the SourceGroup",
+                        "name": "sgId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully get software migration list.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get software migration list.",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }
