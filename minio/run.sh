@@ -4,8 +4,8 @@ export RUN_PATH="/minio"
 
 /minio/bin/minio server /minio/data --console-address :9001 > /dev/null &
 
-LOKI_USER=lokiuser
-LOKI_USER_PASSWORD=lokipass
+LOKI_USER=miniouser
+LOKI_USER_PASSWORD=miniopass
 LOKI_USER_ACCESS_KEY_ID=YmQYMMfCAPenMclY1WR1
 LOKI_USER_SECRET_ACCESS_KEY=iXjthlJdpI0fKpz015yMgBKuNPBtSrIvDOED1a3P
 
@@ -32,7 +32,7 @@ do
 done
 echo "[*] Successfully logged in to MinIO!"
 
-echo "[*] Checking if bucket 'loki-data' exists..."
+echo "[*] Checking if bucket 'velero' exists..."
 BUCKET_CHECK=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XGET \
     "http://127.0.0.1:9001/api/v1/buckets" \
     -H 'Accept: */*' \
@@ -41,25 +41,25 @@ BUCKET_CHECK=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XGET \
 BUCKET_HTTP_STATUS=$(echo "$BUCKET_CHECK" | tail -n1)
 BUCKET_RESPONSE=$(echo "$BUCKET_CHECK" | head -n -1)
 
-if [[ $BUCKET_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && echo "$BUCKET_RESPONSE" | grep -q '"name":"loki-data"'; then
-    echo "[*] Bucket 'loki-data' already exists. Skipping bucket creation."
+if [[ $BUCKET_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && echo "$BUCKET_RESPONSE" | grep -q '"name":"velero"'; then
+    echo "[*] Bucket 'velero' already exists. Skipping bucket creation."
 else
-    echo "[*] Creating bucket 'loki-data'..."
+    echo "[*] Creating bucket 'velero'..."
     HTTP_STATUS=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XPOST \
         "http://127.0.0.1:9001/api/v1/buckets" \
         -H 'Accept: */*' \
         -H 'Content-Type: application/json' \
-        -d '{"name":"loki-data","versioning":{"enabled":false,"excludePrefixes":[],"excludeFolders":false},"locking":false}' \
+        -d '{"name":"velero","versioning":{"enabled":false,"excludePrefixes":[],"excludeFolders":false},"locking":false}' \
         -o /dev/null)
 
     if [[ $HTTP_STATUS =~ ^2[0-9][0-9]$ ]]; then
-        echo "[*] Successfully created bucket 'loki-data'!"
+        echo "[*] Successfully created bucket 'velero'!"
     else
-        echo "[!] Failed to create bucket 'loki-data'. HTTP Status: $HTTP_STATUS"
+        echo "[!] Failed to create bucket 'velero'. HTTP Status: $HTTP_STATUS"
     fi
 fi
 
-echo "[*] Checking if user 'lokiuser' exists..."
+echo "[*] Checking if user 'miniouser' exists..."
 USER_CHECK=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XGET \
     "http://127.0.0.1:9001/api/v1/users" \
     -H 'Accept: */*' \
@@ -68,10 +68,10 @@ USER_CHECK=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XGET \
 USER_HTTP_STATUS=$(echo "$USER_CHECK" | tail -n1)
 USER_RESPONSE=$(echo "$USER_CHECK" | head -n -1)
 
-if [[ $USER_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && echo "$USER_RESPONSE" | grep -q '"accessKey":"lokiuser"'; then
-    echo "[*] User 'lokiuser' already exists. Skipping user creation."
+if [[ $USER_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && echo "$USER_RESPONSE" | grep -q '"accessKey":"miniouser"'; then
+    echo "[*] User 'miniouser' already exists. Skipping user creation."
 else
-    echo "[*] Creating user 'lokiuser'..."
+    echo "[*] Creating user 'miniouser'..."
     HTTP_STATUS=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XPOST \
         "http://127.0.0.1:9001/api/v1/users" \
         -H 'Accept: */*' \
@@ -81,27 +81,31 @@ else
         -o /dev/null)
 
     if [[ $HTTP_STATUS =~ ^2[0-9][0-9]$ ]]; then
-        echo "[*] Successfully created user 'lokiuser'!"
+        echo "[*] Successfully created user 'miniouser'!"
     else
-        echo "[!] Failed to create user 'lokiuser'. HTTP Status: $HTTP_STATUS"
+        echo "[!] Failed to create user 'miniouser'. HTTP Status: $HTTP_STATUS"
     fi
 fi
 
-echo "[*] Checking if service account credentials for lokiuser exist..."
+echo "[*] Checking if service account credentials for miniouser exist..."
 SA_CHECK=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XGET \
-    "http://127.0.0.1:9001/api/v1/user/lokiuser/service-accounts" \
+    "http://127.0.0.1:9001/api/v1/user/miniouser/service-accounts" \
     -H 'Accept: */*' \
     -H 'Content-Type: application/json')
 
 SA_HTTP_STATUS=$(echo "$SA_CHECK" | tail -n1)
 SA_RESPONSE=$(echo "$SA_CHECK" | head -n -1)
 
-if [[ $SA_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && echo "$SA_RESPONSE" | grep -q '"accessKey":"'$LOKI_USER_ACCESS_KEY_ID'"'; then
-    echo "[*] Service account credentials for lokiuser already exist. Skipping service account creation."
+if [ "$SA_RESPONSE" = "[]" ]; then
+    echo "[*] No service accounts found. Will create new one."
+fi
+
+if [[ $SA_HTTP_STATUS =~ ^2[0-9][0-9]$ ]] && [ "$SA_RESPONSE" != "[]" ]; then
+    echo "[*] Service account credentials for miniouser already exist. Skipping service account creation."
 else
-    echo "[*] Creating service account credentials for lokiuser..."
+    echo "[*] Creating service account credentials for miniouser..."
     HTTP_STATUS=$(curl -s -w "%{http_code}" -b $RUN_PATH/minio-cookie -XPOST \
-        "http://127.0.0.1:9001/api/v1/user/lokiuser/service-account-credentials" \
+        "http://127.0.0.1:9001/api/v1/user/miniouser/service-account-credentials" \
         -H 'Accept: */*' \
         -H 'Content-Type: application/json' \
         -H 'Origin: http://127.0.0.1:9001' \
@@ -109,9 +113,9 @@ else
         -o /dev/null)
 
     if [[ $HTTP_STATUS =~ ^2[0-9][0-9]$ ]]; then
-        echo "[*] Successfully created service account credentials for lokiuser!"
+        echo "[*] Successfully created service account credentials for miniouser!"
     else
-        echo "[!] Failed to create service account credentials for lokiuser. HTTP Status: $HTTP_STATUS"
+        echo "[!] Failed to create service account credentials for miniouser. HTTP Status: $HTTP_STATUS"
     fi
 fi
 

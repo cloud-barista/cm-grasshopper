@@ -3,6 +3,9 @@ services:
     container_name: cm-grasshopper
     restart: always
     image: cloudbaristaorg/cm-grasshopper:edge
+    depends_on:
+      cm-grasshopper-minio:
+        condition: service_healthy
     volumes:
       #- ./package_migration_config.db:/root/.cm-grasshopper/package_migration_config.db:rw
       #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
@@ -10,3 +13,26 @@ services:
       - ./software_temp:/software_temp:rw
       - ./software_log:/software_log:rw
     network_mode: "host"
+
+  cm-grasshopper-minio:
+    # image: cloudbaristaorg/cm-grasshopper-minio:edge
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
+    image: cm-grasshopper-minio:latest
+    container_name: cm-grasshopper-minio
+    restart: always
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./minio_data:/minio/data
+    healthcheck:
+      start_period: 30s
+      test: 'curl -s http://127.0.0.1:9001/api/docs ; STATUS=`echo $$?` ; if [ $$STATUS != 0 ] && [ $$STATUS != 52 ]; then exit 1 ; fi'
+      interval: 10s
+      timeout: 10s
+      retries: 30
