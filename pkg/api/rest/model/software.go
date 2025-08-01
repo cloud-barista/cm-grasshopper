@@ -47,6 +47,13 @@ const (
 	SoftwarePackageTypeRPM SoftwarePackageType = "rpm" // RHEL based package type
 )
 
+type SoftwareContainerRuntimeType string
+
+const (
+	SoftwareContainerRuntimeTypeDocker SoftwareContainerRuntimeType = "docker"
+	SoftwareContainerRuntimeTypePodman SoftwareContainerRuntimeType = "podman"
+)
+
 type ContainerImage struct {
 	ImageName         string               `json:"image_name" validate:"required"`
 	ImageVersion      string               `json:"image_version" validate:"required"`
@@ -89,16 +96,16 @@ type Package struct {
 }
 
 type Container struct {
-	Name              string          `json:"name,omitempty" validate:"required"`
-	Runtime           string          `json:"runtime,omitempty" validate:"required"` // Which runtime uses for the container (Docker, Podman, ...)
-	ContainerImage    ContainerImage  `json:"container_image,omitempty" validate:"required"`
-	ContainerPorts    []ContainerPort `json:"container_ports"`
-	ContainerStatus   string          `json:"container_status" validate:"required"`
-	DockerComposePath string          `json:"docker_compose_path"`
-	MountPaths        []string        `json:"mount_paths"`
-	Envs              []Env           `json:"envs"`
-	NetworkMode       string          `json:"network_mode,omitempty" validate:"required"`
-	RestartPolicy     string          `json:"restart_policy,omitempty" validate:"required"`
+	Name              string                       `json:"name,omitempty" validate:"required"`
+	Runtime           SoftwareContainerRuntimeType `json:"runtime,omitempty" validate:"required"` // Which runtime uses for the container (Docker, Podman)
+	ContainerImage    ContainerImage               `json:"container_image,omitempty" validate:"required"`
+	ContainerPorts    []ContainerPort              `json:"container_ports"`
+	ContainerStatus   string                       `json:"container_status" validate:"required"`
+	DockerComposePath string                       `json:"docker_compose_path"`
+	MountPaths        []string                     `json:"mount_paths"`
+	Envs              []Env                        `json:"envs"`
+	NetworkMode       string                       `json:"network_mode,omitempty" validate:"required"`
+	RestartPolicy     string                       `json:"restart_policy,omitempty" validate:"required"`
 }
 
 type Kubernetes struct {
