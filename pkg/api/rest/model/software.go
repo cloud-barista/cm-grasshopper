@@ -40,6 +40,13 @@ const (
 	SoftwareTypeBinary     SoftwareType = "binary"     // Moving the software as a binary executable.
 )
 
+type SoftwarePackageType string
+
+const (
+	SoftwarePackageTypeDEB SoftwarePackageType = "deb" // Debian based package type
+	SoftwarePackageTypeRPM SoftwarePackageType = "rpm" // RHEL based package type
+)
+
 type ContainerImage struct {
 	ImageName         string               `json:"image_name" validate:"required"`
 	ImageVersion      string               `json:"image_version" validate:"required"`
@@ -69,15 +76,16 @@ type Binary struct {
 }
 
 type Package struct {
-	Name                 string   `json:"name" validate:"required"`
-	Version              string   `gorm:"version" json:"version" validate:"required"`
-	NeededPackages       string   `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages string   `json:"need_to_delete_packages"`
-	CustomDataPaths      []string `json:"custom_data_paths"`
-	CustomConfigs        string   `json:"custom_configs"`
-	RepoURL              string   `json:"repo_url"`
-	GPGKeyURL            string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
+	Name                 string              `json:"name" validate:"required"`
+	Type                 SoftwarePackageType `json:"type" validate:"required"`
+	Version              string              `gorm:"version" json:"version" validate:"required"`
+	NeededPackages       string              `json:"needed_packages" validate:"required"`
+	NeedToDeletePackages string              `json:"need_to_delete_packages"`
+	CustomDataPaths      []string            `json:"custom_data_paths"`
+	CustomConfigs        string              `json:"custom_configs"`
+	RepoURL              string              `json:"repo_url"`
+	GPGKeyURL            string              `json:"gpg_key_url"`
+	RepoUseOSVersionCode bool                `json:"repo_use_os_version_code" default:"false"`
 }
 
 type Container struct {
