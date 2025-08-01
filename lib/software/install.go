@@ -93,6 +93,36 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 			_ = t.Close()
 		}()
 
+		// Cache system types once at the beginning
+		var sourceSystemType, targetSystemType SystemType
+		migrationLogger, loggerErr := initLoggerWithUUID(executionID)
+		if loggerErr != nil {
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				", Error=failed to initialize logger: "+loggerErr.Error())
+			return
+		}
+		defer migrationLogger.Close()
+
+		sourceSystemType, err := getSystemType(s, migrationLogger)
+		if err != nil {
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				", Error=failed to detect source system type: "+err.Error())
+			return
+		}
+
+		targetSystemType, err = getSystemType(t, migrationLogger)
+		if err != nil {
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				", Error=failed to detect target system type: "+err.Error())
+			return
+		}
+
+		if sourceSystemType != targetSystemType {
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				", Error=system type mismatch")
+			return
+		}
+
 		var updateStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
 			exStatusList[i].Status = status
 			exStatusList[i].ErrorMessage = errMsg
@@ -122,14 +152,6 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 				updateStatus(i, "failed", err.Error(), false)
 
 				return
-			}
-
-			migrationLogger, err := initLoggerWithUUID(executionID)
-			if err != nil {
-				errMsg := fmt.Sprintf("failed to initialize logger: %v", err)
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-					", InstallType=package, Error="+errMsg)
-				updateStatus(i, "failed", errMsg, false)
 			}
 
 			if isLibraryPackage(execution.Name) {

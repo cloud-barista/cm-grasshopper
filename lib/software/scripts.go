@@ -18,7 +18,7 @@ func executeScript(client *ssh.Client, migrationLogger *Logger, scriptName strin
 		return nil, err
 	}
 
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func executeScript(client *ssh.Client, migrationLogger *Logger, scriptName strin
 			case <-ticker.C:
 				migrationLogger.Printf(DEBUG, "Sending SSH keep-alive for script: %s\n", scriptName)
 
-				keepAliveSession, err := client.NewSession()
+				keepAliveSession, err := client.NewSessionWithRetry()
 				if err != nil {
 					migrationLogger.Printf(DEBUG, "Keep-alive session creation failed: %v\n", err)
 					continue

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"net"
 	"strconv"
+	"time"
 )
 
 type ConnectionType int
@@ -24,7 +25,48 @@ const (
 
 type Client struct {
 	*goph.Client
-	SSHTarget *model.SSHTarget
+	SSHTarget      *model.SSHTarget
+	connectionType ConnectionType
+	id             string
+	nsID           string
+	mciID          string
+}
+
+func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
+	var session *ssh.Session
+	var err error
+
+	// Try to create session with existing connection first
+	for retry := 0; retry < 3; retry++ {
+		session, err = c.NewSession()
+		if err == nil {
+			return session, nil
+		}
+
+		// If EOF error, try to reconnect
+		if err.Error() == "EOF" {
+			// Close existing connection
+			if c.Client != nil {
+				_ = c.Close()
+			}
+
+			// Recreate connection
+			newClient, reconnectErr := NewSSHClient(c.connectionType, c.id, c.nsID, c.mciID)
+			if reconnectErr != nil {
+				time.Sleep(time.Second * 2)
+				continue
+			}
+
+			// Update client
+			c.Client = newClient.Client
+			continue
+		}
+
+		// For other errors, just retry after delay
+		time.Sleep(time.Second * 2)
+	}
+
+	return nil, err
 }
 
 func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
@@ -183,7 +225,11 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 	}
 
 	return &Client{
-		client,
-		sshTarget,
+		Client:         client,
+		SSHTarget:      sshTarget,
+		connectionType: connectionType,
+		id:             id,
+		nsID:           nsID,
+		mciID:          mciID,
 	}, nil
 }

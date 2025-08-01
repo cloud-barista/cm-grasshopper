@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
+	gossh "golang.org/x/crypto/ssh"
 	"strings"
+	"time"
 )
 
 type SystemType int
@@ -46,7 +48,10 @@ func cleanServiceName(name string) string {
 }
 
 func getRealServiceName(client *ssh.Client, name string, migrationLogger *Logger) (string, error) {
-	session, err := client.NewSession()
+	var session *gossh.Session
+	var err error
+
+	session, err = client.NewSessionWithRetry()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 		return name, fmt.Errorf("failed to create session: %v", err)
@@ -66,7 +71,7 @@ func getRealServiceName(client *ssh.Client, name string, migrationLogger *Logger
 	if realName != "" && realName != name {
 		realName = strings.TrimSuffix(realName, ".service")
 
-		verifySession, err := client.NewSession()
+		verifySession, err := client.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create verification session: %v\n", err)
 			return name, nil
@@ -96,7 +101,10 @@ func getServiceInfo(client *ssh.Client, name string, migrationLogger *Logger) Se
 		Name: name,
 	}
 
-	session, err := client.NewSession()
+	var session *gossh.Session
+	var err error
+
+	session, err = client.NewSessionWithRetry()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 		return info
@@ -111,7 +119,7 @@ func getServiceInfo(client *ssh.Client, name string, migrationLogger *Logger) Se
 		migrationLogger.Printf(DEBUG, "Service %s active status: %v\n", name, info.Active)
 	}
 
-	session, err = client.NewSession()
+	session, err = client.NewSessionWithRetry()
 	if err == nil {
 		defer func() {
 			_ = session.Close()
@@ -126,7 +134,7 @@ func getServiceInfo(client *ssh.Client, name string, migrationLogger *Logger) Se
 			case "enabled", "enabled-runtime":
 				info.Enabled = true
 			case "static":
-				newSession, err := client.NewSession()
+				newSession, err := client.NewSessionWithRetry()
 				if err == nil {
 					defer func() {
 						_ = newSession.Close()
@@ -139,7 +147,7 @@ func getServiceInfo(client *ssh.Client, name string, migrationLogger *Logger) Se
 			case "alias":
 				if realName, err := getRealServiceName(client, name, migrationLogger); err == nil {
 					info.Name = realName
-					newSession, err := client.NewSession()
+					newSession, err := client.NewSessionWithRetry()
 					if err == nil {
 						defer func() {
 							_ = newSession.Close()
@@ -189,7 +197,7 @@ func contains(slice []string, item string) bool {
 }
 func findPackageRelatedServices(client *ssh.Client, packageName string) ([]string, error) {
 	cmd := fmt.Sprintf("find /lib/systemd/system /usr/lib/systemd/system -name '*%s*.service'", packageName)
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
@@ -216,7 +224,7 @@ func findPackageRelatedServices(client *ssh.Client, packageName string) ([]strin
 	}
 
 	cmd = fmt.Sprintf("systemctl list-units --type=service --all | grep '%s.service'", packageName)
-	session, err = client.NewSession()
+	session, err = client.NewSessionWithRetry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
@@ -286,11 +294,24 @@ func findServices(client *ssh.Client, name string, migrationLogger *Logger) []Se
 }
 
 func getSystemType(client *ssh.Client, migrationLogger *Logger) (SystemType, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
-		return Unknown, fmt.Errorf("failed to create session: %v", err)
+	var session *gossh.Session
+	var err error
+
+	// Retry session creation up to 3 times
+	for retry := 0; retry < 3; retry++ {
+		session, err = client.NewSessionWithRetry()
+		if err != nil {
+			migrationLogger.Printf(WARN, "Failed to create SSH session (attempt %d/3): %v\n", retry+1, err)
+			if retry < 2 {
+				time.Sleep(time.Second * 2) // Wait 2 seconds before retry
+				continue
+			}
+			migrationLogger.Printf(ERROR, "Failed to create SSH session after 3 attempts: %v\n", err)
+			return Unknown, fmt.Errorf("failed to create session: %v", err)
+		}
+		break
 	}
+
 	defer func() {
 		_ = session.Close()
 	}()
@@ -328,25 +349,6 @@ func getSystemType(client *ssh.Client, migrationLogger *Logger) (SystemType, err
 func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, packageName, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting service migration for package: %s (UUID: %s)\n", packageName, uuid)
 
-	migrationLogger.Printf(DEBUG, "Detecting source system type\n")
-	sourceType, err := getSystemType(sourceClient, migrationLogger)
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to detect source system type: %v\n", err)
-		return fmt.Errorf("failed to detect source system type: %v", err)
-	}
-
-	migrationLogger.Printf(DEBUG, "Detecting target system type\n")
-	targetType, err := getSystemType(targetClient, migrationLogger)
-	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to detect target system type: %v\n", err)
-		return fmt.Errorf("failed to detect target system type: %v", err)
-	}
-
-	if sourceType != targetType {
-		migrationLogger.Printf(ERROR, "System type mismatch: source=%v, target=%v\n", sourceType, targetType)
-		return fmt.Errorf("system type mismatch: source=%v, target=%v", sourceType, targetType)
-	}
-
 	services := findServices(sourceClient, packageName, migrationLogger)
 	if len(services) == 0 {
 		migrationLogger.Printf(WARN, "No services found for package: %s\n", packageName)
@@ -357,7 +359,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 	for _, service := range services {
 		if service.Active {
 			migrationLogger.Printf(INFO, "Stopping service: %s\n", service.Name)
-			session, err := targetClient.NewSession()
+			session, err := targetClient.NewSessionWithRetry()
 			if err != nil {
 				migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 				return fmt.Errorf("failed to create session: %v", err)
@@ -374,7 +376,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 
 	migrationLogger.Printf(INFO, "Setting service enable/disable states\n")
 	for _, service := range services {
-		session, err := targetClient.NewSession()
+		session, err := targetClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 			return fmt.Errorf("failed to create session: %v", err)
@@ -402,7 +404,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		if service.Active {
 			migrationLogger.Printf(INFO, "Starting service: %s\n", service.Name)
 
-			session, err := targetClient.NewSession()
+			session, err := targetClient.NewSessionWithRetry()
 			if err != nil {
 				migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 				return fmt.Errorf("failed to create session: %v", err)
@@ -436,7 +438,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 	for _, service := range services {
 		var issues []string
 
-		session, err := targetClient.NewSession()
+		session, err := targetClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 			return fmt.Errorf("failed to create session: %v", err)
@@ -455,7 +457,7 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 		}
 		_ = session.Close()
 
-		session, err = targetClient.NewSession()
+		session, err = targetClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", err)
 			return fmt.Errorf("failed to create session: %v", err)

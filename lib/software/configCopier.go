@@ -42,7 +42,7 @@ func isWebServer(packageName string) bool {
 }
 
 func checkDirectorySize(client *ssh.Client, dirPath string) (int64, error) {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return 0, err
 	}
@@ -141,7 +141,7 @@ func findCertKeyPaths(client *ssh.Client, filePath string, migrationLogger *Logg
 		migrationLogger.Printf(DEBUG, "Verifying path existence: %s\n", path)
 
 		checkCmd := fmt.Sprintf("test -f '%s'", path)
-		session, err := client.NewSession()
+		session, err := client.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session for path verification: %v\n", err)
 			return nil, fmt.Errorf("ssh session creation failed: %v", err)
@@ -179,7 +179,7 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 	migrationLogger.Printf(DEBUG, "Getting file statistics\n")
 
-	sourceSession, err := sourceClient.NewSession()
+	sourceSession, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create source SSH session: %v\n", err)
 		return fmt.Errorf("source ssh session creation failed: %v", err)
@@ -218,7 +218,7 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 		migrationLogger.Printf(DEBUG, "Symlink target: %s\n", symlinkTarget)
 		contentCmd := fmt.Sprintf("cat '%s'", symlinkTarget)
-		session, err := sourceClient.NewSession()
+		session, err := sourceClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session for reading symlink target: %v\n", err)
 			return fmt.Errorf("ssh session creation failed: %v", err)
@@ -238,7 +238,7 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 		migrationLogger.Printf(DEBUG, "Reading regular file content\n")
 
 		contentCmd := fmt.Sprintf("cat '%s'", filePath)
-		session, err := sourceClient.NewSession()
+		session, err := sourceClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(ERROR, "Failed to create SSH session for reading file: %v\n", err)
 			return fmt.Errorf("ssh session creation failed: %v", err)
@@ -262,7 +262,7 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 	if isSymlink {
 		checkCmd := fmt.Sprintf("test -f '%s'", symlinkTarget)
 
-		targetSession, err := targetClient.NewSession()
+		targetSession, err := targetClient.NewSessionWithRetry()
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ EOL
 		}
 	}
 
-	targetSession, err := targetClient.NewSession()
+	targetSession, err := targetClient.NewSessionWithRetry()
 	if err != nil {
 		migrationLogger.Printf(ERROR, "Failed to create target SSH session: %v\n", err)
 		return fmt.Errorf("target ssh session creation failed: %v", err)
@@ -381,7 +381,7 @@ func getDirInfo(client *ssh.Client, dirPath string, seen map[string]bool) Direct
 	seen[dirPath] = true
 
 	statCmd := fmt.Sprintf("stat -c '%%a|%%u|%%g' '%s'", dirPath)
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return DirectoryRef{Path: dirPath, Perms: "755", UID: "0", GID: "0"}
 	}
@@ -423,7 +423,7 @@ func isNfsExportContent(content string) bool {
 }
 
 func findReferencedDirectories(sourceClient *ssh.Client, filePath string) ([]DirectoryRef, error) {
-	session, err := sourceClient.NewSession()
+	session, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		return nil, fmt.Errorf("ssh session creation failed: %v", err)
 	}
@@ -497,7 +497,7 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 				migrationLogger.Printf(DEBUG, "Creating directory with permissions - Path: %s, UID: %s, GID: %s, Perms: %s\n",
 					dir.Path, dir.UID, dir.GID, dir.Perms)
 
-				session, err := targetClient.NewSession()
+				session, err := targetClient.NewSessionWithRetry()
 				if err != nil {
 					continue
 				}
@@ -548,7 +548,7 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 
 func transferChunk(sourceClient, targetClient *ssh.Client, sourceDir, targetDir, chunkName string, migrationLogger *Logger) error {
 	readChunkCmd := fmt.Sprintf("cat '%s/%s'", sourceDir, chunkName)
-	sourceSession, err := sourceClient.NewSession()
+	sourceSession, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create source session: %v", err)
 	}
@@ -582,7 +582,7 @@ func transferChunk(sourceClient, targetClient *ssh.Client, sourceDir, targetDir,
 			writeCmd = fmt.Sprintf("echo '%s' | base64 -d >> '%s'", part, targetPath)
 		}
 
-		targetSession, err := targetClient.NewSession()
+		targetSession, err := targetClient.NewSessionWithRetry()
 		if err != nil {
 			return fmt.Errorf("failed to create target session: %v", err)
 		}
@@ -611,7 +611,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
         tar --numeric-owner -czf - . | split -d -b %s - '%s'
     `, tempDir, dirPath, chunkSize, chunkPrefix)
 
-	session1, err := sourceClient.NewSession()
+	session1, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create source session: %v", err)
 	}
@@ -624,7 +624,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 	}
 
 	verifyChunksCmd := fmt.Sprintf("ls -la '%s'*", chunkPrefix)
-	session2, err := sourceClient.NewSession()
+	session2, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create session: %v", err)
 	}
@@ -639,7 +639,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 	migrationLogger.Printf(DEBUG, "Source chunks created:\n%s\n", string(verifyOutput))
 
 	listChunksCmd := fmt.Sprintf("ls -1 '%s'* 2>/dev/null | wc -l", chunkPrefix)
-	session3, err := sourceClient.NewSession()
+	session3, err := sourceClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create session: %v", err)
 	}
@@ -662,7 +662,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 	targetTempDir := fmt.Sprintf("/tmp/grasshopper_%s", uuid)
 	createTargetDirCmd := fmt.Sprintf("mkdir -p '%s'", targetTempDir)
 
-	session4, err := targetClient.NewSession()
+	session4, err := targetClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create target session: %v", err)
 	}
@@ -679,7 +679,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 		migrationLogger.Printf(DEBUG, "Transferring chunk %d/%d: %s\n", i+1, chunkCount, chunkName)
 
 		checkChunkSizeCmd := fmt.Sprintf("stat -c '%%s' '%s/%s'", tempDir, chunkName)
-		sourceSession, err := sourceClient.NewSession()
+		sourceSession, err := sourceClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(WARN, "Failed to create session for chunk size check: %v\n", err)
 			continue
@@ -706,7 +706,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 		}
 
 		verifyTargetChunkCmd := fmt.Sprintf("stat -c '%%s' '%s/%s'", targetTempDir, chunkName)
-		targetSession, err := targetClient.NewSession()
+		targetSession, err := targetClient.NewSessionWithRetry()
 		if err != nil {
 			migrationLogger.Printf(WARN, "Failed to create session for target chunk verify: %v\n", err)
 			continue
@@ -738,7 +738,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
         rm -rf '%s'
     `, dirPath, dirPath, chunkCount-1, targetTempDir, targetTempDir)
 
-	session5, err := targetClient.NewSession()
+	session5, err := targetClient.NewSessionWithRetry()
 	if err != nil {
 		return fmt.Errorf("failed to create final session: %v", err)
 	}
@@ -751,7 +751,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 	}
 
 	cleanupCmd := fmt.Sprintf("rm -rf '%s'", tempDir)
-	session6, err := sourceClient.NewSession()
+	session6, err := sourceClient.NewSessionWithRetry()
 	if err == nil {
 		_, _ = session6.CombinedOutput(sudoWrapper(cleanupCmd, sourceClient.SSHTarget.Password))
 		_ = session6.Close()
@@ -782,7 +782,7 @@ func copyDataDirectories(sourceClient *ssh.Client, targetClient *ssh.Client, pac
 		migrationLogger.Printf(INFO, "Processing data directory: %s\n", dirPath)
 
 		checkCmd := fmt.Sprintf("test -d '%s'", dirPath)
-		session, err := sourceClient.NewSession()
+		session, err := sourceClient.NewSessionWithRetry()
 		if err != nil {
 			continue
 		}

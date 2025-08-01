@@ -20,7 +20,7 @@ type Connection struct {
 }
 
 func GetServicePID(client *ssh.Client, serviceName, password string) (string, error) {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return "", fmt.Errorf("failed to create session: %v", err)
 	}
@@ -76,7 +76,7 @@ func GetListeningConnections(client *ssh.Client, password string) ([]Connection,
 }
 
 func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool) ([]Connection, error) {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
@@ -130,7 +130,7 @@ func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool)
 }
 
 func findPIDByInode(client *ssh.Client, password, inode string) (int, error) {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return 0, err
 	}
@@ -285,7 +285,7 @@ func parseHexByte(hex string) int {
 }
 
 func readCommandLine(client *ssh.Client, password string, pid int) string {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return "Unknown"
 	}
@@ -306,7 +306,7 @@ func readCommandLine(client *ssh.Client, password string, pid int) string {
 }
 
 func readProgramName(client *ssh.Client, password string, pid int) string {
-	session, err := client.NewSession()
+	session, err := client.NewSessionWithRetry()
 	if err != nil {
 		return "Unknown"
 	}
