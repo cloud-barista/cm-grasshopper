@@ -7,24 +7,30 @@ import (
 type SoftwareArchitecture string
 
 const (
-	SoftwareArchitectureCommon SoftwareArchitecture = "common"
-	SoftwareArchitectureX8664  SoftwareArchitecture = "x86_64"
-	SoftwareArchitectureX86    SoftwareArchitecture = "x86"
-	SoftwareArchitectureARM    SoftwareArchitecture = "arm"
-	SoftwareArchitectureARM64  SoftwareArchitecture = "arm64"
+	SoftwareArchitectureCommon  SoftwareArchitecture = "common"
+	SoftwareArchitectureX8664   SoftwareArchitecture = "x86_64"
+	SoftwareArchitectureX86     SoftwareArchitecture = "x86"
+	SoftwareArchitectureARMv5   SoftwareArchitecture = "armv5"
+	SoftwareArchitectureARMv6   SoftwareArchitecture = "armv6"
+	SoftwareArchitectureARMv7   SoftwareArchitecture = "armv7"
+	SoftwareArchitectureARM64v8 SoftwareArchitecture = "arm64v8"
 )
 
-func CheckArchitecture(softwareArchitecture SoftwareArchitecture) error {
+func CheckArchitecture(softwareArchitecture string) error {
 	switch softwareArchitecture {
-	case SoftwareArchitectureCommon:
+	case string(SoftwareArchitectureCommon):
 		fallthrough
-	case SoftwareArchitectureX8664:
+	case string(SoftwareArchitectureX8664):
 		fallthrough
-	case SoftwareArchitectureX86:
+	case string(SoftwareArchitectureX86):
 		fallthrough
-	case SoftwareArchitectureARM:
+	case string(SoftwareArchitectureARMv5):
 		fallthrough
-	case SoftwareArchitectureARM64:
+	case string(SoftwareArchitectureARMv6):
+		fallthrough
+	case string(SoftwareArchitectureARMv7):
+		fallthrough
+	case string(SoftwareArchitectureARM64v8):
 		return nil
 	default:
 		return errors.New("invalid architecture")
