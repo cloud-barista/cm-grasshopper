@@ -120,6 +120,13 @@ type Kubernetes struct {
 	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
 }
 
+type SoftwareList struct {
+	Binaries   []Binary     `json:"binaries"`
+	Packages   []Package    `json:"packages"`
+	Containers []Container  `json:"containers"`
+	Kubernetes []Kubernetes `json:"kubernetes"`
+}
+
 type BinaryMigrationInfo struct {
 	Order           int      `json:"order"`
 	Name            string   `json:"name" validate:"required"`
