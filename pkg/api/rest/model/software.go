@@ -127,6 +127,16 @@ type SoftwareList struct {
 	Kubernetes []Kubernetes `json:"kubernetes"`
 }
 
+type SourceConnectionInfoSoftwareProperty struct {
+	ConnectionId string       `json:"connection_id" validate:"required"`
+	Softwares    SoftwareList `json:"softwares"`
+}
+
+type SourceGroupSoftwareProperty struct {
+	SourceGroupId      string                                 `json:"source_group_id" validate:"required"`
+	ConnectionInfoList []SourceConnectionInfoSoftwareProperty `json:"connection_info_list""`
+}
+
 type BinaryMigrationInfo struct {
 	Order           int      `json:"order"`
 	Name            string   `json:"name" validate:"required"`
