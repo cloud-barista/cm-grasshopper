@@ -104,6 +104,7 @@ type Package struct {
 type Container struct {
 	Name              string                       `json:"name,omitempty" validate:"required"`
 	Runtime           SoftwareContainerRuntimeType `json:"runtime,omitempty" validate:"required"` // Which runtime uses for the container (Docker, Podman)
+	ContainerId       string                       `json:"container_id" validate:"required"`
 	ContainerImage    ContainerImage               `json:"container_image,omitempty" validate:"required"`
 	ContainerPorts    []ContainerPort              `json:"container_ports"`
 	ContainerStatus   string                       `json:"container_status" validate:"required"`
@@ -134,7 +135,7 @@ type SourceConnectionInfoSoftwareProperty struct {
 
 type SourceGroupSoftwareProperty struct {
 	SourceGroupId      string                                 `json:"source_group_id" validate:"required"`
-	ConnectionInfoList []SourceConnectionInfoSoftwareProperty `json:"connection_info_list""`
+	ConnectionInfoList []SourceConnectionInfoSoftwareProperty `json:"connection_info_list"`
 }
 
 type BinaryMigrationInfo struct {

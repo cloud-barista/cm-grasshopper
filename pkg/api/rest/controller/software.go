@@ -215,7 +215,7 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 		Version:              packageMigrationConfigRegisterReq.Version,
 		OS:                   packageMigrationConfigRegisterReq.OS,
 		OSVersion:            packageMigrationConfigRegisterReq.OSVersion,
-		Architecture:         packageMigrationConfigRegisterReq.Architecture,
+		Architecture:         model.SoftwareArchitecture(packageMigrationConfigRegisterReq.Architecture),
 		MatchNames:           matchNames,
 		NeededPackages:       neededPackages,
 		NeedToDeletePackages: needToDeletePackages,

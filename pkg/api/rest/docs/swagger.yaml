@@ -47,6 +47,8 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo:
     properties:
+      container_id:
+        type: string
       container_image:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage'
       container_ports:
@@ -77,6 +79,7 @@ definitions:
         description: Which runtime uses for the container (Docker, Podman, ...)
         type: string
     required:
+    - container_id
     - container_image
     - container_status
     - name
@@ -246,7 +249,7 @@ definitions:
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfigReq:
     properties:
       architecture:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
+        type: string
       custom_configs:
         items:
           type: string
@@ -336,15 +339,19 @@ definitions:
     - common
     - x86_64
     - x86
-    - arm
-    - arm64
+    - armv5
+    - armv6
+    - armv7
+    - arm64v8
     type: string
     x-enum-varnames:
     - SoftwareArchitectureCommon
     - SoftwareArchitectureX8664
     - SoftwareArchitectureX86
-    - SoftwareArchitectureARM
-    - SoftwareArchitectureARM64
+    - SoftwareArchitectureARMv5
+    - SoftwareArchitectureARMv6
+    - SoftwareArchitectureARMv7
+    - SoftwareArchitectureARM64v8
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
     properties:
       migration_list:
