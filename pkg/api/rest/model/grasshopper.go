@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	softwaremodel "github.com/cloud-barista/cm-model/sw"
 )
 
 type Source struct {
@@ -18,21 +20,21 @@ type Target struct {
 }
 
 type PackageMigrationConfig struct {
-	ID                   string               `gorm:"primaryKey" json:"uuid" validate:"required"`
-	Name                 string               `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version              string               `gorm:"version" json:"version" validate:"required"`
-	OS                   string               `gorm:"os" json:"os" validate:"required"`
-	OSVersion            string               `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture         SoftwareArchitecture `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames           string               `gorm:"match_names" json:"match_names" validate:"required"`
-	NeededPackages       string               `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages string               `json:"need_to_delete_packages"`
-	CustomConfigs        string               `json:"custom_configs"`
-	RepoURL              string               `json:"repo_url"`
-	GPGKeyURL            string               `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool                 `json:"repo_use_os_version_code" default:"false"`
-	CreatedAt            time.Time            `gorm:"column:created_at" json:"created_at" validate:"required"`
-	UpdatedAt            time.Time            `gorm:"column:updated_at" json:"updated_at" validate:"required"`
+	ID                   string                             `gorm:"primaryKey" json:"uuid" validate:"required"`
+	Name                 string                             `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
+	Version              string                             `gorm:"version" json:"version" validate:"required"`
+	OS                   string                             `gorm:"os" json:"os" validate:"required"`
+	OSVersion            string                             `gorm:"os_version" json:"os_version" validate:"required"`
+	Architecture         softwaremodel.SoftwareArchitecture `gorm:"architecture" json:"architecture" validate:"required"`
+	MatchNames           string                             `gorm:"match_names" json:"match_names" validate:"required"`
+	NeededPackages       string                             `json:"needed_packages" validate:"required"`
+	NeedToDeletePackages string                             `json:"need_to_delete_packages"`
+	CustomConfigs        string                             `json:"custom_configs"`
+	RepoURL              string                             `json:"repo_url"`
+	GPGKeyURL            string                             `json:"gpg_key_url"`
+	RepoUseOSVersionCode bool                               `json:"repo_use_os_version_code" default:"false"`
+	CreatedAt            time.Time                          `gorm:"column:created_at" json:"created_at" validate:"required"`
+	UpdatedAt            time.Time                          `gorm:"column:updated_at" json:"updated_at" validate:"required"`
 }
 
 type PackageMigrationConfigReq struct {
@@ -52,9 +54,9 @@ type PackageMigrationConfigReq struct {
 }
 
 type MigrationServer struct {
-	ConnectionInfoID string        `json:"connection_info_id"`
-	MigrationList    MigrationList `json:"migration_list"`
-	Errors           []string      `json:"errors"`
+	ConnectionInfoID string                      `json:"connection_info_id"`
+	MigrationList    softwaremodel.MigrationList `json:"migration_list"`
+	Errors           []string                    `json:"errors"`
 }
 
 type MigrationListRes struct {
@@ -68,25 +70,25 @@ type MigrationLogRes struct {
 }
 
 type SoftwareMigrateReq struct {
-	SourceConnectionInfoID string        `json:"source_connection_info_id" validate:"required"`
-	Target                 Target        `json:"target" validate:"required"`
-	MigrationList          MigrationList `json:"migration_list"`
+	SourceConnectionInfoID string                      `json:"source_connection_info_id" validate:"required"`
+	Target                 Target                      `json:"target" validate:"required"`
+	MigrationList          softwaremodel.MigrationList `json:"migration_list"`
 }
 
 type SoftwareMigrateRes struct {
-	ExecutionID   string        `json:"execution_id"`
-	MigrationList MigrationList `json:"migration_list"`
+	ExecutionID   string                      `json:"execution_id"`
+	MigrationList softwaremodel.MigrationList `json:"migration_list"`
 }
 
 type ExecutionStatus struct {
-	Order               int          `json:"order"`
-	SoftwareName        string       `json:"software_name"`
-	SoftwareVersion     string       `json:"software_version"`
-	SoftwareInstallType SoftwareType `json:"software_install_type"`
-	Status              string       `json:"status"`
-	StartedAt           time.Time    `json:"started_at"`
-	UpdatedAt           time.Time    `json:"updated_at"`
-	ErrorMessage        string       `json:"error_message"`
+	Order               int                        `json:"order"`
+	SoftwareName        string                     `json:"software_name"`
+	SoftwareVersion     string                     `json:"software_version"`
+	SoftwareInstallType softwaremodel.SoftwareType `json:"software_install_type"`
+	Status              string                     `json:"status"`
+	StartedAt           time.Time                  `json:"started_at"`
+	UpdatedAt           time.Time                  `json:"updated_at"`
+	ErrorMessage        string                     `json:"error_message"`
 }
 
 type ExecutionStatusList []ExecutionStatus
