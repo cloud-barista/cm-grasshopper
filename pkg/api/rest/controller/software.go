@@ -344,15 +344,15 @@ func DeletePackageMigrationConfig(c echo.Context) error {
 //	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
-//	@Router			/software/package/migration_list/{sgId} [get]
+//	@Router			/software/package/migration_list [get]
 func GetPackageMigrationList(c echo.Context) error {
-	sgID := c.Param("sgId")
-	if sgID == "" {
-		return common.ReturnErrorMsg(c, "Please provide the sgId.")
+	sourceGroupSoftwareProperty := new(model.SourceGroupSoftwareProperty)
+	err := c.Bind(sourceGroupSoftwareProperty)
+	if err != nil {
+		return err
 	}
-	fmt.Println(sgID)
 
-	migrationListRes, err := software.MakeMigrationListRes(sgID)
+	migrationListRes, err := software.MakeMigrationListRes(sourceGroupSoftwareProperty)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}

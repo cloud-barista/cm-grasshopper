@@ -2,13 +2,13 @@ package software
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/cloud-barista/cm-honeybee/agent/pkg/api/rest/model/onprem/infra"
-	"github.com/cloud-barista/cm-honeybee/agent/pkg/api/rest/model/onprem/software"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 	"github.com/jollaman999/utils/logger"
 	"strconv"
@@ -97,74 +97,6 @@ func findMatchedPackageMigrationConfig(os string, osVersion string,
 	return nil, nil
 }
 
-func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, error) {
-	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
-		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
-		"/honeybee/source_group/"+sgID+"/connection_info/"+connectionID+"/infra", "", "")
-	if err != nil {
-		return nil, err
-	}
-
-	var infraInfo infra.Infra
-	err = json.Unmarshal(data, &infraInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return &infraInfo, nil
-}
-
-func getConnectionInfoSoftware(sgID string, connectionID string) (*software.Software, error) {
-	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
-		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
-		"/honeybee/source_group/"+sgID+"/connection_info/"+connectionID+"/software", "", "")
-	if err != nil {
-		return nil, err
-	}
-
-	var softwareInfo software.Software
-	err = json.Unmarshal(data, &softwareInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return &softwareInfo, nil
-}
-
-func convertToPackages(packages interface{}) []model.Package {
-	var result []model.Package
-
-	switch p := packages.(type) {
-	case []software.DEB:
-		for _, pkg := range p {
-			result = append(result, model.Package{
-				Name:    pkg.Package,
-				Version: pkg.Version,
-			})
-		}
-	case []software.RPM:
-		for _, pkg := range p {
-			result = append(result, model.Package{
-				Name:    pkg.Name,
-				Version: pkg.Version,
-			})
-		}
-	}
-
-	return result
-}
-
-func getSoftwarePackages(idLike string, softwareInfo *software.Software) ([]model.Package, error) {
-	switch {
-	case strings.Contains(idLike, "debian"), strings.Contains(idLike, "ubuntu"):
-		return convertToPackages(softwareInfo.DEB), nil
-	case strings.Contains(idLike, "rhel"), strings.Contains(idLike, "fedora"):
-		return convertToPackages(softwareInfo.RPM), nil
-	default:
-		return nil, fmt.Errorf("unsupported OS type: %s", idLike)
-	}
-}
-
 // compareVersions compares two version strings
 // returns: 1 if v1 > v2, 0 if v1 == v2, -1 if v1 < v2
 func compareVersions(v1, v2 string) int {
@@ -242,6 +174,23 @@ func compareVersions(v1, v2 string) int {
 	}
 
 	return 0
+}
+
+func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, error) {
+	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
+		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
+		"/honeybee/source_group/"+sgID+"/connection_info/"+connectionID+"/infra", "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	var infraInfo infra.Infra
+	err = json.Unmarshal(data, &infraInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &infraInfo, nil
 }
 
 func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) ([]model.PackageMigrationInfo, []string) {
@@ -326,10 +275,10 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) (
 	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sgID string) (*model.MigrationListRes, error) {
+func MakeMigrationListRes(sourceGroupSoftwareProperty *model.SourceGroupSoftwareProperty) (*model.MigrationListRes, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
-		"/honeybee/source_group/"+sgID+"/connection_info", "", "")
+		"/honeybee/source_group/"+sourceGroupSoftwareProperty.SourceGroupId+"/connection_info", "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -341,27 +290,31 @@ func MakeMigrationListRes(sgID string) (*model.MigrationListRes, error) {
 	}
 
 	var servers []model.MigrationServer
+	var sources model.SourceGroupSoftwareProperty
 
-	for _, encryptedConnectionInfo := range listConnectionInfoRes.ConnectionInfo {
+	for _, source := range sources.ConnectionInfoList {
+		var found bool
+
+		for _, encryptedConnectionInfo := range listConnectionInfoRes.ConnectionInfo {
+			if encryptedConnectionInfo.ID == source.ConnectionId {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("connection info (ID=" + source.ConnectionId + ") not found")
+		}
+
 		var server model.MigrationServer
 
-		infraInfo, err := getConnectionInfoInfra(sgID, encryptedConnectionInfo.ID)
+		srcInfra, err := getConnectionInfoInfra(sourceGroupSoftwareProperty.SourceGroupId, source.ConnectionId)
 		if err != nil {
 			return nil, err
 		}
 
-		softwareInfo, err := getConnectionInfoSoftware(sgID, encryptedConnectionInfo.ID)
-		if err != nil {
-			return nil, err
-		}
+		server.MigrationList.Packages, server.Errors = processSoftwarePackages(srcInfra, source.Softwares.Packages)
+		server.ConnectionInfoID = source.ConnectionId
 
-		packages, err := getSoftwarePackages(infraInfo.Compute.OS.OS.IDLike, softwareInfo)
-		if err != nil {
-			return nil, err
-		}
-
-		server.MigrationList.Packages, server.Errors = processSoftwarePackages(infraInfo, packages)
-		server.ConnectionInfoID = encryptedConnectionInfo.ID
 		servers = append(servers, server)
 	}
 

@@ -610,7 +610,7 @@ paths:
       summary: Register Package
       tags:
       - '[Package]'
-  /software/package/migration_list/{sgId}:
+  /software/package/migration_list:
     get:
       consumes:
       - application/json

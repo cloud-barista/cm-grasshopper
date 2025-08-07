@@ -346,7 +346,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/software/package/migration_list/{sgId}": {
+        "/software/package/migration_list": {
             "get": {
                 "description": "Get software migration list.",
                 "consumes": [
