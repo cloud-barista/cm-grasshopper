@@ -2,13 +2,15 @@ package software
 
 import (
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	"github.com/jollaman999/utils/logger"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	"github.com/jollaman999/utils/logger"
 )
 
 var libraryPackagePatterns = []string{
@@ -34,7 +36,7 @@ func isLibraryPackage(packageName string) bool {
 	return false
 }
 
-func MigrateSoftware(executionID string, executionList *model.MigrationList,
+func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationList,
 	sourceConnectionInfoID string, target *model.Target) error {
 	var executionStatusList []model.ExecutionStatus
 
@@ -55,7 +57,7 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 			Order:               execution.Order,
 			SoftwareName:        execution.Name,
 			SoftwareVersion:     execution.Version,
-			SoftwareInstallType: model.SoftwareTypePackage,
+			SoftwareInstallType: softwaremodel.SoftwareTypePackage,
 			Status:              "ready",
 			StartedAt:           time.Time{},
 			ErrorMessage:        "",
@@ -67,7 +69,7 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 			Order:               execution.Order,
 			SoftwareName:        execution.Name,
 			SoftwareVersion:     execution.ContainerImage.ImageVersion,
-			SoftwareInstallType: model.SoftwareTypeContainer,
+			SoftwareInstallType: softwaremodel.SoftwareTypeContainer,
 			Status:              "ready",
 			StartedAt:           time.Time{},
 			ErrorMessage:        "",
@@ -86,7 +88,7 @@ func MigrateSoftware(executionID string, executionList *model.MigrationList,
 		return err
 	}
 
-	go func(id string, exList *model.MigrationList, exStatusList []model.ExecutionStatus,
+	go func(id string, exList *softwaremodel.MigrationList, exStatusList []model.ExecutionStatus,
 		s *ssh.Client, t *ssh.Client) {
 		defer func() {
 			_ = s.Close()

@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250620095046-72349b666c3b
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250620095046-72349b666c3b
+	github.com/cloud-barista/cm-model v0.0.10
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
@@ -21,7 +22,6 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
-	github.com/cloud-barista/cm-model v0.0.10 // indirect
 	github.com/docker/docker v28.2.2+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect

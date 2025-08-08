@@ -4,19 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/cloud-barista/cm-honeybee/agent/pkg/api/rest/model/onprem/infra"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-model/sw"
 	"github.com/jollaman999/utils/logger"
-	"strconv"
-	"strings"
 )
 
 func findMatchedPackageMigrationConfig(os string, osVersion string,
-	architecture model.SoftwareArchitecture, softwareName string, softwareVersion string) (*model.PackageMigrationConfig, error) {
+	architecture softwaremodel.SoftwareArchitecture, softwareName string, softwareVersion string) (*model.PackageMigrationConfig, error) {
 	list, err := dao.PackageMigrationConfigGetList(&model.PackageMigrationConfig{
 		MatchNames: softwareName,
 	}, false, 0, 0)
@@ -26,7 +28,7 @@ func findMatchedPackageMigrationConfig(os string, osVersion string,
 
 	var matchedConfigs []model.PackageMigrationConfig
 	for _, sw := range *list {
-		if sw.Architecture != model.SoftwareArchitectureCommon &&
+		if sw.Architecture != softwaremodel.SoftwareArchitectureCommon &&
 			(sw.OS != os || sw.OSVersion != osVersion || sw.Architecture != architecture) {
 			continue
 		}
@@ -193,8 +195,8 @@ func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, err
 	return &infraInfo, nil
 }
 
-func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) ([]model.PackageMigrationInfo, []string) {
-	migrationPackages := make([]model.PackageMigrationInfo, 0)
+func processSoftwarePackages(infraInfo *infra.Infra, packages []softwaremodel.Package) ([]softwaremodel.PackageMigrationInfo, []string) {
+	migrationPackages := make([]softwaremodel.PackageMigrationInfo, 0)
 	errMsgs := make([]string, 0)
 
 	existingByName := make(map[string]int)
@@ -204,7 +206,7 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) (
 		sw, err := findMatchedPackageMigrationConfig(
 			infraInfo.Compute.OS.OS.Name,
 			infraInfo.Compute.OS.OS.VersionID,
-			model.SoftwareArchitecture(infraInfo.Compute.OS.Kernel.Architecture),
+			softwaremodel.SoftwareArchitecture(infraInfo.Compute.OS.Kernel.Architecture),
 			pkg.Name,
 			pkg.Version,
 		)
@@ -223,7 +225,7 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) (
 		if sw == nil {
 			i++
 
-			migrationPackages = append(migrationPackages, model.PackageMigrationInfo{
+			migrationPackages = append(migrationPackages, softwaremodel.PackageMigrationInfo{
 				Order:                    i,
 				Name:                     pkg.Name,
 				Version:                  pkg.Version,
@@ -254,7 +256,7 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) (
 
 		i++
 
-		newSoftware := model.PackageMigrationInfo{
+		newSoftware := softwaremodel.PackageMigrationInfo{
 			Order:                    i,
 			Name:                     sw.Name,
 			Version:                  sw.Version,
@@ -275,7 +277,7 @@ func processSoftwarePackages(infraInfo *infra.Infra, packages []model.Package) (
 	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sourceGroupSoftwareProperty *model.SourceGroupSoftwareProperty) (*model.MigrationListRes, error) {
+func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroupSoftwareProperty) (*model.MigrationListRes, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
 		"/honeybee/source_group/"+sourceGroupSoftwareProperty.SourceGroupId+"/connection_info", "", "")
@@ -290,7 +292,7 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *model.SourceGroupSoftware
 	}
 
 	var servers []model.MigrationServer
-	var sources model.SourceGroupSoftwareProperty
+	var sources softwaremodel.SourceGroupSoftwareProperty
 
 	for _, source := range sources.ConnectionInfoList {
 		var found bool

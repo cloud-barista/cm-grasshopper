@@ -394,251 +394,6 @@
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo": {
-            "type": "object",
-            "required": [
-                "name",
-                "version"
-            ],
-            "properties": {
-                "binary_path": {
-                    "type": "string"
-                },
-                "custom_configs": {
-                    "type": "string"
-                },
-                "custom_data_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "needed_libraries": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "version": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage": {
-            "type": "object",
-            "required": [
-                "image_architecture",
-                "image_hash",
-                "image_name",
-                "image_version"
-            ],
-            "properties": {
-                "image_architecture": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture"
-                },
-                "image_hash": {
-                    "type": "string"
-                },
-                "image_name": {
-                    "type": "string"
-                },
-                "image_version": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo": {
-            "type": "object",
-            "required": [
-                "container_id",
-                "container_image",
-                "container_status",
-                "name",
-                "network_mode",
-                "restart_policy",
-                "runtime"
-            ],
-            "properties": {
-                "container_id": {
-                    "type": "string"
-                },
-                "container_image": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage"
-                },
-                "container_ports": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort"
-                    }
-                },
-                "container_status": {
-                    "type": "string"
-                },
-                "docker_compose_path": {
-                    "type": "string"
-                },
-                "envs": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env"
-                    }
-                },
-                "mount_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "network_mode": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "restart_policy": {
-                    "type": "string"
-                },
-                "runtime": {
-                    "description": "Which runtime uses for the container (Docker, Podman, ...)",
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort": {
-            "type": "object",
-            "required": [
-                "container_port",
-                "host_ip",
-                "host_port",
-                "protocol"
-            ],
-            "properties": {
-                "container_port": {
-                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Port}",
-                    "type": "integer"
-                },
-                "host_ip": {
-                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostIp",
-                    "type": "string"
-                },
-                "host_port": {
-                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostPort",
-                    "type": "integer"
-                },
-                "protocol": {
-                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Protocol}",
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo": {
-            "type": "object",
-            "required": [
-                "kube_config",
-                "resources",
-                "velero",
-                "version"
-            ],
-            "properties": {
-                "kube_config": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "resources": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "velero": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero"
-                },
-                "version": {
-                    "description": "Same as release",
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero": {
-            "type": "object",
-            "required": [
-                "backup_location_config",
-                "bucket",
-                "provider"
-            ],
-            "properties": {
-                "backup_location_config": {
-                    "type": "string"
-                },
-                "bucket": {
-                    "type": "string"
-                },
-                "features": {
-                    "type": "string"
-                },
-                "plugins": {
-                    "type": "string"
-                },
-                "provider": {
-                    "type": "string"
-                },
-                "secret_file": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList": {
-            "type": "object",
-            "properties": {
-                "binaries": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo"
-                    }
-                },
-                "containers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo"
-                    }
-                },
-                "kubernetes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo"
-                    }
-                },
-                "packages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo"
-                    }
-                }
-            }
-        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes": {
             "type": "object",
             "properties": {
@@ -677,7 +432,7 @@
                     }
                 },
                 "migration_list": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
+                    "$ref": "#/definitions/softwaremodel.MigrationList"
                 }
             }
         },
@@ -697,7 +452,7 @@
             ],
             "properties": {
                 "architecture": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture"
+                    "$ref": "#/definitions/softwaremodel.SoftwareArchitecture"
                 },
                 "created_at": {
                     "type": "string"
@@ -811,7 +566,308 @@
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
+            "type": "object",
+            "required": [
+                "source_connection_info_id",
+                "target"
+            ],
+            "properties": {
+                "migration_list": {
+                    "$ref": "#/definitions/softwaremodel.MigrationList"
+                },
+                "source_connection_info_id": {
+                    "type": "string"
+                },
+                "target": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes": {
+            "type": "object",
+            "properties": {
+                "execution_id": {
+                    "type": "string"
+                },
+                "migration_list": {
+                    "$ref": "#/definitions/softwaremodel.MigrationList"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target": {
+            "type": "object",
+            "required": [
+                "mci_id",
+                "namespace_id",
+                "vm_id"
+            ],
+            "properties": {
+                "mci_id": {
+                    "type": "string"
+                },
+                "namespace_id": {
+                    "type": "string"
+                },
+                "vm_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.BinaryMigrationInfo": {
+            "type": "object",
+            "required": [
+                "name",
+                "version"
+            ],
+            "properties": {
+                "binary_path": {
+                    "type": "string"
+                },
+                "custom_configs": {
+                    "type": "string"
+                },
+                "custom_data_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "needed_libraries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.ContainerImage": {
+            "type": "object",
+            "required": [
+                "image_architecture",
+                "image_hash",
+                "image_name",
+                "image_version"
+            ],
+            "properties": {
+                "image_architecture": {
+                    "$ref": "#/definitions/softwaremodel.SoftwareArchitecture"
+                },
+                "image_hash": {
+                    "type": "string"
+                },
+                "image_name": {
+                    "type": "string"
+                },
+                "image_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.ContainerMigrationInfo": {
+            "type": "object",
+            "required": [
+                "container_id",
+                "container_image",
+                "container_status",
+                "name",
+                "network_mode",
+                "restart_policy",
+                "runtime"
+            ],
+            "properties": {
+                "container_id": {
+                    "type": "string"
+                },
+                "container_image": {
+                    "$ref": "#/definitions/softwaremodel.ContainerImage"
+                },
+                "container_ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.ContainerPort"
+                    }
+                },
+                "container_status": {
+                    "type": "string"
+                },
+                "docker_compose_path": {
+                    "type": "string"
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Env"
+                    }
+                },
+                "mount_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network_mode": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "restart_policy": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "Which runtime uses for the container (Docker, Podman, ...)",
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.ContainerPort": {
+            "type": "object",
+            "required": [
+                "container_port",
+                "host_ip",
+                "host_port",
+                "protocol"
+            ],
+            "properties": {
+                "container_port": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Port}",
+                    "type": "integer"
+                },
+                "host_ip": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostIp",
+                    "type": "string"
+                },
+                "host_port": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol}.HostPort",
+                    "type": "integer"
+                },
+                "protocol": {
+                    "description": "NetworkSettings.Ports.{Port}/{Protocol} -\u003e {Protocol}",
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.Env": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.KubernetesMigrationInfo": {
+            "type": "object",
+            "required": [
+                "kube_config",
+                "resources",
+                "velero",
+                "version"
+            ],
+            "properties": {
+                "kube_config": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "resources": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "velero": {
+                    "$ref": "#/definitions/softwaremodel.KubernetesVelero"
+                },
+                "version": {
+                    "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.KubernetesVelero": {
+            "type": "object",
+            "required": [
+                "backup_location_config",
+                "bucket",
+                "provider"
+            ],
+            "properties": {
+                "backup_location_config": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "features": {
+                    "type": "string"
+                },
+                "plugins": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "secret_file": {
+                    "type": "string"
+                }
+            }
+        },
+        "softwaremodel.MigrationList": {
+            "type": "object",
+            "properties": {
+                "binaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.BinaryMigrationInfo"
+                    }
+                },
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.ContainerMigrationInfo"
+                    }
+                },
+                "kubernetes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.KubernetesMigrationInfo"
+                    }
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.PackageMigrationInfo"
+                    }
+                }
+            }
+        },
+        "softwaremodel.PackageMigrationInfo": {
             "type": "object",
             "required": [
                 "name",
@@ -864,15 +920,7 @@
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture": {
+        "softwaremodel.SoftwareArchitecture": {
             "type": "string",
             "enum": [
                 "common",
@@ -892,54 +940,6 @@
                 "SoftwareArchitectureARMv7",
                 "SoftwareArchitectureARM64v8"
             ]
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
-            "type": "object",
-            "required": [
-                "source_connection_info_id",
-                "target"
-            ],
-            "properties": {
-                "migration_list": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
-                },
-                "source_connection_info_id": {
-                    "type": "string"
-                },
-                "target": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes": {
-            "type": "object",
-            "properties": {
-                "execution_id": {
-                    "type": "string"
-                },
-                "migration_list": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target": {
-            "type": "object",
-            "required": [
-                "mci_id",
-                "namespace_id",
-                "vm_id"
-            ],
-            "properties": {
-                "mci_id": {
-                    "type": "string"
-                },
-                "namespace_id": {
-                    "type": "string"
-                },
-                "vm_id": {
-                    "type": "string"
-                }
-            }
         }
     }
 }

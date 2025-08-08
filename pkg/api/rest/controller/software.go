@@ -3,20 +3,22 @@ package controller
 import (
 	"embed"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/dao"
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
-	"github.com/cloud-barista/cm-grasshopper/lib/software"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	"github.com/google/uuid"
-	"github.com/jollaman999/utils/fileutil"
-	"github.com/labstack/echo/v4"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/dao"
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/lib/software"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	"github.com/google/uuid"
+	"github.com/jollaman999/utils/fileutil"
+	"github.com/labstack/echo/v4"
 )
 
 //go:embed playbook_base
@@ -138,7 +140,7 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	err = model.CheckArchitecture(packageMigrationConfigRegisterReq.Architecture)
+	err = softwaremodel.CheckArchitecture(packageMigrationConfigRegisterReq.Architecture)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -215,7 +217,7 @@ func RegisterPackageMigrationConfig(c echo.Context) error {
 		Version:              packageMigrationConfigRegisterReq.Version,
 		OS:                   packageMigrationConfigRegisterReq.OS,
 		OSVersion:            packageMigrationConfigRegisterReq.OSVersion,
-		Architecture:         model.SoftwareArchitecture(packageMigrationConfigRegisterReq.Architecture),
+		Architecture:         softwaremodel.SoftwareArchitecture(packageMigrationConfigRegisterReq.Architecture),
 		MatchNames:           matchNames,
 		NeededPackages:       neededPackages,
 		NeedToDeletePackages: needToDeletePackages,
@@ -279,7 +281,7 @@ func ListPackageMigrationConfig(c echo.Context) error {
 		Version:              c.QueryParam("version"),
 		OS:                   c.QueryParam("os"),
 		OSVersion:            c.QueryParam("os_version"),
-		Architecture:         model.SoftwareArchitecture(c.QueryParam("architecture")),
+		Architecture:         softwaremodel.SoftwareArchitecture(c.QueryParam("architecture")),
 		MatchNames:           c.QueryParam("match_names"),
 		NeededPackages:       c.QueryParam("needed_packages"),
 		NeedToDeletePackages: c.QueryParam("need_to_delete_packages"),
@@ -346,7 +348,7 @@ func DeletePackageMigrationConfig(c echo.Context) error {
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
 //	@Router			/software/package/migration_list [get]
 func GetPackageMigrationList(c echo.Context) error {
-	sourceGroupSoftwareProperty := new(model.SourceGroupSoftwareProperty)
+	sourceGroupSoftwareProperty := new(softwaremodel.SourceGroupSoftwareProperty)
 	err := c.Bind(sourceGroupSoftwareProperty)
 	if err != nil {
 		return err

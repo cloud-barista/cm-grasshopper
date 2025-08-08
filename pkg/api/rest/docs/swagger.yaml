@@ -5,175 +5,6 @@ definitions:
       error:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo:
-    properties:
-      binary_path:
-        type: string
-      custom_configs:
-        type: string
-      custom_data_paths:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      needed_libraries:
-        items:
-          type: string
-        type: array
-      order:
-        type: integer
-      version:
-        type: string
-    required:
-    - name
-    - version
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage:
-    properties:
-      image_architecture:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
-      image_hash:
-        type: string
-      image_name:
-        type: string
-      image_version:
-        type: string
-    required:
-    - image_architecture
-    - image_hash
-    - image_name
-    - image_version
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo:
-    properties:
-      container_id:
-        type: string
-      container_image:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerImage'
-      container_ports:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort'
-        type: array
-      container_status:
-        type: string
-      docker_compose_path:
-        type: string
-      envs:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env'
-        type: array
-      mount_paths:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      network_mode:
-        type: string
-      order:
-        type: integer
-      restart_policy:
-        type: string
-      runtime:
-        description: Which runtime uses for the container (Docker, Podman, ...)
-        type: string
-    required:
-    - container_id
-    - container_image
-    - container_status
-    - name
-    - network_mode
-    - restart_policy
-    - runtime
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerPort:
-    properties:
-      container_port:
-        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Port}
-        type: integer
-      host_ip:
-        description: NetworkSettings.Ports.{Port}/{Protocol}.HostIp
-        type: string
-      host_port:
-        description: NetworkSettings.Ports.{Port}/{Protocol}.HostPort
-        type: integer
-      protocol:
-        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Protocol}
-        type: string
-    required:
-    - container_port
-    - host_ip
-    - host_port
-    - protocol
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Env:
-    properties:
-      name:
-        type: string
-      value:
-        type: string
-    required:
-    - name
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo:
-    properties:
-      kube_config:
-        type: string
-      order:
-        type: integer
-      resources:
-        additionalProperties: true
-        type: object
-      velero:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero'
-      version:
-        description: Same as release
-        type: string
-    required:
-    - kube_config
-    - resources
-    - velero
-    - version
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesVelero:
-    properties:
-      backup_location_config:
-        type: string
-      bucket:
-        type: string
-      features:
-        type: string
-      plugins:
-        type: string
-      provider:
-        type: string
-      secret_file:
-        type: string
-    required:
-    - backup_location_config
-    - bucket
-    - provider
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList:
-    properties:
-      binaries:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.BinaryMigrationInfo'
-        type: array
-      containers:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ContainerMigrationInfo'
-        type: array
-      kubernetes:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.KubernetesMigrationInfo'
-        type: array
-      packages:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo'
-        type: array
-    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes:
     properties:
       servers:
@@ -199,12 +30,12 @@ definitions:
           type: string
         type: array
       migration_list:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
+        $ref: '#/definitions/softwaremodel.MigrationList'
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfig:
     properties:
       architecture:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture'
+        $ref: '#/definitions/softwaremodel.SoftwareArchitecture'
       created_at:
         type: string
       custom_configs:
@@ -293,7 +124,213 @@ definitions:
     - uuid
     - version
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationInfo:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
+    properties:
+      message:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
+    properties:
+      migration_list:
+        $ref: '#/definitions/softwaremodel.MigrationList'
+      source_connection_info_id:
+        type: string
+      target:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
+    required:
+    - source_connection_info_id
+    - target
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
+    properties:
+      execution_id:
+        type: string
+      migration_list:
+        $ref: '#/definitions/softwaremodel.MigrationList'
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
+    properties:
+      mci_id:
+        type: string
+      namespace_id:
+        type: string
+      vm_id:
+        type: string
+    required:
+    - mci_id
+    - namespace_id
+    - vm_id
+    type: object
+  softwaremodel.BinaryMigrationInfo:
+    properties:
+      binary_path:
+        type: string
+      custom_configs:
+        type: string
+      custom_data_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      needed_libraries:
+        items:
+          type: string
+        type: array
+      order:
+        type: integer
+      version:
+        type: string
+    required:
+    - name
+    - version
+    type: object
+  softwaremodel.ContainerImage:
+    properties:
+      image_architecture:
+        $ref: '#/definitions/softwaremodel.SoftwareArchitecture'
+      image_hash:
+        type: string
+      image_name:
+        type: string
+      image_version:
+        type: string
+    required:
+    - image_architecture
+    - image_hash
+    - image_name
+    - image_version
+    type: object
+  softwaremodel.ContainerMigrationInfo:
+    properties:
+      container_id:
+        type: string
+      container_image:
+        $ref: '#/definitions/softwaremodel.ContainerImage'
+      container_ports:
+        items:
+          $ref: '#/definitions/softwaremodel.ContainerPort'
+        type: array
+      container_status:
+        type: string
+      docker_compose_path:
+        type: string
+      envs:
+        items:
+          $ref: '#/definitions/softwaremodel.Env'
+        type: array
+      mount_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      network_mode:
+        type: string
+      order:
+        type: integer
+      restart_policy:
+        type: string
+      runtime:
+        description: Which runtime uses for the container (Docker, Podman, ...)
+        type: string
+    required:
+    - container_id
+    - container_image
+    - container_status
+    - name
+    - network_mode
+    - restart_policy
+    - runtime
+    type: object
+  softwaremodel.ContainerPort:
+    properties:
+      container_port:
+        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Port}
+        type: integer
+      host_ip:
+        description: NetworkSettings.Ports.{Port}/{Protocol}.HostIp
+        type: string
+      host_port:
+        description: NetworkSettings.Ports.{Port}/{Protocol}.HostPort
+        type: integer
+      protocol:
+        description: NetworkSettings.Ports.{Port}/{Protocol} -> {Protocol}
+        type: string
+    required:
+    - container_port
+    - host_ip
+    - host_port
+    - protocol
+    type: object
+  softwaremodel.Env:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    required:
+    - name
+    type: object
+  softwaremodel.KubernetesMigrationInfo:
+    properties:
+      kube_config:
+        type: string
+      order:
+        type: integer
+      resources:
+        additionalProperties: true
+        type: object
+      velero:
+        $ref: '#/definitions/softwaremodel.KubernetesVelero'
+      version:
+        description: Same as release
+        type: string
+    required:
+    - kube_config
+    - resources
+    - velero
+    - version
+    type: object
+  softwaremodel.KubernetesVelero:
+    properties:
+      backup_location_config:
+        type: string
+      bucket:
+        type: string
+      features:
+        type: string
+      plugins:
+        type: string
+      provider:
+        type: string
+      secret_file:
+        type: string
+    required:
+    - backup_location_config
+    - bucket
+    - provider
+    type: object
+  softwaremodel.MigrationList:
+    properties:
+      binaries:
+        items:
+          $ref: '#/definitions/softwaremodel.BinaryMigrationInfo'
+        type: array
+      containers:
+        items:
+          $ref: '#/definitions/softwaremodel.ContainerMigrationInfo'
+        type: array
+      kubernetes:
+        items:
+          $ref: '#/definitions/softwaremodel.KubernetesMigrationInfo'
+        type: array
+      packages:
+        items:
+          $ref: '#/definitions/softwaremodel.PackageMigrationInfo'
+        type: array
+    type: object
+  softwaremodel.PackageMigrationInfo:
     properties:
       custom_configs:
         type: string
@@ -329,12 +366,7 @@ definitions:
     - needed_packages
     - version
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
-    properties:
-      message:
-        type: string
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareArchitecture:
+  softwaremodel.SoftwareArchitecture:
     enum:
     - common
     - x86_64
@@ -352,38 +384,6 @@ definitions:
     - SoftwareArchitectureARMv6
     - SoftwareArchitectureARMv7
     - SoftwareArchitectureARM64v8
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
-    properties:
-      migration_list:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
-      source_connection_info_id:
-        type: string
-      target:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
-    required:
-    - source_connection_info_id
-    - target
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
-    properties:
-      execution_id:
-        type: string
-      migration_list:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationList'
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
-    properties:
-      mci_id:
-        type: string
-      namespace_id:
-        type: string
-      vm_id:
-        type: string
-    required:
-    - mci_id
-    - namespace_id
-    - vm_id
-    type: object
 info:
   contact: {}
   description: Software migration management module
