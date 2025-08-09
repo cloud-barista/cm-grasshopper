@@ -1,303 +1,182 @@
 #!/bin/sh
 
-# Package name from argument
 pkg="$1"
 
-# Validate package name
 if [ -z "$pkg" ]; then
     echo "Usage: $0 <package_name>" >&2
     exit 1
 fi
 
-# Check if package exists
 if command -v dpkg >/dev/null 2>&1; then
     if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
         echo "Package '$pkg' is not installed" >&2
         exit 1
     fi
+    PKG_MANAGER="dpkg"
 elif command -v rpm >/dev/null 2>&1; then
     if ! rpm -q "$pkg" >/dev/null 2>&1; then
         echo "Package '$pkg' is not installed" >&2
         exit 1
     fi
+    PKG_MANAGER="rpm"
 else
     echo "Neither dpkg nor rpm found. Unsupported system." >&2
     exit 1
 fi
 
-# Global variables for tracking
-tmp_result=$(mktemp)
+tmp_all_files=$(mktemp)
+tmp_deps=$(mktemp)
+tmp_file_owners=$(mktemp)
+tmp_verification=$(mktemp)
 tmp_processed=$(mktemp)
-tmp_includes=$(mktemp)
-tmp_dep_packages=$(mktemp)
 
-# Check if path should be skipped (virtual filesystems)
+cleanup() {
+    rm -f "$tmp_all_files" "$tmp_deps" "$tmp_file_owners" "$tmp_verification" "$tmp_processed"
+}
+trap cleanup EXIT
+
 should_skip_path() {
-    local path="$1"
-    case "$path" in
-        /proc/*|/dev/*|/sys/*|/run/*)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
+    case "$1" in
+        /proc/*|/dev/*|/sys/*|/run/*|*/doc/*|*/man/*|*copyright*|*LICENSE*|*README*|*CHANGELOG*)
+            return 0 ;;
+        *) return 1 ;;
     esac
 }
 
-# Get dependency packages for Debian-based systems
-get_debian_dependencies() {
-    local pkg="$1"
-
-    # Get dependencies using dpkg-query
-    dpkg-query -Wf='${Depends}\n${Pre-Depends}\n' "$pkg" 2>/dev/null | \
-    tr ',' '\n' | \
-    sed 's/|.*//' | \
-    sed 's/(.*//' | \
-    sed 's/^[[:space:]]*//' | \
-    sed 's/[[:space:]]*$//' | \
-    grep -v '^$' | \
-    while read -r dep; do
-        if dpkg -l "$dep" 2>/dev/null | grep -q "^ii"; then
-            echo "$dep"
-        fi
-    done
-}
-
-# Get dependency packages for RPM-based systems
-get_rpm_dependencies() {
-    local pkg="$1"
-
-    # Get requires using rpm
-    rpm -qR "$pkg" 2>/dev/null | \
-    grep -v 'rpmlib\|/bin/sh\|/usr/bin\|libc\|ld-linux' | \
-    sed 's/(.*//' | \
-    sed 's/>=.*//' | \
-    sed 's/<=.*//' | \
-    sed 's/=.*//' | \
-    sed 's/^[[:space:]]*//' | \
-    sed 's/[[:space:]]*$//' | \
-    while read -r dep; do
-        if rpm -q "$dep" >/dev/null 2>&1; then
-            echo "$dep"
-        fi
-    done
-}
-
-# Get all dependency packages
-get_dependency_packages() {
-    local pkg="$1"
-
-    if command -v dpkg >/dev/null 2>&1; then
-        get_debian_dependencies "$pkg"
-    elif command -v rpm >/dev/null 2>&1; then
-        get_rpm_dependencies "$pkg"
-    fi
-}
-
-# Extract includes from a single file
-extract_includes() {
-    local file="$1"
-    {
-        # Find include directives with quotes
-        grep -i "include.*[\"'].*[\"']" "$file" 2>/dev/null | grep -o "[\"'][^\"']*[\"']" | tr -d "'\"" || true
-        # Find include directives without quotes
-        grep -i "^[[:space:]]*include[[:space:]]*[^\"']" "$file" 2>/dev/null | sed 's/.*include[[:space:]]*//g' | sed 's/#.*//g' || true
-        # Find configuration directories (.d pattern)
-        grep -i -E "(conf|config)\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
-        grep -i "\.d/" "$file" 2>/dev/null | grep -o '\/[^[:space:]"]*' || true
-    } | while read -r inc_path; do
-        # Skip empty paths
-        [ -z "$inc_path" ] && continue
-
-        # Convert relative paths to absolute
-        if [ "${inc_path#/}" = "$inc_path" ]; then
-            inc_path="$(dirname "$file")/$inc_path"
-        fi
-
-        # Skip virtual filesystem paths
-        if should_skip_path "$inc_path"; then
-            continue
-        fi
-
-        # Handle wildcard patterns
-        if echo "$inc_path" | grep -q "[*]"; then
-            find $(dirname "$inc_path" 2>/dev/null) -name "$(basename "$inc_path")" -type f 2>/dev/null | head -10
-        else
-            echo "$inc_path"
-        fi
-    done > "$tmp_includes"
-}
-
-# Process includes iteratively (not recursively)
-process_includes() {
-    local start_file="$1"
-    local queue_file=$(mktemp)
-
-    # Initialize queue with the starting file
-    echo "$start_file" > "$queue_file"
-
-    # Process queue until empty
-    while [ -s "$queue_file" ]; do
-        # Get next file from queue
-        current_file=$(head -n1 "$queue_file")
-        # Remove it from queue
-        tail -n +2 "$queue_file" > "${queue_file}.tmp" && mv "${queue_file}.tmp" "$queue_file"
-
-        # Skip if already processed
-        real_current=$(readlink -f "$current_file" 2>/dev/null || echo "$current_file")
-        if grep -Fxq "$real_current" "$tmp_processed" 2>/dev/null; then
-            continue
-        fi
-
-        # Mark as processed
-        echo "$real_current" >> "$tmp_processed"
-
-        # Add to results if it's a real file or symlink
-        if [ -f "$current_file" ] || [ -L "$current_file" ]; then
-            echo "$current_file" >> "$tmp_result"
-
-            # Extract includes from this file
-            extract_includes "$current_file"
-
-            # Add new includes to queue
-            while read -r new_include; do
-                if [ -f "$new_include" ]; then
-                    real_include=$(readlink -f "$new_include" 2>/dev/null || echo "$new_include")
-                    # Only add if not already processed
-                    if ! grep -Fxq "$real_include" "$tmp_processed" 2>/dev/null; then
-                        echo "$new_include" >> "$queue_file"
-                    fi
-                fi
-            done < "$tmp_includes"
-        fi
-    done
-
-    rm -f "$queue_file"
-}
-
-# Check file status (Original/Modified/Custom)
-check_config_status() {
-    local file="$1"
-    local real_file=$(readlink -f "$file")
-
-    # Symlink
-    if [ -L "$file" ]; then
-        echo "$file [Symlink]"
-        return
-    fi
-
-    if command -v dpkg >/dev/null 2>&1; then
-        # Find package that owns the file
-        local owner_pkg=$(dpkg -S "$real_file" 2>/dev/null | cut -d: -f1)
-        if [ -n "$owner_pkg" ]; then
-            if dpkg -V "$owner_pkg" 2>/dev/null | grep -q "^..5.* $real_file"; then
-                echo "$file [Modified]"
-            else
-                echo "$file [Unmodified]"
-            fi
-        else
-            if [ "$file" != "$real_file" ] && dpkg -S "$file" >/dev/null 2>&1; then
-                echo "$file [Unmodified]"
-            else
-                echo "$file [Custom]"
-            fi
-        fi
-    elif command -v rpm >/dev/null 2>&1; then
-        # Find package that owns the file
-        local owner_pkg=$(rpm -qf "$real_file" 2>/dev/null)
-        if [ -n "$owner_pkg" ]; then
-            if rpm -V "$owner_pkg" | grep -q "^..5.* $real_file"; then
-                echo "$file [Modified]"
-            else
-                echo "$file [Unmodified]"
-            fi
-        else
-            if [ "$file" != "$real_file" ] && rpm -qf "$file" >/dev/null 2>&1; then
-                echo "$file [Unmodified]"
-            else
-                echo "$file [Custom]"
-            fi
-        fi
+get_all_dependencies() {
+    if [ "$PKG_MANAGER" = "dpkg" ]; then
+        dpkg-query -Wf='${Depends}\n${Pre-Depends}\n' "$pkg" 2>/dev/null | \
+        tr ',' '\n' | sed 's/|.*//' | sed 's/(.*//' | \
+        sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | \
+        grep -v '^$' | sort -u | \
+        xargs -I {} sh -c 'dpkg -l "{}" 2>/dev/null | grep -q "^ii" && echo "{}"' 2>/dev/null
     else
-        echo "$file [Custom]"
+        rpm -qR "$pkg" 2>/dev/null | \
+        grep -v 'rpmlib\|/bin/sh\|/usr/bin\|libc\|ld-linux' | \
+        sed 's/(.*//' | sed 's/[><=].*//' | \
+        sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//' | \
+        sort -u | \
+        xargs -I {} sh -c 'rpm -q "{}" >/dev/null 2>&1 && echo "{}"' 2>/dev/null
     fi
 }
 
-# Find files in directories where config files are located
-find_files_in_config_locations() {
-    local pkg="$1"
+collect_all_files() {
+    {
+        echo "$pkg"
+        get_all_dependencies
+    } > "$tmp_deps"
 
-    # Get actual config files from package first
-    if command -v dpkg >/dev/null 2>&1; then
-        config_files=$(dpkg -L "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$')
-    elif command -v rpm >/dev/null 2>&1; then
-        config_files=$(rpm -ql "$pkg" 2>/dev/null | grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|conf\.d|\.d/|config$|[._]bak$')
+    if [ "$PKG_MANAGER" = "dpkg" ]; then
+        xargs -I {} dpkg -L {} 2>/dev/null < "$tmp_deps" | \
+        grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
+        sort -u
+    else
+        xargs -I {} rpm -ql {} 2>/dev/null < "$tmp_deps" | \
+        grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
+        sort -u
     fi
 
-    # Extract unique directories from config files
-    echo "$config_files" | while read -r config_file; do
-        if [ -n "$config_file" ] && [ -f "$config_file" ]; then
-            config_dir=$(dirname "$config_file")
-            echo "$config_dir"
+    if [ -d "/etc/$pkg" ]; then
+        find "/etc/$pkg" -type f -o -type l 2>/dev/null
+    fi
+}
+
+build_file_owner_cache() {
+    if [ "$PKG_MANAGER" = "dpkg" ]; then
+        xargs -I {} dpkg -S {} 2>/dev/null < "$tmp_all_files" | \
+        awk -F': ' '{print $2 "\t" $1}' > "$tmp_file_owners"
+
+        xargs -I {} sh -c 'pkg=$(dpkg -S "{}" 2>/dev/null | cut -d: -f1); [ -n "$pkg" ] && dpkg -V "$pkg" 2>/dev/null | grep "^..5.* {}" && echo "{}"' < "$tmp_all_files" > "$tmp_verification"
+    else
+        xargs -I {} rpm -qf {} 2>/dev/null < "$tmp_all_files" | \
+        paste "$tmp_all_files" - > "$tmp_file_owners"
+
+        xargs -I {} sh -c 'pkg=$(rpm -qf "{}" 2>/dev/null); [ -n "$pkg" ] && rpm -V "$pkg" 2>/dev/null | grep "^..5.* {}" && echo "{}"' < "$tmp_all_files" > "$tmp_verification"
+    fi
+}
+
+extract_includes_parallel() {
+    xargs -P 4 -I {} sh -c '
+        file="{}"
+        [ ! -f "$file" ] && exit 0
+        [ ! -r "$file" ] && exit 0
+
+        grep -E "^[[:space:]]*include" "$file" 2>/dev/null | \
+        sed -E "s/.*include[[:space:]]+//; s/[\"'"'"';].*//; s/^[\"'"'"']//; s/[\"'"'"']$//" | \
+        while read -r inc_path; do
+            [ -z "$inc_path" ] && continue
+
+            if [ "${inc_path#/}" = "$inc_path" ]; then
+                inc_path="$(dirname "$file")/$inc_path"
+            fi
+
+            case "$inc_path" in
+                /proc/*|/dev/*|/sys/*|/run/*|*/doc/*|*/man/*|*copyright*|*LICENSE*|*README*|*CHANGELOG*)
+                    continue ;;
+            esac
+
+            if echo "$inc_path" | grep -q "[*]"; then
+                dirname_path=$(dirname "$inc_path" 2>/dev/null)
+                [ -d "$dirname_path" ] && find "$dirname_path" -maxdepth 1 -name "$(basename "$inc_path")" -type f 2>/dev/null
+            else
+                [ -f "$inc_path" ] && echo "$inc_path"
+            fi
+        done
+    ' < "$tmp_all_files"
+}
+
+process_includes_iterative() {
+    sort -u "$tmp_all_files" > "$tmp_processed"
+
+    for iteration in 1 2; do
+        new_files=$(mktemp)
+        extract_includes_parallel | sort -u > "${new_files}.includes"
+
+        sort -u "$tmp_processed" > "${tmp_processed}.sorted"
+        comm -23 "${new_files}.includes" "${tmp_processed}.sorted" > "$new_files"
+
+        if [ ! -s "$new_files" ]; then
+            rm -f "$new_files" "${new_files}.includes" "${tmp_processed}.sorted"
+            break
         fi
-    done | sort -u | while read -r dir; do
-        if [ -n "$dir" ] && [ -d "$dir" ]; then
-            # Find all files in this specific config directory
-            find "$dir" -type f -o -type l 2>/dev/null
-        fi
+
+        cat "$new_files" >> "$tmp_processed"
+        cat "$new_files" >> "$tmp_all_files"
+        rm -f "$new_files" "${new_files}.includes" "${tmp_processed}.sorted"
     done
-
-    # Add common config files
-    find "/etc/$pkg" -type f -o -type l 2>/dev/null
 }
 
-# Process config files for a single package
-process_package_configs() {
-    local pkg="$1"
+check_file_status() {
+    sort -u "$tmp_all_files" | while read -r file; do
+        [ -z "$file" ] && continue
 
-    find_files_in_config_locations "$pkg" | sort -u | while read -r file; do
-        # Skip virtual filesystem paths
         if should_skip_path "$file"; then
             continue
         fi
 
-        # Skip documentation and copyright files
-        case "$file" in
-            */doc/*|*/man/*|*copyright*|*LICENSE*|*README*|*CHANGELOG*)
-                continue
-                ;;
-        esac
+        if [ ! -f "$file" ] && [ ! -L "$file" ]; then
+            continue
+        fi
 
-        # Check content of non-standard named files for config-like content
-        if [ -f "$file" ] && file "$file" | grep -i "text" >/dev/null 2>&1; then
-            process_includes "$file"
+        if [ -L "$file" ]; then
+            echo "$file [Symlink]"
+        elif grep -Fq "$file" "$tmp_verification" 2>/dev/null; then
+            echo "$file [Modified]"
+        elif grep -F "$file" "$tmp_file_owners" >/dev/null 2>&1; then
+            echo "$file [Unmodified]"
+        else
+            echo "$file [Custom]"
         fi
     done
 }
 
-# Cleanup function
-cleanup() {
-    rm -f "$tmp_result" "$tmp_processed" "$tmp_includes" "$tmp_dep_packages"
-}
+collect_all_files > "$tmp_all_files"
 
-# Set trap for cleanup
-trap cleanup EXIT
+build_file_owner_cache &
+CACHE_PID=$!
 
-# Get dependency packages silently
-get_dependency_packages "$pkg" > "$tmp_dep_packages"
+process_includes_iterative
 
-# Process main package
-process_package_configs "$pkg"
+wait $CACHE_PID
 
-# Process dependency packages
-if [ -s "$tmp_dep_packages" ]; then
-    while read -r dep_pkg; do
-        [ -z "$dep_pkg" ] && continue
-        process_package_configs "$dep_pkg"
-    done < "$tmp_dep_packages"
-fi
-
-# Process and output unique results with status
-sort -u "$tmp_result" | while read -r file; do
-    check_config_status "$file"
-done
+check_file_status
