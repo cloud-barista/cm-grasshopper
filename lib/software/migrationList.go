@@ -57,6 +57,23 @@ func isContainerRuntimeRelatedPackage(packageName string) bool {
 	return false
 }
 
+var genericKernelPackagePatterns = []string{
+	"linux-generic.*",
+	"linux-image*generic.*",
+	"linux-headers*generic.*",
+	"linux-modules*generic.*",
+}
+
+func isGenericKernelPackage(packageName string) bool {
+	for _, pattern := range genericKernelPackagePatterns {
+		matched, _ := regexp.MatchString(pattern, packageName)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
 //func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, error) {
 //	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 //		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
@@ -85,6 +102,10 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 		}
 
 		if isContainerRuntimeRelatedPackage(pkg.Name) {
+			continue
+		}
+
+		if isGenericKernelPackage(pkg.Name) {
 			continue
 		}
 
