@@ -2,8 +2,6 @@ package software
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -12,29 +10,6 @@ import (
 	softwaremodel "github.com/cloud-barista/cm-model/sw"
 	"github.com/jollaman999/utils/logger"
 )
-
-var libraryPackagePatterns = []string{
-	"lib.*-dev",
-	"lib.*[0-9]+$",
-	".*-devel",
-	".*-headers",
-	".*-doc",
-	".*-man",
-	".*-common",
-	".*-locale",
-	".*-dbg",
-	".*-data$",
-}
-
-func isLibraryPackage(packageName string) bool {
-	for _, pattern := range libraryPackagePatterns {
-		matched, _ := regexp.MatchString(pattern, packageName)
-		if matched {
-			return true
-		}
-	}
-	return false
-}
 
 func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationList,
 	sourceConnectionInfoID string, target *model.Target) error {
@@ -147,17 +122,13 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 		for i, execution := range exList.Packages {
 			updateStatus(i, "installing", "", true)
 
-			err := runPlaybook(id, execution.PackageMigrationConfigID, execution.Name, t.SSHTarget)
+			err := runPlaybook(id, "package", execution.Name, t.SSHTarget)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
 				updateStatus(i, "failed", err.Error(), false)
 
 				return
-			}
-
-			if isLibraryPackage(execution.Name) {
-				migrationLogger.Printf(INFO, "Package %s appears to be a library package, skipping migration\n", execution.Name)
 			}
 
 			err = configCopier(s, t, execution.Name, executionID, migrationLogger)
@@ -168,38 +139,6 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 				//
 				//migrationLogger.Close()
 				//return
-			}
-
-			if execution.PackageMigrationConfigID != "" {
-				sw, err := dao.PackageMigrationConfigGet(execution.PackageMigrationConfigID)
-				if err != nil {
-					msg := "migrateSoftware: ExecutionID=" + executionID +
-						", Error=" + err.Error()
-					logger.Println(logger.WARN, true, msg)
-					migrationLogger.Printf(WARN, msg)
-				}
-				if sw != nil {
-					customConfigsSplit := strings.Split(sw.CustomConfigs, ",")
-					if len(customConfigsSplit) > 0 && customConfigsSplit[0] != "" {
-						migrationLogger.Printf(INFO, "Starting to copy custom configs")
-						var customConfigs []ConfigFile
-						for _, customConfig := range customConfigsSplit {
-							customConfigs = append(customConfigs, ConfigFile{
-								Path:   customConfig,
-								Status: "Custom",
-							})
-						}
-						err = copyConfigFiles(s, t, customConfigs, migrationLogger)
-						if err != nil {
-							logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-								", Error="+err.Error())
-							//updateStatus(i, "failed", err.Error(), false)
-							//
-							//migrationLogger.Close()
-							//return
-						}
-					}
-				}
 			}
 
 			err = serviceMigrator(s, t, execution.Name, executionID, migrationLogger)

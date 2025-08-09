@@ -19,40 +19,6 @@ type Target struct {
 	VMID        string `json:"vm_id" validate:"required"`
 }
 
-type PackageMigrationConfig struct {
-	ID                   string                             `gorm:"primaryKey" json:"uuid" validate:"required"`
-	Name                 string                             `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version              string                             `gorm:"version" json:"version" validate:"required"`
-	OS                   string                             `gorm:"os" json:"os" validate:"required"`
-	OSVersion            string                             `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture         softwaremodel.SoftwareArchitecture `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames           string                             `gorm:"match_names" json:"match_names" validate:"required"`
-	NeededPackages       string                             `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages string                             `json:"need_to_delete_packages"`
-	CustomConfigs        string                             `json:"custom_configs"`
-	RepoURL              string                             `json:"repo_url"`
-	GPGKeyURL            string                             `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool                               `json:"repo_use_os_version_code" default:"false"`
-	CreatedAt            time.Time                          `gorm:"column:created_at" json:"created_at" validate:"required"`
-	UpdatedAt            time.Time                          `gorm:"column:updated_at" json:"updated_at" validate:"required"`
-}
-
-type PackageMigrationConfigReq struct {
-	ID                   string   `gorm:"primaryKey" json:"uuid" validate:"required"`
-	Name                 string   `gorm:"index:,column:name,unique;type:text collate nocase" json:"name" validate:"required"`
-	Version              string   `gorm:"version" json:"version" validate:"required"`
-	OS                   string   `gorm:"os" json:"os" validate:"required"`
-	OSVersion            string   `gorm:"os_version" json:"os_version" validate:"required"`
-	Architecture         string   `gorm:"architecture" json:"architecture" validate:"required"`
-	MatchNames           []string `gorm:"match_names" json:"match_names" validate:"required"`
-	NeededPackages       []string `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages []string `json:"need_to_delete_packages"`
-	CustomConfigs        []string `json:"custom_configs"`
-	RepoURL              string   `json:"repo_url"`
-	GPGKeyURL            string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
-}
-
 type MigrationServer struct {
 	ConnectionInfoID string                      `json:"connection_info_id"`
 	MigrationList    softwaremodel.MigrationList `json:"migration_list"`

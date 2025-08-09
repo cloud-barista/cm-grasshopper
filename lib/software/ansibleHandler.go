@@ -5,12 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/config"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	"github.com/jollaman999/utils/fileutil"
-	"github.com/jollaman999/utils/iputil"
-	"github.com/jollaman999/utils/logger"
-	cp "github.com/otiai10/copy"
 	"io"
 	"os"
 	"os/exec"
@@ -18,6 +12,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	"github.com/jollaman999/utils/fileutil"
+	"github.com/jollaman999/utils/iputil"
+	"github.com/jollaman999/utils/logger"
+	cp "github.com/otiai10/copy"
 )
 
 var ansibleConfigPath string
@@ -75,8 +76,8 @@ func getAnsiblePlaybookFolderPath(softwareID string) (string, error) {
 	return abs, nil
 }
 
-func getTemporaryAnsiblePlaybookFolderPath(executionID string, softwareID string) (string, error) {
-	absSource, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, softwareID))
+func getTemporaryAnsiblePlaybookFolderPath(executionID string, playbookName string) (string, error) {
+	absSource, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath, playbookName))
 	if err != nil {
 		errMsg := err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -308,7 +309,7 @@ func checkAnsibleConfig() error {
 	return nil
 }
 
-func runPlaybook(executionID string, packageMigrationConfigID string, softwareName string, sshTarget *model.SSHTarget) error {
+func runPlaybook(executionID string, playbookName string, softwareName string, sshTarget *model.SSHTarget) error {
 	err := checkAnsibleConfig()
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
@@ -316,11 +317,7 @@ func runPlaybook(executionID string, packageMigrationConfigID string, softwareNa
 		return err
 	}
 
-	if packageMigrationConfigID == "" {
-		packageMigrationConfigID = "common"
-	}
-
-	pwd, err := getTemporaryAnsiblePlaybookFolderPath(executionID, packageMigrationConfigID)
+	pwd, err := getTemporaryAnsiblePlaybookFolderPath(executionID, playbookName)
 	if err != nil {
 		errMsg := "ANSIBLE: " + err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -330,7 +327,7 @@ func runPlaybook(executionID string, packageMigrationConfigID string, softwareNa
 		deleteDir(pwd)
 	}()
 
-	if packageMigrationConfigID == "common" {
+	if playbookName == "package" {
 		err := filepath.Walk(pwd, func(path string, d os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -387,7 +384,7 @@ func runPlaybook(executionID string, packageMigrationConfigID string, softwareNa
 		}
 	}
 
-	playbookFile, err := findPlaybookFile(packageMigrationConfigID)
+	playbookFile, err := findPlaybookFile(playbookName)
 	if err != nil {
 		logger.Logger.Println(logger.ERROR, true, err)
 		return err
@@ -444,7 +441,7 @@ func runPlaybook(executionID string, packageMigrationConfigID string, softwareNa
 
 	err = cmd.Run()
 	if err != nil {
-		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + packageMigrationConfigID + ", Error: " + err.Error() + ")"
+		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + playbookName + ", Error: " + err.Error() + ")"
 		logger.Logger.Println(logger.ERROR, true, errMsg)
 	}
 

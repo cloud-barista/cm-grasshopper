@@ -1,17 +1,17 @@
 package db
 
 import (
+	"io"
+	"os"
+
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/glebarez/sqlite"
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
 	"gorm.io/gorm"
-	"io"
-	"os"
 )
 
-var PackageMigrationConfigDB *gorm.DB
 var DB *gorm.DB
 
 func copyFile(src string, dst string) (err error) {
@@ -50,16 +50,6 @@ func Open() error {
 		}
 	}
 
-	PackageMigrationConfigDB, err = gorm.Open(sqlite.Open(common.RootPath+"/package_migration_config.db"), &gorm.Config{})
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err)
-	}
-
-	err = PackageMigrationConfigDB.AutoMigrate(&model.PackageMigrationConfig{})
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err)
-	}
-
 	DB, err = gorm.Open(sqlite.Open(common.RootPath+"/"+common.ModuleName+".db"), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
@@ -74,11 +64,6 @@ func Open() error {
 }
 
 func Close() {
-	if PackageMigrationConfigDB != nil {
-		sqlDB, _ := PackageMigrationConfigDB.DB()
-		_ = sqlDB.Close()
-	}
-
 	if DB != nil {
 		sqlDB, _ := DB.DB()
 		_ = sqlDB.Close()

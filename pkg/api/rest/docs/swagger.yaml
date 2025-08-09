@@ -32,98 +32,6 @@ definitions:
       migration_list:
         $ref: '#/definitions/softwaremodel.MigrationList'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfig:
-    properties:
-      architecture:
-        $ref: '#/definitions/softwaremodel.SoftwareArchitecture'
-      created_at:
-        type: string
-      custom_configs:
-        type: string
-      gpg_key_url:
-        type: string
-      match_names:
-        type: string
-      name:
-        type: string
-      need_to_delete_packages:
-        type: string
-      needed_packages:
-        type: string
-      os:
-        type: string
-      os_version:
-        type: string
-      repo_url:
-        type: string
-      repo_use_os_version_code:
-        default: false
-        type: boolean
-      updated_at:
-        type: string
-      uuid:
-        type: string
-      version:
-        type: string
-    required:
-    - architecture
-    - created_at
-    - match_names
-    - name
-    - needed_packages
-    - os
-    - os_version
-    - updated_at
-    - uuid
-    - version
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfigReq:
-    properties:
-      architecture:
-        type: string
-      custom_configs:
-        items:
-          type: string
-        type: array
-      gpg_key_url:
-        type: string
-      match_names:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      need_to_delete_packages:
-        items:
-          type: string
-        type: array
-      needed_packages:
-        items:
-          type: string
-        type: array
-      os:
-        type: string
-      os_version:
-        type: string
-      repo_url:
-        type: string
-      repo_use_os_version_code:
-        default: false
-        type: boolean
-      uuid:
-        type: string
-      version:
-        type: string
-    required:
-    - architecture
-    - match_names
-    - name
-    - needed_packages
-    - os
-    - os_version
-    - uuid
-    - version
-    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
     properties:
       message:
@@ -166,7 +74,9 @@ definitions:
       binary_path:
         type: string
       custom_configs:
-        type: string
+        items:
+          type: string
+        type: array
       custom_data_paths:
         items:
           type: string
@@ -333,7 +243,9 @@ definitions:
   softwaremodel.PackageMigrationInfo:
     properties:
       custom_configs:
-        type: string
+        items:
+          type: string
+        type: array
       custom_data_paths:
         items:
           type: string
@@ -352,8 +264,6 @@ definitions:
         type: array
       order:
         type: integer
-      package_migration_config_id:
-        type: string
       repo_url:
         type: string
       repo_use_os_version_code:
@@ -472,142 +382,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Get Package Migration Log
-      tags:
-      - '[Package]'
-  /software/package/migration_config:
-    get:
-      consumes:
-      - application/json
-      description: Get a list of package migration config.
-      operationId: list-package-migration-config
-      parameters:
-      - description: Installation type of the software
-        in: query
-        name: install_type
-        type: string
-      - description: Name of the software
-        in: query
-        name: name
-        type: string
-      - description: Version of the software
-        in: query
-        name: version
-        type: string
-      - description: Operating system of the software
-        in: query
-        name: os
-        type: string
-      - description: Operating system version
-        in: query
-        name: os_version
-        type: string
-      - description: Architecture of the software
-        in: query
-        name: architecture
-        type: string
-      - description: Matching names of the software
-        in: query
-        name: match_names
-        type: string
-      - description: Packages needed to install for the software
-        in: query
-        name: needed_packages
-        type: string
-      - description: Packages that need to be deleted for the software
-        in: query
-        name: need_to_delete_packages
-        type: string
-      - description: Repository URL for install the software
-        in: query
-        name: repo_url
-        type: string
-      - description: GPG key URL for install the software
-        in: query
-        name: gpg_key_url
-        type: string
-      - description: If repository URL uses OS version code. (For debian based OSs.)
-        in: query
-        name: repo_use_os_version_code
-        type: boolean
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully get a list of software.
-          schema:
-            items:
-              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfig'
-            type: array
-        "400":
-          description: Sent bad request.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-        "500":
-          description: Failed to get a list of software.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: List package migration config
-      tags:
-      - '[Package]'
-  /software/package/migration_config/{migrationConfigId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete the software.
-      operationId: delete-software
-      parameters:
-      - description: ID of the software.
-        in: path
-        name: softwareId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully update the software
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg'
-        "400":
-          description: Sent bad request.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-        "500":
-          description: Failed to delete the software
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Delete Package
-      tags:
-      - '[Package]'
-  /software/package/migration_config/register:
-    post:
-      consumes:
-      - application/json
-      description: Register the software.
-      operationId: register-software
-      parameters:
-      - description: Package info
-        in: body
-        name: softwareRegisterReq
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfigReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully registered the software.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.PackageMigrationConfigReq'
-        "400":
-          description: Sent bad request.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-        "500":
-          description: Failed to sent SSH command.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Register Package
       tags:
       - '[Package]'
   /software/package/migration_list:

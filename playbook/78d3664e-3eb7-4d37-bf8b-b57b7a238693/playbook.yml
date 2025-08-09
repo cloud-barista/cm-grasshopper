@@ -1,6 +1,0 @@
-- name: Install docker
-  hosts: 127.0.0.1
-  force_handlers: true
-
-  roles:
-    - role

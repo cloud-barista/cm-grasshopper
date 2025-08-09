@@ -6,8 +6,6 @@ github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250620095046-72349b666c3b h1
 github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250620095046-72349b666c3b/go.mod h1:KKsTBSyxzhFrbgQ2NNoRw5qzl42xXmD8rZBLOL5vBq0=
 github.com/cloud-barista/cm-honeybee/server v0.0.0-20250620095046-72349b666c3b h1:gf4/EZkpN2vN76PVD99VDLP97um/p3sUTBJtMU2MMa4=
 github.com/cloud-barista/cm-honeybee/server v0.0.0-20250620095046-72349b666c3b/go.mod h1:7jLvH9RDpvT98WK3bC/7jnS302PgokTHWkd5zEqv5Q8=
-github.com/cloud-barista/cm-model v0.0.10 h1:vGaYam3/VX8IvagHdtWx10ZgH36xZ+44Db2ZG/uSvA4=
-github.com/cloud-barista/cm-model v0.0.10/go.mod h1:gSuMhQxD813KIdSvkp8uGptYOeyDik749sYcICZjhj8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
