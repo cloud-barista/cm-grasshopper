@@ -74,6 +74,24 @@ func isGenericKernelPackage(packageName string) bool {
 	return false
 }
 
+var packageManagerPackagePatterns = []string{
+	"apt",
+	"yum",
+	"dnf",
+	"dnf-data",
+	".*libdnf.*",
+}
+
+func isPackageManagerPackage(packageName string) bool {
+	for _, pattern := range packageManagerPackagePatterns {
+		matched, _ := regexp.MatchString(pattern, packageName)
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
 //func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, error) {
 //	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 //		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
@@ -106,6 +124,10 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 		}
 
 		if isGenericKernelPackage(pkg.Name) {
+			continue
+		}
+
+		if isPackageManagerPackage(pkg.Name) {
 			continue
 		}
 
