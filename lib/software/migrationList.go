@@ -59,9 +59,10 @@ func isContainerRuntimeRelatedPackage(packageName string) bool {
 
 var genericKernelPackagePatterns = []string{
 	"linux-generic.*",
-	"linux-image*generic.*",
-	"linux-headers*generic.*",
-	"linux-modules*generic.*",
+	"linux-image.*generic.*",
+	"linux-headers.*generic.*",
+	"linux-modules.*generic.*",
+	"linux-tools.*generic.*",
 }
 
 func isGenericKernelPackage(packageName string) bool {
