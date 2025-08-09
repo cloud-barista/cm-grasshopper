@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250620095046-72349b666c3b
-	github.com/cloud-barista/cm-model v0.0.10
+	github.com/cloud-barista/cm-model v0.0.11-0.20250809102934-b833453c1866
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
@@ -64,5 +64,3 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.38.0 // indirect
 )
-
-replace github.com/cloud-barista/cm-model => ../cm-model
