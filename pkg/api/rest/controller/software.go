@@ -23,11 +23,11 @@ import (
 //	@Tags			[Package]
 //	@Accept			json
 //	@Produce		json
-//	@Param			sgId path string true "ID of the SourceGroup"
+//	@Param			softwareMigrateReq body softwaremodel.SourceGroupSoftwareProperty true "Refined software list."
 //	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
-//	@Router			/software/package/migration_list [get]
+//	@Router			/software/package/migration_list [post]
 func GetPackageMigrationList(c echo.Context) error {
 	sourceGroupSoftwareProperty := new(softwaremodel.SourceGroupSoftwareProperty)
 	err := c.Bind(sourceGroupSoftwareProperty)

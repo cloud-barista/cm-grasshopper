@@ -142,7 +142,7 @@ const docTemplate = `{
             }
         },
         "/software/package/migration_list": {
-            "get": {
+            "post": {
                 "description": "Get software migration list.",
                 "consumes": [
                     "application/json"
@@ -157,11 +157,13 @@ const docTemplate = `{
                 "operationId": "get-migration-list",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "ID of the SourceGroup",
-                        "name": "sgId",
-                        "in": "path",
-                        "required": true
+                        "description": "Refined software list.",
+                        "name": "softwareMigrateReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/softwaremodel.SourceGroupSoftwareProperty"
+                        }
                     }
                 ],
                 "responses": {
@@ -294,6 +296,42 @@ const docTemplate = `{
                 }
             }
         },
+        "softwaremodel.Binary": {
+            "type": "object",
+            "required": [
+                "name",
+                "version"
+            ],
+            "properties": {
+                "binary_path": {
+                    "type": "string"
+                },
+                "custom_configs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "custom_data_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "needed_libraries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "softwaremodel.BinaryMigrationInfo": {
             "type": "object",
             "required": [
@@ -330,6 +368,67 @@ const docTemplate = `{
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "softwaremodel.Container": {
+            "type": "object",
+            "required": [
+                "container_id",
+                "container_image",
+                "container_status",
+                "name",
+                "network_mode",
+                "restart_policy",
+                "runtime"
+            ],
+            "properties": {
+                "container_id": {
+                    "type": "string"
+                },
+                "container_image": {
+                    "$ref": "#/definitions/softwaremodel.ContainerImage"
+                },
+                "container_ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.ContainerPort"
+                    }
+                },
+                "container_status": {
+                    "type": "string"
+                },
+                "docker_compose_path": {
+                    "type": "string"
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Env"
+                    }
+                },
+                "mount_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "network_mode": {
+                    "type": "string"
+                },
+                "restart_policy": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "Which runtime uses for the container (Docker, Podman)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/softwaremodel.SoftwareContainerRuntimeType"
+                        }
+                    ]
                 }
             }
         },
@@ -457,6 +556,27 @@ const docTemplate = `{
                 }
             }
         },
+        "softwaremodel.Kubernetes": {
+            "type": "object",
+            "required": [
+                "kube_config",
+                "resources",
+                "version"
+            ],
+            "properties": {
+                "kube_config": {
+                    "type": "string"
+                },
+                "resources": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "version": {
+                    "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
         "softwaremodel.KubernetesMigrationInfo": {
             "type": "object",
             "required": [
@@ -542,6 +662,54 @@ const docTemplate = `{
                 }
             }
         },
+        "softwaremodel.Package": {
+            "type": "object",
+            "required": [
+                "name",
+                "needed_packages",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "custom_configs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "custom_data_paths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gpg_key_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "need_to_delete_packages": {
+                    "type": "string"
+                },
+                "needed_packages": {
+                    "type": "string"
+                },
+                "repo_url": {
+                    "type": "string"
+                },
+                "repo_use_os_version_code": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "type": {
+                    "$ref": "#/definitions/softwaremodel.SoftwarePackageType"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "softwaremodel.PackageMigrationInfo": {
             "type": "object",
             "required": [
@@ -615,6 +783,92 @@ const docTemplate = `{
                 "SoftwareArchitectureARMv7",
                 "SoftwareArchitectureARM64v8"
             ]
+        },
+        "softwaremodel.SoftwareContainerRuntimeType": {
+            "type": "string",
+            "enum": [
+                "docker",
+                "podman"
+            ],
+            "x-enum-varnames": [
+                "SoftwareContainerRuntimeTypeDocker",
+                "SoftwareContainerRuntimeTypePodman"
+            ]
+        },
+        "softwaremodel.SoftwareList": {
+            "type": "object",
+            "properties": {
+                "binaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Binary"
+                    }
+                },
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Container"
+                    }
+                },
+                "kubernetes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Kubernetes"
+                    }
+                },
+                "packages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.Package"
+                    }
+                }
+            }
+        },
+        "softwaremodel.SoftwarePackageType": {
+            "type": "string",
+            "enum": [
+                "deb",
+                "rpm"
+            ],
+            "x-enum-comments": {
+                "SoftwarePackageTypeDEB": "Debian based package type",
+                "SoftwarePackageTypeRPM": "RHEL based package type"
+            },
+            "x-enum-varnames": [
+                "SoftwarePackageTypeDEB",
+                "SoftwarePackageTypeRPM"
+            ]
+        },
+        "softwaremodel.SourceConnectionInfoSoftwareProperty": {
+            "type": "object",
+            "required": [
+                "connection_id"
+            ],
+            "properties": {
+                "connection_id": {
+                    "type": "string"
+                },
+                "softwares": {
+                    "$ref": "#/definitions/softwaremodel.SoftwareList"
+                }
+            }
+        },
+        "softwaremodel.SourceGroupSoftwareProperty": {
+            "type": "object",
+            "required": [
+                "source_group_id"
+            ],
+            "properties": {
+                "connection_info_list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.SourceConnectionInfoSoftwareProperty"
+                    }
+                },
+                "source_group_id": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`

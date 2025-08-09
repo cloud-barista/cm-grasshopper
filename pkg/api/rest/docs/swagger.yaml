@@ -69,6 +69,30 @@ definitions:
     - namespace_id
     - vm_id
     type: object
+  softwaremodel.Binary:
+    properties:
+      binary_path:
+        type: string
+      custom_configs:
+        items:
+          type: string
+        type: array
+      custom_data_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      needed_libraries:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - name
+    - version
+    type: object
   softwaremodel.BinaryMigrationInfo:
     properties:
       binary_path:
@@ -94,6 +118,47 @@ definitions:
     required:
     - name
     - version
+    type: object
+  softwaremodel.Container:
+    properties:
+      container_id:
+        type: string
+      container_image:
+        $ref: '#/definitions/softwaremodel.ContainerImage'
+      container_ports:
+        items:
+          $ref: '#/definitions/softwaremodel.ContainerPort'
+        type: array
+      container_status:
+        type: string
+      docker_compose_path:
+        type: string
+      envs:
+        items:
+          $ref: '#/definitions/softwaremodel.Env'
+        type: array
+      mount_paths:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      network_mode:
+        type: string
+      restart_policy:
+        type: string
+      runtime:
+        allOf:
+        - $ref: '#/definitions/softwaremodel.SoftwareContainerRuntimeType'
+        description: Which runtime uses for the container (Docker, Podman)
+    required:
+    - container_id
+    - container_image
+    - container_status
+    - name
+    - network_mode
+    - restart_policy
+    - runtime
     type: object
   softwaremodel.ContainerImage:
     properties:
@@ -182,6 +247,21 @@ definitions:
     required:
     - name
     type: object
+  softwaremodel.Kubernetes:
+    properties:
+      kube_config:
+        type: string
+      resources:
+        additionalProperties: true
+        type: object
+      version:
+        description: Same as release
+        type: string
+    required:
+    - kube_config
+    - resources
+    - version
+    type: object
   softwaremodel.KubernetesMigrationInfo:
     properties:
       kube_config:
@@ -240,6 +320,39 @@ definitions:
           $ref: '#/definitions/softwaremodel.PackageMigrationInfo'
         type: array
     type: object
+  softwaremodel.Package:
+    properties:
+      custom_configs:
+        items:
+          type: string
+        type: array
+      custom_data_paths:
+        items:
+          type: string
+        type: array
+      gpg_key_url:
+        type: string
+      name:
+        type: string
+      need_to_delete_packages:
+        type: string
+      needed_packages:
+        type: string
+      repo_url:
+        type: string
+      repo_use_os_version_code:
+        default: false
+        type: boolean
+      type:
+        $ref: '#/definitions/softwaremodel.SoftwarePackageType'
+      version:
+        type: string
+    required:
+    - name
+    - needed_packages
+    - type
+    - version
+    type: object
   softwaremodel.PackageMigrationInfo:
     properties:
       custom_configs:
@@ -294,6 +407,64 @@ definitions:
     - SoftwareArchitectureARMv6
     - SoftwareArchitectureARMv7
     - SoftwareArchitectureARM64v8
+  softwaremodel.SoftwareContainerRuntimeType:
+    enum:
+    - docker
+    - podman
+    type: string
+    x-enum-varnames:
+    - SoftwareContainerRuntimeTypeDocker
+    - SoftwareContainerRuntimeTypePodman
+  softwaremodel.SoftwareList:
+    properties:
+      binaries:
+        items:
+          $ref: '#/definitions/softwaremodel.Binary'
+        type: array
+      containers:
+        items:
+          $ref: '#/definitions/softwaremodel.Container'
+        type: array
+      kubernetes:
+        items:
+          $ref: '#/definitions/softwaremodel.Kubernetes'
+        type: array
+      packages:
+        items:
+          $ref: '#/definitions/softwaremodel.Package'
+        type: array
+    type: object
+  softwaremodel.SoftwarePackageType:
+    enum:
+    - deb
+    - rpm
+    type: string
+    x-enum-comments:
+      SoftwarePackageTypeDEB: Debian based package type
+      SoftwarePackageTypeRPM: RHEL based package type
+    x-enum-varnames:
+    - SoftwarePackageTypeDEB
+    - SoftwarePackageTypeRPM
+  softwaremodel.SourceConnectionInfoSoftwareProperty:
+    properties:
+      connection_id:
+        type: string
+      softwares:
+        $ref: '#/definitions/softwaremodel.SoftwareList'
+    required:
+    - connection_id
+    type: object
+  softwaremodel.SourceGroupSoftwareProperty:
+    properties:
+      connection_info_list:
+        items:
+          $ref: '#/definitions/softwaremodel.SourceConnectionInfoSoftwareProperty'
+        type: array
+      source_group_id:
+        type: string
+    required:
+    - source_group_id
+    type: object
 info:
   contact: {}
   description: Software migration management module
@@ -385,17 +556,18 @@ paths:
       tags:
       - '[Package]'
   /software/package/migration_list:
-    get:
+    post:
       consumes:
       - application/json
       description: Get software migration list.
       operationId: get-migration-list
       parameters:
-      - description: ID of the SourceGroup
-        in: path
-        name: sgId
+      - description: Refined software list.
+        in: body
+        name: softwareMigrateReq
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
       produces:
       - application/json
       responses:

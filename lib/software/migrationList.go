@@ -124,9 +124,8 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroup
 	}
 
 	var servers []model.MigrationServer
-	var sources softwaremodel.SourceGroupSoftwareProperty
 
-	for _, source := range sources.ConnectionInfoList {
+	for _, source := range sourceGroupSoftwareProperty.ConnectionInfoList {
 		var found bool
 
 		for _, encryptedConnectionInfo := range listConnectionInfoRes.ConnectionInfo {
