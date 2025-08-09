@@ -63,6 +63,12 @@ var genericKernelPackagePatterns = []string{
 	"linux-headers.*generic.*",
 	"linux-modules.*generic.*",
 	"linux-tools.*generic.*",
+	"kernel.*",
+	"kernel-core.*",
+	"kernel-modules.*",
+	"kernel-headers.*",
+	"kernel-devel.*",
+	"kernel-tools.*",
 }
 
 func isGenericKernelPackage(packageName string) bool {
