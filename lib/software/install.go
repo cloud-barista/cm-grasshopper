@@ -171,6 +171,19 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
 		}
 
+		// Migrate repository configuration and GPG keys before package migration
+		if len(exList.Packages) > 0 {
+			logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
+
+			// Migrate repository configuration
+			if err := MigrateRepositoryConfiguration(s, t, id, migrationLogger); err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: Repository migration failed: "+err.Error())
+				// Continue with package migration even if repo migration fails
+			} else {
+				logger.Println(logger.INFO, true, "migrateSoftware: Repository migration completed successfully")
+			}
+		}
+
 		for i, execution := range exList.Packages {
 			updateStatus(softwaremodel.SoftwareTypePackage, i, "installing", "", true)
 
