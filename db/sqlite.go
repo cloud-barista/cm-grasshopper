@@ -3,6 +3,7 @@ package db
 import (
 	"io"
 	"os"
+	"strings"
 
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
@@ -39,8 +40,8 @@ func copyFile(src string, dst string) (err error) {
 func Open() error {
 	var err error
 
-	sourceDB := "package_migration_config.db"
-	targetPath := common.RootPath + "/package_migration_config.db"
+	sourceDB := strings.ToLower(common.ModuleName) + ".db"
+	targetPath := common.RootPath + "/" + sourceDB
 	if !fileutil.IsExist(targetPath) {
 		if fileutil.IsExist(sourceDB) {
 			err := copyFile(sourceDB, targetPath)
@@ -50,7 +51,7 @@ func Open() error {
 		}
 	}
 
-	DB, err = gorm.Open(sqlite.Open(common.RootPath+"/"+common.ModuleName+".db"), &gorm.Config{})
+	DB, err = gorm.Open(sqlite.Open(targetPath), &gorm.Config{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}

@@ -7,7 +7,7 @@ services:
       cm-grasshopper-minio:
         condition: service_healthy
     volumes:
-      #- ./package_migration_config.db:/root/.cm-grasshopper/package_migration_config.db:rw
+      #- ./cm-grasshopper.db:/root/.cm-grasshopper/cm-grasshopper.db:rw
       #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
       #- ./playbook:/playbook/:rw
       - ./software_temp:/software_temp:rw
