@@ -10,7 +10,7 @@ import (
 
 func Software(e *echo.Echo) {
 	// Package
-	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/package/migration_list", controller.GetPackageMigrationList)
-	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/package/migrate", controller.MigratePackageSoftware)
+	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/package/migration_list", controller.GetSoftwareMigrationList)
+	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/package/migrate", controller.MigrateSoftware)
 	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software/package/migrate/log/:executionId", controller.GetPackageSoftwareMigrationLog)
 }

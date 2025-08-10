@@ -15,20 +15,20 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// GetPackageMigrationList godoc
+// GetSoftwareMigrationList godoc
 //
 //	@ID				get-migration-list
 //	@Summary		Get Migration List
 //	@Description	Get software migration list.
-//	@Tags			[Package]
+//	@Tags			[Migration] Software migration APIs
 //	@Accept			json
 //	@Produce		json
 //	@Param			softwareMigrateReq body softwaremodel.SourceGroupSoftwareProperty true "Refined software list."
 //	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
-//	@Router			/software/package/migration_list [post]
-func GetPackageMigrationList(c echo.Context) error {
+//	@Router			/software/migration_list [post]
+func GetSoftwareMigrationList(c echo.Context) error {
 	sourceGroupSoftwareProperty := new(softwaremodel.SourceGroupSoftwareProperty)
 	err := c.Bind(sourceGroupSoftwareProperty)
 	if err != nil {
@@ -43,20 +43,20 @@ func GetPackageMigrationList(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, *migrationListRes, " ")
 }
 
-// MigratePackageSoftware godoc
+// MigrateSoftware godoc
 //
 //	@ID				migrate-software
-//	@Summary		Migrate Package
+//	@Summary		Migrate Software
 //	@Description	Migrate pieces of software to target.
-//	@Tags			[Package]
+//	@Tags			[Migration] Software migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Package migrate request."
+//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Software migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
-//	@Router			/software/package/migrate [post]
-func MigratePackageSoftware(c echo.Context) error {
+//	@Router			/software/migrate [post]
+func MigrateSoftware(c echo.Context) error {
 	softwareMigrateReq := new(model.SoftwareMigrateReq)
 	err := c.Bind(softwareMigrateReq)
 	if err != nil {
@@ -82,7 +82,7 @@ func MigratePackageSoftware(c echo.Context) error {
 //	@ID				get-software-migration-log
 //	@Summary		Get Package Migration Log
 //	@Description	Get the software migration log.
-//	@Tags			[Package]
+//	@Tags			[Migration] Software migration APIs
 //	@Accept			json
 //	@Produce		json
 //	@Param			executionId path string true "ID of the software migration execution."
