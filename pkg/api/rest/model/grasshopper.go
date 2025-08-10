@@ -64,9 +64,10 @@ type SoftwareInstallStatusReq struct {
 }
 
 type SoftwareInstallStatus struct {
-	ExecutionID     string              `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
-	Target          Target              `gorm:"target" json:"target"`
-	ExecutionStatus ExecutionStatusList `gorm:"execution_status" json:"execution_status"`
+	SoftwareInstallType softwaremodel.SoftwareType `json:"software_install_type"`
+	ExecutionID         string                     `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
+	Target              Target                     `gorm:"target" json:"target"`
+	ExecutionStatus     ExecutionStatusList        `gorm:"execution_status" json:"execution_status"`
 }
 
 func (t Target) Value() (driver.Value, error) {

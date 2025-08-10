@@ -100,7 +100,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			return
 		}
 
-		var updateStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
+		var updateStatus = func(installType softwaremodel.SoftwareType, i int, status string, errMsg string, updateStartedTime bool) {
 			exStatusList[i].Status = status
 			exStatusList[i].ErrorMessage = errMsg
 			now := time.Now()
@@ -110,8 +110,9 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			exStatusList[i].UpdatedAt = now
 
 			err := dao.SoftwareInstallStatusUpdate(&model.SoftwareInstallStatus{
-				ExecutionID:     executionID,
-				ExecutionStatus: exStatusList,
+				SoftwareInstallType: installType,
+				ExecutionID:         executionID,
+				ExecutionStatus:     exStatusList,
 			})
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
@@ -119,14 +120,65 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			}
 		}
 
+		var dockerRuntimeChecked bool
+		var dockerInstallOk bool
+		var podmanRuntimeChecked bool
+		var podmanInstallOk bool
+
+		for i, execution := range exList.Containers {
+			if execution.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypeDocker) {
+				if dockerRuntimeChecked {
+					if !dockerInstallOk {
+						continue
+					}
+				} else {
+					err = runtimeInstaller(t, softwaremodel.SoftwareContainerRuntimeTypeDocker, migrationLogger)
+					if err != nil {
+						logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+							", InstallType=container, Error="+err.Error())
+						dockerInstallOk = false
+					} else {
+						dockerInstallOk = true
+					}
+					dockerRuntimeChecked = true
+				}
+			} else if execution.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+				if podmanRuntimeChecked {
+					if !podmanInstallOk {
+						continue
+					}
+				} else {
+					err = runtimeInstaller(t, softwaremodel.SoftwareContainerRuntimeTypePodman, migrationLogger)
+					if err != nil {
+						logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+							", InstallType=container, Error="+err.Error())
+						podmanInstallOk = false
+					} else {
+						podmanInstallOk = true
+					}
+					podmanRuntimeChecked = true
+				}
+			}
+
+			updateStatus(softwaremodel.SoftwareTypeContainer, i, "installing", "", true)
+
+			logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+executionID+
+				", InstallType=container, ContainerName="+execution.Name)
+
+			// TODO: Container Migration Process
+			// TODO: Container Listen Ports Validation
+
+			updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
+		}
+
 		for i, execution := range exList.Packages {
-			updateStatus(i, "installing", "", true)
+			updateStatus(softwaremodel.SoftwareTypePackage, i, "installing", "", true)
 
 			err := runPlaybook(id, "package", execution.Name, t.SSHTarget)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(i, "failed", err.Error(), false)
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
 
 				return
 			}
@@ -135,23 +187,17 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				//updateStatus(i, "failed", err.Error(), false)
-				//
-				//migrationLogger.Close()
-				//return
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
 			}
 
 			err = serviceMigrator(s, t, execution.Name, executionID, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				//updateStatus(i, "failed", err.Error(), false)
-				//
-				//migrationLogger.Close()
-				//return
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
 			}
 
-			updateStatus(i, "finished", "", true)
+			updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
 		}
 	}(executionID, executionList, executionStatusList, sourceClient, targetClient)
 
