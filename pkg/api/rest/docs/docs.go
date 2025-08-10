@@ -155,7 +155,7 @@ const docTemplate = `{
                 "tags": [
                     "[Migration] Software migration APIs"
                 ],
-                "summary": "Get Package Migration Log",
+                "summary": "Get Software Migration Log",
                 "operationId": "get-software-migration-log",
                 "parameters": [
                     {

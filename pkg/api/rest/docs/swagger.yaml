@@ -583,7 +583,7 @@ paths:
           description: Failed to get the software migration log
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Get Package Migration Log
+      summary: Get Software Migration Log
       tags:
       - '[Migration] Software migration APIs'
 swagger: "2.0"

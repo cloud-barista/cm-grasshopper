@@ -80,7 +80,7 @@ func MigrateSoftware(c echo.Context) error {
 // GetPackageSoftwareMigrationLog godoc
 //
 //	@ID				get-software-migration-log
-//	@Summary		Get Package Migration Log
+//	@Summary		Get Software Migration Log
 //	@Description	Get the software migration log.
 //	@Tags			[Migration] Software migration APIs
 //	@Accept			json
