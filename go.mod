@@ -3,8 +3,8 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.24.6
 
 require (
-	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250809103512-ccc5930b41de
-	github.com/cloud-barista/cm-model v0.0.11-0.20250809102934-b833453c1866
+	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250820035236-c603c8357253
+	github.com/cloud-barista/cm-model v0.0.11
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
@@ -21,7 +21,7 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
-	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250809103512-ccc5930b41de // indirect
+	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250820035236-c603c8357253 // indirect
 	github.com/docker/docker v28.3.3+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -51,7 +51,7 @@ require (
 	github.com/swaggo/files/v2 v2.0.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/exp v0.0.0-20250808145144-a408d31f581a // indirect
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
@@ -60,7 +60,7 @@ require (
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.66.6 // indirect
+	modernc.org/libc v1.66.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.38.2 // indirect
