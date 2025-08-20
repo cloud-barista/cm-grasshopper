@@ -24,7 +24,7 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 * Tested operating systems (OSs):
   * Ubuntu 24.04, Ubuntu 22.04, Ubuntu 18.04, Rocky Linux 9
 * Language:
-  * Go: 1.24.0
+  * Go: 1.24.6
 
 ## How to run
 
