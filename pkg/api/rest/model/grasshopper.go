@@ -19,6 +19,16 @@ type Target struct {
 	VMID        string `json:"vm_id" validate:"required"`
 }
 
+type MigrationServer struct {
+	ConnectionInfoID string                      `json:"connection_info_id"`
+	MigrationList    softwaremodel.MigrationList `json:"migration_list"`
+	Errors           []string                    `json:"errors"`
+}
+
+type MigrationListRes struct {
+	Servers []MigrationServer `json:"servers"`
+}
+
 type MigrationLogRes struct {
 	UUID         string `json:"uuid"`
 	InstallLog   string `json:"install_log"`

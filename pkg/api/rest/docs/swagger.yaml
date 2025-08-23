@@ -5,6 +5,13 @@ definitions:
       error:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes:
+    properties:
+      servers:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer'
+        type: array
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes:
     properties:
       install_log:
@@ -13,6 +20,17 @@ definitions:
         type: string
       uuid:
         type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer:
+    properties:
+      connection_info_id:
+        type: string
+      errors:
+        items:
+          type: string
+        type: array
+      migration_list:
+        $ref: '#/definitions/softwaremodel.MigrationList'
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
     properties:
@@ -427,6 +445,26 @@ definitions:
     x-enum-varnames:
     - SoftwarePackageTypeDEB
     - SoftwarePackageTypeRPM
+  softwaremodel.SourceConnectionInfoSoftwareProperty:
+    properties:
+      connection_id:
+        type: string
+      softwares:
+        $ref: '#/definitions/softwaremodel.SoftwareList'
+    required:
+    - connection_id
+    type: object
+  softwaremodel.SourceGroupSoftwareProperty:
+    properties:
+      connection_info_list:
+        items:
+          $ref: '#/definitions/softwaremodel.SourceConnectionInfoSoftwareProperty'
+        type: array
+      source_group_id:
+        type: string
+    required:
+    - source_group_id
+    type: object
 info:
   contact: {}
   description: Software migration management module
@@ -529,14 +567,14 @@ paths:
         name: softwareMigrateReq
         required: true
         schema:
-          $ref: '#/definitions/softwaremodel.SoftwareList'
+          $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully get software migration list.
           schema:
-            $ref: '#/definitions/softwaremodel.MigrationList'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes'
         "400":
           description: Sent bad request.
           schema:

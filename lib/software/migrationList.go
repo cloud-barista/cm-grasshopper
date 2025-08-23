@@ -1,10 +1,15 @@
 package software
 
 import (
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
 
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 	softwaremodel "github.com/cloud-barista/cm-model/sw"
 )
 
@@ -154,11 +159,44 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sourceSoftwareList *softwaremodel.SoftwareList) (*softwaremodel.MigrationList, error) {
-	var migrationList softwaremodel.MigrationList
-	var errs []string
+func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroupSoftwareProperty) (*model.MigrationListRes, error) {
+	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
+		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
+		"/honeybee/source_group/"+sourceGroupSoftwareProperty.SourceGroupId+"/connection_info", "", "")
+	if err != nil {
+		return nil, err
+	}
 
-	migrationList.Packages, errs = processSoftwarePackages(sourceSoftwareList.Packages)
+	var listConnectionInfoRes honeybee.ListConnectionInfoRes
+	err = json.Unmarshal(data, &listConnectionInfoRes)
+	if err != nil {
+		return nil, err
+	}
 
-	return &migrationList, errors.New(strings.Join(errs, "\n"))
+	var servers []model.MigrationServer
+
+	for _, source := range sourceGroupSoftwareProperty.ConnectionInfoList {
+		var found bool
+
+		for _, encryptedConnectionInfo := range listConnectionInfoRes.ConnectionInfo {
+			if encryptedConnectionInfo.ID == source.ConnectionId {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("connection info (ID=" + source.ConnectionId + ") not found")
+		}
+
+		var server model.MigrationServer
+
+		server.MigrationList.Packages, server.Errors = processSoftwarePackages(source.Softwares.Packages)
+		server.ConnectionInfoID = source.ConnectionId
+
+		servers = append(servers, server)
+	}
+
+	return &model.MigrationListRes{
+		Servers: servers,
+	}, nil
 }
