@@ -77,7 +77,7 @@ func MigrateSoftware(c echo.Context) error {
 	}, " ")
 }
 
-// GetPackageSoftwareMigrationLog godoc
+// GetSoftwareMigrationLog godoc
 //
 //	@ID				get-software-migration-log
 //	@Summary		Get Software Migration Log
@@ -89,8 +89,8 @@ func MigrateSoftware(c echo.Context) error {
 //	@Success		200	{object}	model.MigrationLogRes	"Successfully get the software migration log"
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration log"
-//	@Router			/software/package/migrate/log/{executionId} [get]
-func GetPackageSoftwareMigrationLog(c echo.Context) error {
+//	@Router			/software/migrate/log/{executionId} [get]
+func GetSoftwareMigrationLog(c echo.Context) error {
 	executionID := c.Param("executionId")
 	if executionID == "" {
 		return common.ReturnErrorMsg(c, "Please provide the executionId.")

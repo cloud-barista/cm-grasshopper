@@ -487,6 +487,36 @@ paths:
       summary: Migrate Software
       tags:
       - '[Migration] Software migration APIs'
+  /software/migrate/log/{executionId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the software migration log.
+      operationId: get-software-migration-log
+      parameters:
+      - description: ID of the software migration execution.
+        in: path
+        name: executionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get the software migration log
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get the software migration log
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Get Software Migration Log
+      tags:
+      - '[Migration] Software migration APIs'
   /software/migration_list:
     post:
       consumes:
@@ -516,36 +546,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
       summary: Get Migration List
-      tags:
-      - '[Migration] Software migration APIs'
-  /software/package/migrate/log/{executionId}:
-    get:
-      consumes:
-      - application/json
-      description: Get the software migration log.
-      operationId: get-software-migration-log
-      parameters:
-      - description: ID of the software migration execution.
-        in: path
-        name: executionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully get the software migration log
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes'
-        "400":
-          description: Sent bad request.
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-        "500":
-          description: Failed to get the software migration log
-          schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
-      summary: Get Software Migration Log
       tags:
       - '[Migration] Software migration APIs'
 swagger: "2.0"

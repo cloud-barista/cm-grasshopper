@@ -96,6 +96,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/software/migrate/log/{executionId}": {
+            "get": {
+                "description": "Get the software migration log.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Software migration APIs"
+                ],
+                "summary": "Get Software Migration Log",
+                "operationId": "get-software-migration-log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the software migration execution.",
+                        "name": "executionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully get the software migration log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get the software migration log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/software/migration_list": {
             "post": {
                 "description": "Get software migration list.",
@@ -136,51 +181,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to get software migration list.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/software/package/migrate/log/{executionId}": {
-            "get": {
-                "description": "Get the software migration log.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "[Migration] Software migration APIs"
-                ],
-                "summary": "Get Software Migration Log",
-                "operationId": "get-software-migration-log",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the software migration execution.",
-                        "name": "executionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully get the software migration log",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes"
-                        }
-                    },
-                    "400": {
-                        "description": "Sent bad request.",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to get the software migration log",
                         "schema": {
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
                         }
