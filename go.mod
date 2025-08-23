@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250820111509-08283c2181a0
-	github.com/cloud-barista/cm-model v0.0.12-0.20250823152246-30753f7f517e
+	github.com/cloud-barista/cm-model v0.0.12-0.20250823152636-94d1ad552aa3
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10

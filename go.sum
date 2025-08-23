@@ -6,10 +6,8 @@ github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250820111509-08283c2181a0 h1
 github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250820111509-08283c2181a0/go.mod h1:MjngDVYasWcFVUOyBLhg+2oHQKE8gUjdeGoDlsxjlCM=
 github.com/cloud-barista/cm-honeybee/server v0.0.0-20250820111509-08283c2181a0 h1:wsb6IeMETg4BQVrpJwiNw+T0FOw8LAjtb8CW8m7eMS4=
 github.com/cloud-barista/cm-honeybee/server v0.0.0-20250820111509-08283c2181a0/go.mod h1:uzxf+eIui54dWHw2ro/J0VOH3S40gxH6eoj60LWnEU0=
-github.com/cloud-barista/cm-model v0.0.11 h1:y6Ym83jh8pXl7HrvuYxo9c54FAmBByPDcHadxSVuA3E=
-github.com/cloud-barista/cm-model v0.0.11/go.mod h1:gSuMhQxD813KIdSvkp8uGptYOeyDik749sYcICZjhj8=
-github.com/cloud-barista/cm-model v0.0.12-0.20250823152246-30753f7f517e h1:xlpa/fVkNhGdEXgbtn73OStwd0+tG0Js2Q3dM6/nj9M=
-github.com/cloud-barista/cm-model v0.0.12-0.20250823152246-30753f7f517e/go.mod h1:gSuMhQxD813KIdSvkp8uGptYOeyDik749sYcICZjhj8=
+github.com/cloud-barista/cm-model v0.0.12-0.20250823152636-94d1ad552aa3 h1:n8ZjJxg9p7t6vrB1k1SQn+VARC/lDim+upUzI6saV7M=
+github.com/cloud-barista/cm-model v0.0.12-0.20250823152636-94d1ad552aa3/go.mod h1:gSuMhQxD813KIdSvkp8uGptYOeyDik749sYcICZjhj8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
