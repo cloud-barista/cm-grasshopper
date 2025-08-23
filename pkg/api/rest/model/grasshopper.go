@@ -31,9 +31,14 @@ type SoftwareMigrateReq struct {
 	MigrationList          softwaremodel.MigrationList `json:"migration_list"`
 }
 
+type TargetMapping struct {
+	SourceConnectionInfoID string `json:"source_connection_info_id"`
+	Target                 Target `json:"target" validate:"required"`
+}
+
 type SoftwareMigrateRes struct {
-	ExecutionID   string                      `json:"execution_id"`
-	MigrationList softwaremodel.MigrationList `json:"migration_list"`
+	ExecutionID    string          `json:"execution_id"`
+	TargetMappings []TargetMapping `json:"target_mappings"`
 }
 
 type ExecutionStatus struct {

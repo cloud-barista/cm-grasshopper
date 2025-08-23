@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	softwaremodel "github.com/cloud-barista/cm-model/sw"
@@ -51,29 +52,65 @@ func GetSoftwareMigrationList(c echo.Context) error {
 //	@Tags			[Migration] Software migration APIs
 //	@Accept			json
 //	@Produce		json
+//	@Param			nsId query string false "ID of target namespace."
+//	@Param			mciId query string false "ID of target MCI."
 //	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Software migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
 //	@Router			/software/migrate [post]
 func MigrateSoftware(c echo.Context) error {
-	softwareMigrateReq := new(model.SoftwareMigrateReq)
+	softwareMigrateReq := new(softwaremodel.TargetGroupSoftwareProperty)
 	err := c.Bind(softwareMigrateReq)
 	if err != nil {
 		return err
 	}
 
+	nsIdStr := c.QueryParam("nsId")
+	mciIdStr := c.QueryParam("mciId")
+
 	executionID := uuid.New().String()
 
-	err = software.MigrateSoftware(executionID, &softwareMigrateReq.MigrationList,
-		softwareMigrateReq.SourceConnectionInfoID, &softwareMigrateReq.Target)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
+	type ex struct {
+		ExID         string
+		ExList       *softwaremodel.MigrationList
+		ExStatusList []model.ExecutionStatus
+		SourceClient *ssh.Client
+		TargetClient *ssh.Client
+	}
+
+	var exList = make([]ex, 0)
+	var targetMappings []model.TargetMapping
+
+	for _, server := range softwareMigrateReq.Servers {
+		executionStatusList, sourceClient, targetClient, target, err :=
+			software.PrepareSoftwareMigration(executionID, &server.MigrationList, server.SourceConnectionInfoID,
+				nsIdStr, mciIdStr)
+		if err != nil {
+			return common.ReturnErrorMsg(c, err.Error())
+		}
+
+		exList = append(exList, ex{
+			ExID:         executionID,
+			ExList:       &server.MigrationList,
+			ExStatusList: executionStatusList,
+			SourceClient: sourceClient,
+			TargetClient: targetClient,
+		})
+
+		targetMappings = append(targetMappings, model.TargetMapping{
+			SourceConnectionInfoID: server.SourceConnectionInfoID,
+			Target:                 *target,
+		})
+	}
+
+	for _, e := range exList {
+		go software.MigrateSoftware(e.ExID, e.ExList, e.ExStatusList, e.SourceClient, e.TargetClient)
 	}
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
-		ExecutionID:   executionID,
-		MigrationList: softwareMigrateReq.MigrationList,
+		ExecutionID:    executionID,
+		TargetMappings: targetMappings,
 	}, " ")
 }
 

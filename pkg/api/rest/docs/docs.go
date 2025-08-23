@@ -65,6 +65,18 @@ const docTemplate = `{
                 "operationId": "migrate-software",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "ID of target namespace.",
+                        "name": "nsId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of target MCI.",
+                        "name": "mciId",
+                        "in": "query"
+                    },
+                    {
                         "description": "Software migrate request.",
                         "name": "softwareMigrateReq",
                         "in": "body",
@@ -244,8 +256,11 @@ const docTemplate = `{
                 "execution_id": {
                     "type": "string"
                 },
-                "migration_list": {
-                    "$ref": "#/definitions/softwaremodel.MigrationList"
+                "target_mappings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping"
+                    }
                 }
             }
         },
@@ -265,6 +280,20 @@ const docTemplate = `{
                 },
                 "vm_id": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping": {
+            "type": "object",
+            "required": [
+                "target"
+            ],
+            "properties": {
+                "source_connection_info_id": {
+                    "type": "string"
+                },
+                "target": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
                 }
             }
         },

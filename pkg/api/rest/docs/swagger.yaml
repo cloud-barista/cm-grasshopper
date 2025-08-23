@@ -35,8 +35,10 @@ definitions:
     properties:
       execution_id:
         type: string
-      migration_list:
-        $ref: '#/definitions/softwaremodel.MigrationList'
+      target_mappings:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping'
+        type: array
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
     properties:
@@ -50,6 +52,15 @@ definitions:
     - mci_id
     - namespace_id
     - vm_id
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping:
+    properties:
+      source_connection_info_id:
+        type: string
+      target:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
+    required:
+    - target
     type: object
   softwaremodel.Binary:
     properties:
@@ -483,6 +494,14 @@ paths:
       description: Migrate pieces of software to target.
       operationId: migrate-software
       parameters:
+      - description: ID of target namespace.
+        in: query
+        name: nsId
+        type: string
+      - description: ID of target MCI.
+        in: query
+        name: mciId
+        type: string
       - description: Software migrate request.
         in: body
         name: softwareMigrateReq

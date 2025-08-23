@@ -3,6 +3,7 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.24.6
 
 require (
+	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250820111509-08283c2181a0
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250820111509-08283c2181a0
 	github.com/cloud-barista/cm-model v0.0.12-0.20250823152636-94d1ad552aa3
 	github.com/glebarez/sqlite v1.11.0
@@ -21,7 +22,6 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
-	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250820111509-08283c2181a0 // indirect
 	github.com/docker/docker v28.3.3+incompatible // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
