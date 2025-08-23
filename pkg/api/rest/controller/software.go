@@ -24,7 +24,7 @@ import (
 //	@Accept			json
 //	@Produce		json
 //	@Param			softwareMigrateReq body softwaremodel.SourceGroupSoftwareProperty true "Refined software list."
-//	@Success		200	{object}	model.MigrationListRes	"Successfully get software migration list."
+//	@Success		200	{object}	softwaremodel.SourceGroupSoftwareProperty	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
 //	@Router			/software/migration_list [post]

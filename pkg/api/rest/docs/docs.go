@@ -170,7 +170,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully get software migration list.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes"
+                            "$ref": "#/definitions/softwaremodel.SourceGroupSoftwareProperty"
                         }
                     },
                     "400": {
@@ -198,17 +198,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationListRes": {
-            "type": "object",
-            "properties": {
-                "servers": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer"
-                    }
-                }
-            }
-        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes": {
             "type": "object",
             "properties": {
@@ -220,23 +209,6 @@ const docTemplate = `{
                 },
                 "uuid": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationServer": {
-            "type": "object",
-            "properties": {
-                "connection_info_id": {
-                    "type": "string"
-                },
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "migration_list": {
-                    "$ref": "#/definitions/softwaremodel.MigrationList"
                 }
             }
         },

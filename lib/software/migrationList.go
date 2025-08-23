@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 	softwaremodel "github.com/cloud-barista/cm-model/sw"
 )
@@ -159,7 +158,7 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroupSoftwareProperty) (*model.MigrationListRes, error) {
+func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroupSoftwareProperty) (*softwaremodel.TargetGroupSoftwareProperty, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
 		"/honeybee/source_group/"+sourceGroupSoftwareProperty.SourceGroupId+"/connection_info", "", "")
@@ -173,7 +172,7 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroup
 		return nil, err
 	}
 
-	var servers []model.MigrationServer
+	var servers []softwaremodel.MigrationServer
 
 	for _, source := range sourceGroupSoftwareProperty.ConnectionInfoList {
 		var found bool
@@ -188,15 +187,15 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroup
 			return nil, errors.New("connection info (ID=" + source.ConnectionId + ") not found")
 		}
 
-		var server model.MigrationServer
+		var server softwaremodel.MigrationServer
 
 		server.MigrationList.Packages, server.Errors = processSoftwarePackages(source.Softwares.Packages)
-		server.ConnectionInfoID = source.ConnectionId
+		server.SourceConnectionInfoID = source.ConnectionId
 
 		servers = append(servers, server)
 	}
 
-	return &model.MigrationListRes{
+	return &softwaremodel.TargetGroupSoftwareProperty{
 		Servers: servers,
 	}, nil
 }
