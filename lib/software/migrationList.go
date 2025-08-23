@@ -1,6 +1,7 @@
 package software
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 
@@ -110,8 +111,9 @@ func isPackageManagerPackage(packageName string) bool {
 //	return &infraInfo, nil
 //}
 
-func processSoftwarePackages(packages []softwaremodel.Package) []softwaremodel.PackageMigrationInfo {
+func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.PackageMigrationInfo, []string) {
 	migrationPackages := make([]softwaremodel.PackageMigrationInfo, 0)
+	errMsgs := make([]string, 0)
 
 	var i int
 	for _, pkg := range packages {
@@ -149,13 +151,14 @@ func processSoftwarePackages(packages []softwaremodel.Package) []softwaremodel.P
 		migrationPackages = append(migrationPackages, newSoftware)
 	}
 
-	return migrationPackages
+	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sourceSoftwareList *softwaremodel.SoftwareList) *softwaremodel.MigrationList {
+func MakeMigrationListRes(sourceSoftwareList *softwaremodel.SoftwareList) (*softwaremodel.MigrationList, error) {
 	var migrationList softwaremodel.MigrationList
+	var errs []string
 
-	migrationList.Packages = processSoftwarePackages(sourceSoftwareList.Packages)
+	migrationList.Packages, errs = processSoftwarePackages(sourceSoftwareList.Packages)
 
-	return &migrationList
+	return &migrationList, errors.New(strings.Join(errs, "\n"))
 }
