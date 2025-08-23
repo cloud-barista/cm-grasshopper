@@ -35,10 +35,7 @@ func GetSoftwareMigrationList(c echo.Context) error {
 		return err
 	}
 
-	migrationListRes, err := software.MakeMigrationListRes(sourceSoftwareList)
-	if err != nil {
-		return common.ReturnErrorMsg(c, err.Error())
-	}
+	migrationListRes := software.MakeMigrationListRes(sourceSoftwareList)
 
 	return c.JSONPretty(http.StatusOK, *migrationListRes, " ")
 }
