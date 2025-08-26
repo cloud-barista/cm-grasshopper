@@ -78,11 +78,11 @@ const docTemplate = `{
                     },
                     {
                         "description": "Software migrate request.",
-                        "name": "softwareMigrateReq",
+                        "name": "targetSoftwareModel",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq"
+                            "$ref": "#/definitions/softwaremodel.TargetSoftwareModel"
                         }
                     }
                 ],
@@ -170,11 +170,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Refined software list.",
-                        "name": "softwareMigrateReq",
+                        "name": "sourceSoftwareModel",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/softwaremodel.SourceGroupSoftwareProperty"
+                            "$ref": "#/definitions/softwaremodel.SourceSoftwareModel"
                         }
                     }
                 ],
@@ -182,7 +182,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully get software migration list.",
                         "schema": {
-                            "$ref": "#/definitions/softwaremodel.SourceGroupSoftwareProperty"
+                            "$ref": "#/definitions/softwaremodel.SourceSoftwareModel"
                         }
                     },
                     "400": {
@@ -229,24 +229,6 @@ const docTemplate = `{
             "properties": {
                 "message": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq": {
-            "type": "object",
-            "required": [
-                "source_connection_info_id",
-                "target"
-            ],
-            "properties": {
-                "migration_list": {
-                    "$ref": "#/definitions/softwaremodel.MigrationList"
-                },
-                "source_connection_info_id": {
-                    "type": "string"
-                },
-                "target": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
                 }
             }
         },
@@ -663,6 +645,23 @@ const docTemplate = `{
                 }
             }
         },
+        "softwaremodel.MigrationServer": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "migration_list": {
+                    "$ref": "#/definitions/softwaremodel.MigrationList"
+                },
+                "source_connection_info_id": {
+                    "type": "string"
+                }
+            }
+        },
         "softwaremodel.Package": {
             "type": "object",
             "required": [
@@ -868,6 +867,39 @@ const docTemplate = `{
                 },
                 "source_group_id": {
                     "type": "string"
+                }
+            }
+        },
+        "softwaremodel.SourceSoftwareModel": {
+            "type": "object",
+            "required": [
+                "sourceSoftwareModel"
+            ],
+            "properties": {
+                "sourceSoftwareModel": {
+                    "$ref": "#/definitions/softwaremodel.SourceGroupSoftwareProperty"
+                }
+            }
+        },
+        "softwaremodel.TargetGroupSoftwareProperty": {
+            "type": "object",
+            "properties": {
+                "servers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/softwaremodel.MigrationServer"
+                    }
+                }
+            }
+        },
+        "softwaremodel.TargetSoftwareModel": {
+            "type": "object",
+            "required": [
+                "targetSoftwareModel"
+            ],
+            "properties": {
+                "targetSoftwareModel": {
+                    "$ref": "#/definitions/softwaremodel.TargetGroupSoftwareProperty"
                 }
             }
         }

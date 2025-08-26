@@ -19,18 +19,6 @@ definitions:
       message:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq:
-    properties:
-      migration_list:
-        $ref: '#/definitions/softwaremodel.MigrationList'
-      source_connection_info_id:
-        type: string
-      target:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
-    required:
-    - source_connection_info_id
-    - target
-    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
     properties:
       execution_id:
@@ -313,6 +301,17 @@ definitions:
           $ref: '#/definitions/softwaremodel.PackageMigrationInfo'
         type: array
     type: object
+  softwaremodel.MigrationServer:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      migration_list:
+        $ref: '#/definitions/softwaremodel.MigrationList'
+      source_connection_info_id:
+        type: string
+    type: object
   softwaremodel.Package:
     properties:
       custom_configs:
@@ -458,6 +457,27 @@ definitions:
     required:
     - source_group_id
     type: object
+  softwaremodel.SourceSoftwareModel:
+    properties:
+      sourceSoftwareModel:
+        $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
+    required:
+    - sourceSoftwareModel
+    type: object
+  softwaremodel.TargetGroupSoftwareProperty:
+    properties:
+      servers:
+        items:
+          $ref: '#/definitions/softwaremodel.MigrationServer'
+        type: array
+    type: object
+  softwaremodel.TargetSoftwareModel:
+    properties:
+      targetSoftwareModel:
+        $ref: '#/definitions/softwaremodel.TargetGroupSoftwareProperty'
+    required:
+    - targetSoftwareModel
+    type: object
 info:
   contact: {}
   description: Software migration management module
@@ -504,10 +524,10 @@ paths:
         type: string
       - description: Software migrate request.
         in: body
-        name: softwareMigrateReq
+        name: targetSoftwareModel
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateReq'
+          $ref: '#/definitions/softwaremodel.TargetSoftwareModel'
       produces:
       - application/json
       responses:
@@ -565,17 +585,17 @@ paths:
       parameters:
       - description: Refined software list.
         in: body
-        name: softwareMigrateReq
+        name: sourceSoftwareModel
         required: true
         schema:
-          $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
+          $ref: '#/definitions/softwaremodel.SourceSoftwareModel'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully get software migration list.
           schema:
-            $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
+            $ref: '#/definitions/softwaremodel.SourceSoftwareModel'
         "400":
           description: Sent bad request.
           schema:

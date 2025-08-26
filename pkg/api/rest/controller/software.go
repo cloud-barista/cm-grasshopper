@@ -24,19 +24,19 @@ import (
 //	@Tags			[Migration] Software migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			softwareMigrateReq body softwaremodel.SourceGroupSoftwareProperty true "Refined software list."
-//	@Success		200	{object}	softwaremodel.SourceGroupSoftwareProperty	"Successfully get software migration list."
+//	@Param			sourceSoftwareModel body softwaremodel.SourceSoftwareModel true "Refined software list."
+//	@Success		200	{object}	softwaremodel.SourceSoftwareModel	"Successfully get software migration list."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
 //	@Router			/software/migration_list [post]
 func GetSoftwareMigrationList(c echo.Context) error {
-	sourceGroupSoftwareProperty := new(softwaremodel.SourceGroupSoftwareProperty)
-	err := c.Bind(sourceGroupSoftwareProperty)
+	sourceSoftwareModel := new(softwaremodel.SourceSoftwareModel)
+	err := c.Bind(sourceSoftwareModel)
 	if err != nil {
 		return err
 	}
 
-	migrationListRes, err := software.MakeMigrationListRes(sourceGroupSoftwareProperty)
+	migrationListRes, err := software.MakeMigrationListRes(sourceSoftwareModel)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -54,14 +54,14 @@ func GetSoftwareMigrationList(c echo.Context) error {
 //	@Produce		json
 //	@Param			nsId query string false "ID of target namespace."
 //	@Param			mciId query string false "ID of target MCI."
-//	@Param			softwareMigrateReq body model.SoftwareMigrateReq true "Software migrate request."
+//	@Param			targetSoftwareModel body softwaremodel.TargetSoftwareModel true "Software migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
 //	@Router			/software/migrate [post]
 func MigrateSoftware(c echo.Context) error {
-	softwareMigrateReq := new(softwaremodel.TargetGroupSoftwareProperty)
-	err := c.Bind(softwareMigrateReq)
+	targetSoftwareModel := new(softwaremodel.TargetSoftwareModel)
+	err := c.Bind(targetSoftwareModel)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func MigrateSoftware(c echo.Context) error {
 	var exList = make([]ex, 0)
 	var targetMappings []model.TargetMapping
 
-	for _, server := range softwareMigrateReq.Servers {
+	for _, server := range targetSoftwareModel.TargetSoftwareModel.Servers {
 		executionStatusList, sourceClient, targetClient, target, err :=
 			software.PrepareSoftwareMigration(executionID, &server.MigrationList, server.SourceConnectionInfoID,
 				nsIdStr, mciIdStr)

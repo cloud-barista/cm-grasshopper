@@ -158,10 +158,10 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 	return migrationPackages, errMsgs
 }
 
-func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroupSoftwareProperty) (*softwaremodel.TargetGroupSoftwareProperty, error) {
+func MakeMigrationListRes(sourceSoftwareModel *softwaremodel.SourceSoftwareModel) (*softwaremodel.TargetSoftwareModel, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
-		"/honeybee/source_group/"+sourceGroupSoftwareProperty.SourceGroupId+"/connection_info", "", "")
+		"/honeybee/source_group/"+sourceSoftwareModel.SourceSoftwareModel.SourceGroupId+"/connection_info", "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroup
 
 	var servers []softwaremodel.MigrationServer
 
-	for _, source := range sourceGroupSoftwareProperty.ConnectionInfoList {
+	for _, source := range sourceSoftwareModel.SourceSoftwareModel.ConnectionInfoList {
 		var found bool
 
 		for _, encryptedConnectionInfo := range listConnectionInfoRes.ConnectionInfo {
@@ -195,7 +195,9 @@ func MakeMigrationListRes(sourceGroupSoftwareProperty *softwaremodel.SourceGroup
 		servers = append(servers, server)
 	}
 
-	return &softwaremodel.TargetGroupSoftwareProperty{
-		Servers: servers,
+	return &softwaremodel.TargetSoftwareModel{
+		TargetSoftwareModel: softwaremodel.TargetGroupSoftwareProperty{
+			Servers: servers,
+		},
 	}, nil
 }
