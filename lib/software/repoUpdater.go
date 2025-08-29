@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
+	"github.com/jollaman999/utils/logger"
 )
 
 // MigrateRepositoryConfiguration migrates repository configuration from source to target
@@ -22,10 +24,13 @@ func MigrateRepositoryConfiguration(sourceClient *ssh.Client, targetClient *ssh.
 		migrationLogger.Printf(DEBUG, "Collection output: %s\n", string(output))
 		return fmt.Errorf("repository configuration collection failed: %v", err)
 	}
+	logger.Printf(DEBUG, false, "\n"+string(output))
+	migrationLogger.Printf(DEBUG, "\n"+string(output))
+
 	migrationLogger.Printf(INFO, "Repository configuration collection completed\n")
 
 	// Step 2: Copy to cm-grasshopper intermediate storage
-	localBackupDir := fmt.Sprintf("./software_temp/%s/repo_backup", uuid)
+	localBackupDir := fmt.Sprintf(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder+"/%s/repo_backup", uuid)
 	if err := copyFromRemoteToLocal(sourceClient, sourceTmpDir, localBackupDir, migrationLogger); err != nil {
 		return fmt.Errorf("failed to copy repository config to local storage: %v", err)
 	}
@@ -44,6 +49,8 @@ func MigrateRepositoryConfiguration(sourceClient *ssh.Client, targetClient *ssh.
 		migrationLogger.Printf(DEBUG, "Deployment output: %s\n", string(output))
 		return fmt.Errorf("repository configuration deployment failed: %v", err)
 	}
+	logger.Printf(DEBUG, false, "\n"+string(output))
+	migrationLogger.Printf(DEBUG, "\n"+string(output))
 
 	migrationLogger.Printf(INFO, "Repository configuration deployment completed\n")
 
@@ -110,7 +117,6 @@ func updatePackageRepositories(client *ssh.Client, migrationLogger *Logger) erro
 	migrationLogger.Printf(INFO, "Package repositories updated successfully\n")
 	return nil
 }
-
 
 func checkCommandExists(client *ssh.Client, command string) error {
 	session, err := client.NewSessionWithRetry()
@@ -186,8 +192,7 @@ func copyFromLocalToRemote(client *ssh.Client, localPath, remotePath string, mig
 	}()
 
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", remotePath)
-	wrappedCmd := sudoWrapper(mkdirCmd, client.SSHTarget.Password)
-	_, err = session.CombinedOutput(wrappedCmd)
+	_, err = session.CombinedOutput(mkdirCmd)
 	if err != nil {
 		return fmt.Errorf("failed to create remote directory: %v", err)
 	}
@@ -208,14 +213,12 @@ func copyFromLocalToRemote(client *ssh.Client, localPath, remotePath string, mig
 		rm %s/backup.tar.gz
 	`, remotePath, remotePath, remotePath)
 
-	wrappedExtractCmd := sudoWrapper(fmt.Sprintf("sh -c '%s'", extractScript), client.SSHTarget.Password)
-
 	stdin, err := session2.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("failed to create stdin pipe: %v", err)
 	}
 
-	if err := session2.Start(wrappedExtractCmd); err != nil {
+	if err := session2.Start(extractScript); err != nil {
 		return fmt.Errorf("failed to start extract command: %v", err)
 	}
 
