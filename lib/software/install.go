@@ -2,6 +2,7 @@ package software
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 	"github.com/jollaman999/utils/logger"
 )
 
-func getVMId(sourceConnectionInfoID string) (string, error) {
+func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
 		"/honeybee/connection_info/"+sourceConnectionInfoID, "", "")
@@ -44,7 +45,31 @@ func getVMId(sourceConnectionInfoID string) (string, error) {
 		return "", err
 	}
 
-	return "migrated-" + infraInfo.Compute.OS.Node.Machineid, nil
+	machineid := infraInfo.Compute.OS.Node.Machineid
+
+	data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
+		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
+		"/tumblebug/ns/"+nsID+"/mci/"+mciID,
+		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
+	if err != nil {
+		return "", err
+	}
+
+	var mciInfo model.TBMCIInfo
+	err = json.Unmarshal(data, &mciInfo)
+	if err != nil {
+		return "", err
+	}
+
+	for _, vm := range mciInfo.VM {
+		// cm-beetle - v0.3.7
+		// https://github.com/cloud-barista/cm-beetle/commit/94e030cba5cf2dcdc055240ec5e46d24666da06d
+		if vm.Label["sourceMachineId"] == machineid {
+			return vm.Id, nil
+		}
+	}
+
+	return "", errors.New("can't find matched target vm")
 }
 
 func PrepareSoftwareMigration(executionID string, executionList *softwaremodel.MigrationList,
@@ -56,7 +81,7 @@ func PrepareSoftwareMigration(executionID string, executionList *softwaremodel.M
 			fmt.Errorf("failed to connect to source host: %v", err)
 	}
 
-	vmId, err := getVMId(sourceConnectionInfoID)
+	vmId, err := getVMId(sourceConnectionInfoID, nsId, mciId)
 	if err != nil {
 		return nil, nil, nil, nil,
 			fmt.Errorf("failed to get VM ID: %v", err)
