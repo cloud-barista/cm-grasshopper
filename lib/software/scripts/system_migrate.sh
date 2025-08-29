@@ -34,6 +34,7 @@ detect_os() {
                 MAIN_REPO_FILE="/etc/apt/sources.list"
                 GPG_TRUSTED_DIR="/etc/apt/trusted.gpg.d"
                 GPG_KEYRING_DIR="/usr/share/keyrings"
+                GPG_ETC_KEYRING_DIR="/etc/apt/keyrings"
                 ;;
             rhel|centos|fedora|rocky|almalinux)
                 PACKAGE_MANAGER="yum"
@@ -61,6 +62,7 @@ collect_debian_config() {
     # Create directories
     mkdir -p "$backup_dir/repos"
     mkdir -p "$backup_dir/keyrings"
+    mkdir -p "$backup_dir/etc_keyrings"
     mkdir -p "$backup_dir/trusted"
     
     # Collect repository sources
@@ -96,6 +98,26 @@ collect_debian_config() {
                 echo "Fingerprint: $fingerprint" >> "$backup_dir/keyrings_info.txt" 
                 echo "Info: $keyinfo" >> "$backup_dir/keyrings_info.txt"
                 echo "---" >> "$backup_dir/keyrings_info.txt"
+            fi
+        done
+    fi
+    
+    # Collect /etc/apt/keyrings
+    echo "Collecting /etc/apt/keyrings from $GPG_ETC_KEYRING_DIR..."
+    if [ -d "$GPG_ETC_KEYRING_DIR" ]; then
+        find "$GPG_ETC_KEYRING_DIR" \( -name "*.gpg" -o -name "*.asc" \) -type f | while read -r keyfile; do
+            if [ -f "$keyfile" ]; then
+                filename=$(basename "$keyfile")
+                cp "$keyfile" "$backup_dir/etc_keyrings/"
+                
+                # Get fingerprint and metadata
+                fingerprint=$(gpg --with-fingerprint --with-colons "$keyfile" 2>/dev/null | awk -F ':' '/fpr:/ { print $10; exit }')
+                keyinfo=$(gpg --with-fingerprint "$keyfile" 2>/dev/null | head -5)
+                
+                echo "File: $filename" >> "$backup_dir/etc_keyrings_info.txt"
+                echo "Fingerprint: $fingerprint" >> "$backup_dir/etc_keyrings_info.txt" 
+                echo "Info: $keyinfo" >> "$backup_dir/etc_keyrings_info.txt"
+                echo "---" >> "$backup_dir/etc_keyrings_info.txt"
             fi
         done
     fi
@@ -187,6 +209,7 @@ deploy_debian_config() {
     # Create directories if they don't exist
     mkdir -p "$REPO_DIR"
     mkdir -p "$GPG_KEYRING_DIR" 
+    mkdir -p "$GPG_ETC_KEYRING_DIR"
     mkdir -p "$GPG_TRUSTED_DIR"
     
     # Deploy repository sources
@@ -243,6 +266,49 @@ deploy_debian_config() {
                 
                 if [ "$existing_key_found" = false ]; then
                     echo "  Installing new key: $filename"
+                    cp "$keyfile" "$target_path"
+                    chmod 644 "$target_path"
+                fi
+            fi
+        done
+    fi
+    
+    # Deploy /etc/apt/keyrings
+    if [ -d "$source_dir/etc_keyrings" ]; then
+        echo "Deploying /etc/apt/keyrings..."
+        for keyfile in "$source_dir/etc_keyrings"/*; do
+            if [ -f "$keyfile" ]; then
+                filename=$(basename "$keyfile")
+                # Skip if not a key file
+                case "$filename" in
+                    *.gpg|*.asc) ;;
+                    *) continue ;;
+                esac
+                target_path="$GPG_ETC_KEYRING_DIR/$filename"
+                
+                # Check if key already exists by fingerprint
+                new_fingerprint=$(gpg --with-fingerprint --with-colons "$keyfile" 2>/dev/null | awk -F ':' '/fpr:/ { print $10; exit }')
+                
+                existing_key_found=false
+                if [ -n "$new_fingerprint" ]; then
+                    for existing_key in "$GPG_ETC_KEYRING_DIR"/*; do
+                        if [ -f "$existing_key" ]; then
+                            case "$(basename "$existing_key")" in
+                                *.gpg|*.asc) ;;
+                                *) continue ;;
+                            esac
+                            existing_fingerprint=$(gpg --with-fingerprint --with-colons "$existing_key" 2>/dev/null | awk -F ':' '/fpr:/ { print $10; exit }')
+                            if [ "$new_fingerprint" = "$existing_fingerprint" ]; then
+                                echo "  Key $filename already exists (fingerprint match): $(basename "$existing_key")"
+                                existing_key_found=true
+                                break
+                            fi
+                        fi
+                    done
+                fi
+                
+                if [ "$existing_key_found" = false ]; then
+                    echo "  Installing new /etc/apt/keyrings key: $filename"
                     cp "$keyfile" "$target_path"
                     chmod 644 "$target_path"
                 fi
@@ -385,6 +451,9 @@ collect_system_config() {
     echo "Repository files collected: $(find "$backup_dir/repos" -type f 2>/dev/null | wc -l)" >> "$backup_dir/SYSTEM_INFO.txt"
     if [ -d "$backup_dir/keyrings" ]; then
         echo "Keyrings collected: $(find "$backup_dir/keyrings" -type f 2>/dev/null | wc -l)" >> "$backup_dir/SYSTEM_INFO.txt"
+    fi
+    if [ -d "$backup_dir/etc_keyrings" ]; then
+        echo "/etc/apt/keyrings collected: $(find "$backup_dir/etc_keyrings" -type f 2>/dev/null | wc -l)" >> "$backup_dir/SYSTEM_INFO.txt"
     fi
     if [ -d "$backup_dir/trusted" ]; then
         echo "Trusted keys collected: $(find "$backup_dir/trusted" -type f 2>/dev/null | wc -l)" >> "$backup_dir/SYSTEM_INFO.txt"
