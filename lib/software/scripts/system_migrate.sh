@@ -453,48 +453,6 @@ deploy_system_config() {
     esac
 }
 
-transfer_to_remote() {
-    local target_host="$1"
-    local temp_dir=$(mktemp -d)
-    
-    echo "=== Transferring system configuration to $target_host ==="
-    
-    # Collect configuration locally
-    collect_system_config "$temp_dir"
-    
-    # Create deployment script
-    cat > "$temp_dir/deploy.sh" << 'EOF'
-#!/bin/bash
-# Auto-generated system deployment script
-
-DEPLOY_DIR="$(dirname "$0")"
-source "$DEPLOY_DIR/system_migrate.sh"
-
-echo "=== Deploying System Configuration ==="
-deploy_system_config "$DEPLOY_DIR"
-EOF
-    
-    # Copy this script to the temp directory
-    cp "$0" "$temp_dir/"
-    chmod +x "$temp_dir/deploy.sh"
-    
-    # Transfer to remote host
-    echo "Transferring files to $target_host..."
-    scp -r "$temp_dir" "$target_host:/tmp/system_migration_$(date +%Y%m%d_%H%M%S)"
-    
-    if [ $? -eq 0 ]; then
-        echo "Transfer completed successfully!"
-        echo "On the target host, run:"
-        echo "  sudo /tmp/system_migration_*/deploy.sh"
-    else
-        echo "Transfer failed!"
-        exit 1
-    fi
-    
-    # Cleanup
-    rm -rf "$temp_dir"
-}
-
 # Main script logic
 case "$1" in
     collect)
@@ -511,14 +469,6 @@ case "$1" in
             exit 1
         fi
         deploy_system_config "$2"
-        ;;
-    transfer)
-        if [ -z "$2" ]; then
-            echo "Error: Please specify target host"
-            echo "Usage: $0 transfer <target_host>"
-            exit 1
-        fi
-        transfer_to_remote "$2"
         ;;
     *)
         show_usage
