@@ -508,12 +508,14 @@ deploy_system_config() {
         apt)
             deploy_debian_config "$source_dir"
             echo ""
-            echo "Deployment completed! Run 'apt update' to refresh package lists."
+            apt update
+            echo "Deployment completed!"
             ;;
         yum)
             deploy_rhel_config "$source_dir"
             echo ""
-            echo "Deployment completed! Run 'yum clean all && yum makecache' to refresh package lists."
+            yum clean all && yum makecache
+            echo "Deployment completed!"
             ;;
         *)
             echo "Unsupported target package manager: $PACKAGE_MANAGER"
