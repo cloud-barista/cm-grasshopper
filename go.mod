@@ -5,7 +5,7 @@ go 1.24.6
 require (
 	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250826092049-1e34b323ba50
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20250826092049-1e34b323ba50
-	github.com/cloud-barista/cm-model v0.0.12-0.20250826090409-4a743373d145
+	github.com/cloud-barista/cm-model v0.0.13
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
