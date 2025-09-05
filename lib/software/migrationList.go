@@ -158,6 +158,40 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 	return migrationPackages, errMsgs
 }
 
+func processSoftwareContainers(containers []softwaremodel.Container) ([]softwaremodel.ContainerMigrationInfo, []string) {
+	migrationContainers := make([]softwaremodel.ContainerMigrationInfo, 0)
+	errMsgs := make([]string, 0)
+
+	var i int
+	for _, c := range containers {
+		i++
+
+		newContainer := softwaremodel.ContainerMigrationInfo{
+			Order:       i,
+			Name:        c.Name,
+			Runtime:     string(c.Runtime),
+			ContainerId: c.ContainerId,
+			ContainerImage: softwaremodel.ContainerImage{
+				ImageName:         c.ContainerImage.ImageName,
+				ImageVersion:      c.ContainerImage.ImageVersion,
+				ImageArchitecture: c.ContainerImage.ImageArchitecture,
+				ImageHash:         c.ContainerImage.ImageHash,
+			},
+			ContainerPorts:    c.ContainerPorts,
+			ContainerStatus:   c.ContainerStatus,
+			DockerComposePath: c.DockerComposePath,
+			MountPaths:        c.MountPaths,
+			Envs:              c.Envs,
+			NetworkMode:       c.NetworkMode,
+			RestartPolicy:     c.RestartPolicy,
+		}
+
+		migrationContainers = append(migrationContainers, newContainer)
+	}
+
+	return migrationContainers, errMsgs
+}
+
 func MakeMigrationListRes(sourceSoftwareModel *softwaremodel.SourceSoftwareModel) (*softwaremodel.TargetSoftwareModel, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
@@ -190,6 +224,7 @@ func MakeMigrationListRes(sourceSoftwareModel *softwaremodel.SourceSoftwareModel
 		var server softwaremodel.MigrationServer
 
 		server.MigrationList.Packages, server.Errors = processSoftwarePackages(source.Softwares.Packages)
+		server.MigrationList.Containers, server.Errors = processSoftwareContainers(source.Softwares.Containers)
 		server.SourceConnectionInfoID = source.ConnectionId
 
 		servers = append(servers, server)

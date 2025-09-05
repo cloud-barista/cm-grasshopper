@@ -243,9 +243,115 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			", InstallType=container, ContainerName="+execution.Name)
 
 		// TODO: Container Migration Process
-		// TODO: Container Listen Ports Validation
+		// 1. docker images pull
+		imageRef := fmt.Sprintf("%s:%s",
+			execution.ContainerImage.ImageName,
+			execution.ContainerImage.ImageVersion)
+		pullCmd := fmt.Sprintf("sudo docker pull %s", imageRef)
+		if _, err := targetClient.Run(pullCmd); err != nil {
+			logger.Println(logger.ERROR, true,
+				"migrateSoftware: ExecutionID="+executionID+
+					", InstallType=container, ContainerName="+execution.Name+
+					", Error=failed to pull image: "+err.Error())
+			updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+			continue
+		}
 
-		updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
+		// 2. generated network
+		if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
+			checkNetCmd := fmt.Sprintf("sudo docker network ls --format '{{.Name}}' | grep -w %s", execution.NetworkMode)
+			if _, err := targetClient.Run(checkNetCmd); err != nil {
+				createNetCmd := fmt.Sprintf("sudo docker network create %s", execution.NetworkMode)
+				if _, cerr := targetClient.Run(createNetCmd); cerr != nil {
+					logger.Println(logger.ERROR, true,
+						"migrateSoftware: ExecutionID="+executionID+
+							", Container="+execution.Name+
+							", Error=failed to create network "+execution.NetworkMode+": "+cerr.Error())
+					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", cerr.Error(), false)
+					continue
+				}
+				logger.Println(logger.INFO, true,
+					"migrateSoftware: ExecutionID="+executionID+
+						", Container="+execution.Name+
+						", Info=Created missing network "+execution.NetworkMode+" ✅")
+			} else {
+				logger.Println(logger.INFO, true,
+					"migrateSoftware: ExecutionID="+executionID+
+						", Container="+execution.Name+
+						", Info=Network "+execution.NetworkMode+" already exists, reusing")
+			}
+		}
+
+		// 3. generated run cmd
+		runCmd := fmt.Sprintf("sudo docker run -d --name %s", execution.Name)
+
+		// TODO: Container Listen Ports Validation
+		validatedPorts := make(map[int]bool)
+		for _, port := range execution.ContainerPorts {
+			if port.HostPort > 0 {
+				validateCmd := fmt.Sprintf("nc -z 127.0.0.1 %d", port.HostPort)
+				_, err = targetClient.Run(validateCmd)
+				if err != nil {
+					if !validatedPorts[port.HostPort] {
+						runCmd += fmt.Sprintf(" -p %d:%d/%s",
+							port.HostPort,
+							port.ContainerPort,
+							port.Protocol,
+						)
+						validatedPorts[port.HostPort] = true
+						logger.Println(logger.INFO, true,
+							"migrateSoftware: ExecutionID="+executionID+
+								", Container="+execution.Name+
+								", Port "+fmt.Sprint(port.HostPort)+" mapped ✅")
+					}
+				} else {
+					logger.Println(logger.WARN, true,
+						"migrateSoftware: ExecutionID="+executionID+
+							", Container="+execution.Name+
+							", Port "+fmt.Sprint(port.HostPort)+" already in use, skipping ❌")
+				}
+			}
+		}
+
+		// add volume mount
+		for _, mount := range execution.MountPaths {
+			runCmd += fmt.Sprintf(" -v %s:%s", mount, mount)
+		}
+
+		// add env
+		for _, env := range execution.Envs {
+			runCmd += fmt.Sprintf(" -e %s=%s", env.Name, env.Value)
+		}
+
+		// network mode
+		if execution.NetworkMode != "" {
+			runCmd += fmt.Sprintf(" --network %s", execution.NetworkMode)
+		}
+
+		// restart policy
+		if execution.RestartPolicy != "" {
+			runCmd += fmt.Sprintf(" --restart %s", execution.RestartPolicy)
+		}
+
+		// image ref
+		runCmd += " " + imageRef
+
+		logger.Println(logger.DEBUG, true,
+			"migrateSoftware: ExecutionID="+executionID+
+				", Container="+execution.Name+
+				", FinalRunCmd="+runCmd)
+
+		// start container
+		if _, err := targetClient.Run(runCmd); err != nil {
+			logger.Println(logger.ERROR, true,
+				"migrateSoftware: ExecutionID="+executionID+
+					", InstallType=container, ContainerName="+execution.Name+
+					", Error=failed to start container: "+err.Error())
+			updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+			continue
+		}
+
+		updateStatus(softwaremodel.SoftwareTypeContainer, i, "finished", "", true)
 	}
 
 	// Migrate repository configuration and GPG keys before package migration
@@ -289,4 +395,5 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 
 		updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
 	}
+
 }
