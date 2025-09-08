@@ -247,7 +247,8 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 		for i, execution := range executionList.Containers {
 			// 1. image pull
 			imageRef := fmt.Sprintf("%s:%s", execution.ContainerImage.ImageName, execution.ContainerImage.ImageVersion)
-			pullCmd := fmt.Sprintf("sudo docker pull %s", imageRef)
+			pulCmd := fmt.Sprintf("docker pull %s", imageRef)
+			pullCmd := sudoWrapper(pulCmd, targetClient.SSHTarget.Password)
 			if _, err := targetClient.Run(pullCmd); err != nil {
 				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
 				continue
@@ -282,11 +283,13 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 
 				// 3-2 create compose network
 				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
-					rmNetCmd := fmt.Sprintf("sudo docker network rm %s || true", execution.NetworkMode)
+					rmCmd := fmt.Sprintf("docker network rm %s || true", execution.NetworkMode)
+					rmNetCmd := sudoWrapper(rmCmd, targetClient.SSHTarget.Password)
 					_, _ = targetClient.Run(rmNetCmd)
 				}
 
-				composeCmd := fmt.Sprintf("cd %s && sudo docker compose -f docker-compose.yml up -d", baseDir)
+				copCmd := fmt.Sprintf("cd %s && docker compose -f docker-compose.yml up -d", baseDir)
+				composeCmd := sudoWrapper(copCmd, targetClient.SSHTarget.Password)
 
 				if _, err := targetClient.Run(composeCmd); err != nil {
 					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
@@ -300,9 +303,13 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			// 4. generate network
 			if execution.DockerComposePath == "" {
 				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
-					checkNetCmd := fmt.Sprintf("sudo docker network ls --format '{{.Name}}' | grep -w %s", execution.NetworkMode)
+					checkCmd := fmt.Sprintf("docker network ls --format '{{.Name}}' | grep -w %s", execution.NetworkMode)
+					checkNetCmd := sudoWrapper(checkCmd, targetClient.SSHTarget.Password)
+
 					if _, err := targetClient.Run(checkNetCmd); err != nil {
-						createNetCmd := fmt.Sprintf("sudo docker network create %s", execution.NetworkMode)
+						createCmd := fmt.Sprintf("docker network create %s", execution.NetworkMode)
+						createNetCmd := sudoWrapper(createCmd, targetClient.SSHTarget.Password)
+
 						if _, cerr := targetClient.Run(createNetCmd); cerr != nil {
 							updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", cerr.Error(), false)
 							continue
@@ -312,7 +319,8 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			}
 
 			// 5. docker run
-			runCmd := fmt.Sprintf("sudo docker run -d --name %s", execution.Name)
+			dockerRunCmd := fmt.Sprintf("docker run -d --name %s", execution.Name)
+			runCmd := sudoWrapper(dockerRunCmd, targetClient.SSHTarget.Password)
 
 			validatedPorts := make(map[int]bool)
 			for _, port := range execution.ContainerPorts {
