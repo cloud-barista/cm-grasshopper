@@ -353,7 +353,6 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 
 		}
 
-		// Migrate repository configuration and GPG keys before package migration
 		if len(executionList.Packages) > 0 {
 			logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
 
