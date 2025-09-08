@@ -13,7 +13,7 @@ func runtimeInstaller(client *ssh.Client, runtime softwaremodel.SoftwareContaine
 	var output []byte
 	var err error
 
-	switch softwaremodel.SoftwareContainerRuntimeType(runtime) {
+	switch runtime {
 	case softwaremodel.SoftwareContainerRuntimeTypeDocker:
 		migrationLogger.Printf(INFO, "Installing Docker...\n")
 		output, err = executeScript(client, migrationLogger, "install_docker.sh")
