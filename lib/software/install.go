@@ -313,9 +313,9 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			}
 		}
 
-		// add volume mount
+		// add mount
 		for _, mount := range execution.MountPaths {
-			runCmd += fmt.Sprintf(" -v %s:%s", mount, mount)
+			runCmd += fmt.Sprintf(" -v %s", mount)
 		}
 
 		// add env
