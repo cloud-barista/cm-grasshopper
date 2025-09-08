@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -242,51 +244,162 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 		logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+executionID+
 			", InstallType=container, ContainerName="+execution.Name)
 
-		// TODO: Container Migration Process
-		// TODO: Container Listen Ports Validation
+		for i, execution := range executionList.Containers {
+			// 1. image pull
+			imageRef := fmt.Sprintf("%s:%s", execution.ContainerImage.ImageName, execution.ContainerImage.ImageVersion)
+			pulCmd := fmt.Sprintf("docker pull %s", imageRef)
+			pullCmd := sudoWrapper(pulCmd, targetClient.SSHTarget.Password)
+			if _, err := targetClient.Run(pullCmd); err != nil {
+				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				continue
+			}
 
-		updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
-	}
+			// 2. port validation
+			if err := listenPortsValidator(sourceClient, targetClient, execution.Name, migrationLogger); err != nil {
+				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				continue
+			}
 
-	// Migrate repository configuration and GPG keys before package migration
-	if len(executionList.Packages) > 0 {
-		logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
+			// 3. copy docker compose
+			if execution.DockerComposePath != "" {
+				baseDir := filepath.Dir(execution.DockerComposePath) // => /home/ubuntu
 
-		// Migrate repository configuration
-		if err := MigrateRepositoryConfiguration(sourceClient, targetClient, executionID, migrationLogger); err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: Repository migration failed: "+err.Error())
-			// Continue with package migration even if repo migration fails
-		} else {
-			logger.Println(logger.INFO, true, "migrateSoftware: Repository migration completed successfully")
+				migrationLogger.Println(INFO, true,
+					"ExecutionID="+executionID+", Info=Copying full directory: "+baseDir)
+
+				if err := copyDirectoryWithChunks(sourceClient, targetClient, baseDir, executionID, migrationLogger); err != nil {
+					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+					continue
+				}
+
+				// 3-1 volume
+				for _, mount := range execution.MountPaths {
+					hostPath := strings.Split(mount, ":")[0]
+					if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
+						updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
+						continue
+					}
+				}
+
+				// 3-2 create compose network
+				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
+					rmCmd := fmt.Sprintf("docker network rm %s || true", execution.NetworkMode)
+					rmNetCmd := sudoWrapper(rmCmd, targetClient.SSHTarget.Password)
+					_, _ = targetClient.Run(rmNetCmd)
+				}
+
+				copCmd := fmt.Sprintf("cd %s && docker compose -f docker-compose.yml up -d", baseDir)
+				composeCmd := sudoWrapper(copCmd, targetClient.SSHTarget.Password)
+
+				if _, err := targetClient.Run(composeCmd); err != nil {
+					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				} else {
+					updateStatus(softwaremodel.SoftwareTypeContainer, i, "finished", "", true)
+				}
+
+				continue
+			}
+
+			// 4. generate network
+			if execution.DockerComposePath == "" {
+				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
+					checkCmd := fmt.Sprintf("docker network ls --format '{{.Name}}' | grep -w %s", execution.NetworkMode)
+					checkNetCmd := sudoWrapper(checkCmd, targetClient.SSHTarget.Password)
+
+					if _, err := targetClient.Run(checkNetCmd); err != nil {
+						createCmd := fmt.Sprintf("docker network create %s", execution.NetworkMode)
+						createNetCmd := sudoWrapper(createCmd, targetClient.SSHTarget.Password)
+
+						if _, cerr := targetClient.Run(createNetCmd); cerr != nil {
+							updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", cerr.Error(), false)
+							continue
+						}
+					}
+				}
+			}
+
+			// 5. docker run
+			dockerRunCmd := fmt.Sprintf("docker run -d --name %s", execution.Name)
+			runCmd := sudoWrapper(dockerRunCmd, targetClient.SSHTarget.Password)
+
+			validatedPorts := make(map[int]bool)
+			for _, port := range execution.ContainerPorts {
+				if port.HostPort > 0 && !validatedPorts[port.HostPort] {
+					runCmd += fmt.Sprintf(" -p %d:%d/%s", port.HostPort, port.ContainerPort, port.Protocol)
+					validatedPorts[port.HostPort] = true
+				}
+			}
+
+			for _, mount := range execution.MountPaths {
+				hostPath := strings.Split(mount, ":")[0]
+
+				if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
+					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
+					continue
+				}
+
+				runCmd += fmt.Sprintf(" -v %s", mount)
+			}
+
+			for _, env := range execution.Envs {
+				runCmd += fmt.Sprintf(" -e %s=%s", env.Name, env.Value)
+			}
+			if execution.NetworkMode != "" {
+				runCmd += fmt.Sprintf(" --network %s", execution.NetworkMode)
+			}
+			if execution.RestartPolicy != "" {
+				runCmd += fmt.Sprintf(" --restart %s", execution.RestartPolicy)
+			}
+			runCmd += " " + imageRef
+
+			if _, err := targetClient.Run(runCmd); err != nil {
+				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				continue
+			}
+
+			updateStatus(softwaremodel.SoftwareTypeContainer, i, "finished", "", true)
+
 		}
-	}
 
-	for i, execution := range executionList.Packages {
-		updateStatus(softwaremodel.SoftwareTypePackage, i, "installing", "", true)
+		if len(executionList.Packages) > 0 {
+			logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
 
-		err := runPlaybook(executionID, "package", execution.Name, targetClient.SSHTarget)
-		if err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-				", InstallType=package, Error="+err.Error())
-			updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
-
-			return
+			// Migrate repository configuration
+			if err := MigrateRepositoryConfiguration(sourceClient, targetClient, executionID, migrationLogger); err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: Repository migration failed: "+err.Error())
+				// Continue with package migration even if repo migration fails
+			} else {
+				logger.Println(logger.INFO, true, "migrateSoftware: Repository migration completed successfully")
+			}
 		}
 
-		err = configCopier(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
-		if err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-				", InstallType=package, Error="+err.Error())
-			updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
-		}
+		for i, execution := range executionList.Packages {
+			updateStatus(softwaremodel.SoftwareTypePackage, i, "installing", "", true)
 
-		err = serviceMigrator(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
-		if err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
-				", InstallType=package, Error="+err.Error())
-			updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
-		}
+			err := runPlaybook(executionID, "package", execution.Name, targetClient.SSHTarget)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
 
-		updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
+				return
+			}
+
+			err = configCopier(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
+			}
+
+			err = serviceMigrator(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					", InstallType=package, Error="+err.Error())
+				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
+			}
+
+			updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
+		}
 	}
 }
