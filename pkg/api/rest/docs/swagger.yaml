@@ -517,10 +517,12 @@ paths:
       - description: ID of target namespace.
         in: query
         name: nsId
+        required: true
         type: string
       - description: ID of target MCI.
         in: query
         name: mciId
+        required: true
         type: string
       - description: Software migrate request.
         in: body

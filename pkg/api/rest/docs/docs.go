@@ -68,13 +68,15 @@ const docTemplate = `{
                         "type": "string",
                         "description": "ID of target namespace.",
                         "name": "nsId",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "string",
                         "description": "ID of target MCI.",
                         "name": "mciId",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "description": "Software migrate request.",
