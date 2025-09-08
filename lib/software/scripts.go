@@ -4,9 +4,10 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"strings"
 	"time"
+
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 )
 
 //go:embed scripts/*.sh

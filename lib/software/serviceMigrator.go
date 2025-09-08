@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
-	gossh "golang.org/x/crypto/ssh"
 	"strings"
 	"time"
+
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 type SystemType int

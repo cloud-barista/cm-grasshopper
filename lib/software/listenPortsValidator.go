@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 )
 
 type Connection struct {

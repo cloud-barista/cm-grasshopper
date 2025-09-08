@@ -2,6 +2,13 @@ package main
 
 import (
 	"errors"
+	"log"
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
@@ -12,12 +19,6 @@ import (
 	"github.com/jollaman999/utils/cmd"
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
-	"log"
-	"os"
-	"os/signal"
-	"strings"
-	"sync"
-	"syscall"
 )
 
 func init() {

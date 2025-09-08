@@ -2,10 +2,11 @@ package server
 
 import (
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/common"
-	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/middlewares"
 	"net"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/common"
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/middlewares"
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	_ "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/docs" // Grasshopper Documentation

@@ -2,10 +2,11 @@ package middlewares
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/jollaman999/utils/logger"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"strconv"
 )
 
 func CustomLogger() echo.MiddlewareFunc {

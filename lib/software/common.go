@@ -1,9 +1,10 @@
 package software
 
 import (
-	"github.com/jollaman999/utils/logger"
 	"os"
 	"path/filepath"
+
+	"github.com/jollaman999/utils/logger"
 )
 
 func getFileExtension(file string) string {

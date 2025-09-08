@@ -2,9 +2,10 @@ package common
 
 import (
 	"context"
-	"github.com/jollaman999/utils/logger"
 	"io"
 	"net/http"
+
+	"github.com/jollaman999/utils/logger"
 )
 
 func GetHTTPRequest(URL string, username string, password string) ([]byte, error) {

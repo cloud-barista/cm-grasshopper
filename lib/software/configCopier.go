@@ -3,11 +3,12 @@ package software
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 )
 
 type ConfigFile struct {
