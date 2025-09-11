@@ -70,7 +70,7 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
         password: ****
     ```
 
-### 2. Copy honeybee private key file
+### 2. Copy honeybee private key file (Not needed if honeybee and grasshopper are running with Docker)
 Copy honeybee private key file (honeybee.key) to .cm-grasshopper/ directory under user's home directory or the path of 'CMGRASSHOPPER_ROOT' environment variable.
 You can get honeybee.key from .cm-honeybee/ directory under user's home directory or the path of 'CMHONEYBEE_ROOT' environment variable.
 
@@ -96,169 +96,18 @@ To use the copied honeybee private key file, uncomment it below in the `docker-c
 #- ./honeybee.key:/root/.cm-grasshopper/honeybee.key:ro
 ```
 
-### 4. Get software list
-```shell
-curl -X 'GET' \
-  'http://127.0.0.1:8084/grasshopper/software' \
-  -H 'accept: application/json'
-```
-
-<details>
-    <summary>Response Example</summary>
-
-```json
-[
-  {
-    "uuid": "78d3664e-3eb7-4d37-bf8b-b57b7a238693",
-    "install_type": "package",
-    "name": "docker",
-    "version": "latest",
-    "os": "Ubuntu",
-    "os_version": "22.04",
-    "architecture": "x86_64",
-    "match_names": "docker,docker-ce,docker.io",
-    "needed_packages": "docker-ce,docker-ce-cli,containerd.io,docker-buildx-plugin,docker-compose-plugin",
-    "need_to_delete_packages": "docker.io,docker-doc,docker-compose,docker-compose-v2,podman-docker,containerd,runc",
-    "custom_configs": "",
-    "repo_url": "https://download.docker.com/linux/ubuntu",
-    "gpg_key_url": "https://download.docker.com/linux/ubuntu/gpg",
-    "repo_use_os_version_code": true,
-    "created_at": "2024-11-04T19:04:03.192747727+09:00",
-    "updated_at": "2024-11-04T19:04:03.192747727+09:00"
-  },
-  {
-    "uuid": "aa34795f-3401-4c28-bbe9-157a5788fd75",
-    "install_type": "package",
-    "name": "nginx",
-    "version": "latest",
-    "os": "Ubuntu",
-    "os_version": "22.04",
-    "architecture": "x86_64",
-    "match_names": "nginx",
-    "needed_packages": "nginx",
-    "need_to_delete_packages": "",
-    "custom_configs": "",
-    "repo_url": "",
-    "gpg_key_url": "",
-    "repo_use_os_version_code": false,
-    "created_at": "2024-11-04T20:19:03.437025609+09:00",
-    "updated_at": "2024-11-04T20:19:03.437025609+09:00"
-  },
-  {
-    "uuid": "aaf49384-1a7c-4b91-9fdc-c7c46aed0882",
-    "install_type": "package",
-    "name": "nfs-kernel-server",
-    "version": "latest",
-    "os": "Ubuntu",
-    "os_version": "22.04",
-    "architecture": "x86_64",
-    "match_names": "nfs-server,nfs-kernel-server",
-    "needed_packages": "nfs-kernel-server",
-    "need_to_delete_packages": "",
-    "custom_configs": "/etc/exports",
-    "repo_url": "",
-    "gpg_key_url": "",
-    "repo_use_os_version_code": false,
-    "created_at": "2024-11-18T19:49:29.408259006+09:00",
-    "updated_at": "2024-11-18T19:49:29.408259006+09:00"
-  }
-]
-```
-</details>
-
-### 5. Register the software (Optional)
+### 4. Import software list from honeybee
 ```shell
 curl -X 'POST' \
-  'http://127.0.0.1:8084/grasshopper/software/register' \
+  'http://{honeybee IP Address}:8081/honeybee/source_group/{Source Group ID}/import/software' \
   -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{ENTER_REQUEST_BODY_HERE}'
+  -d ''
 ```
 
-- Below is a request body example of registering a nginx package.
-```json
-{
-  "architecture": "x86_64",
-  "install_type": "package",
-  "match_names": [
-    "nginx"
-  ],
-  "name": "nginx",
-  "needed_packages": [
-    "nginx"
-  ],
-  "os": "Ubuntu",
-  "os_version": "22.04",
-  "version": "latest"
-}
-```
-
-- Below is a request body example of registering a NFS server.
-```json
-{
-  "architecture": "x86_64",
-  "install_type": "package",
-  "match_names": [
-    "nfs-server",
-    "nfs-kernel-server"
-  ],
-  "name": "nfs-kernel-server",
-  "needed_packages": [
-    "nfs-kernel-server"
-  ],
-  "custom_configs": [
-    "/etc/exports"
-  ],
-  "os": "Ubuntu",
-  "os_version": "22.04",
-  "version": "latest"
-}
-```
-
-- Below is a request body example of registering a Docker package.
-```json
-{
-  "architecture": "x86_64",
-  "gpg_key_url": "https://download.docker.com/linux/ubuntu/gpg",
-  "install_type": "package",
-  "match_names": [
-    "docker",
-    "docker-ce",
-    "docker.io"
-  ],
-  "name": "docker",
-  "need_to_delete_packages": [
-    "docker.io",
-    "docker-doc",
-    "docker-compose",
-    "docker-compose-v2",
-    "podman-docker",
-    "containerd",
-    "runc"
-  ],
-  "needed_packages": [
-    "docker-ce",
-    "docker-ce-cli",
-    "containerd.io",
-    "docker-buildx-plugin",
-    "docker-compose-plugin"
-  ],
-  "os": "Ubuntu",
-  "os_version": "22.04",
-  "repo_url": "https://download.docker.com/linux/ubuntu",
-  "repo_use_os_version_code": true,
-  "version": "latest"
-}
-```
-
-### 6. Get software migration list
-You can get a list of software migration list supported by Grasshopper through the source group ID generated by Honeybee.
-
-This list provides a compilation of packages that can be migrated through Grasshopper from those installed in the source computing environment.
-
+### 5. Get refined software list from honeybee
 ```shell
 curl -X 'GET' \
-  'http://127.0.0.1:8084/grasshopper/software/migration_list/{Source Group ID}' \
+  'http://{honeybee IP Address}:8081/honeybee/source_group/{Source Group ID}/software/refined' \
   -H 'accept: application/json'
 ```
 
@@ -267,92 +116,1482 @@ curl -X 'GET' \
 
 ```json
 {
-  "server": [
-    {
-      "connection_info_id": "829e9c15-a24c-4c39-9e1b-162fcae8f21b",
-      "migration_list": [
-        {
-          "order": 1,
-          "software_id": "78d3664e-3eb7-4d37-bf8b-b57b7a238693",
-          "software_name": "docker",
-          "software_version": "latest",
-          "software_install_type": "package"
-        },
-        {
-          "order": 2,
-          "software_id": "aaf49384-1a7c-4b91-9fdc-c7c46aed0882",
-          "software_name": "nfs-kernel-server",
-          "software_version": "latest",
-          "software_install_type": "package"
+  "sourceSoftwareModel": {
+    "source_group_id": "1b9a25ec-2352-4583-8182-597d18713b29",
+    "connection_info_list": [
+      {
+        "connection_id": "8c90f085-4d6d-427a-ab69-5e1f8e8b04e5",
+        "softwares": {
+          "binaries": null,
+          "packages": [
+            {
+              "name": "acpid",
+              "type": "deb",
+              "version": "1:2.0.33-1ubuntu1"
+            },
+            {
+              "name": "alsa-topology-conf",
+              "type": "deb",
+              "version": "1.2.5.1-2"
+            },
+            {
+              "name": "alsa-ucm-conf",
+              "type": "deb",
+              "version": "1.2.6.3-1ubuntu1.12"
+            },
+            {
+              "name": "apport-symptoms",
+              "type": "deb",
+              "version": "0.24"
+            },
+            {
+              "name": "at-spi2-core",
+              "type": "deb",
+              "version": "2.44.0-3"
+            },
+            {
+              "name": "bash-completion",
+              "type": "deb",
+              "version": "1:2.11-5ubuntu1"
+            },
+            {
+              "name": "bzip2",
+              "type": "deb",
+              "version": "1.0.8-5build1"
+            },
+            {
+              "name": "command-not-found",
+              "type": "deb",
+              "version": "22.04.0"
+            },
+            {
+              "name": "cryptsetup-initramfs",
+              "type": "deb",
+              "version": "2:2.4.3-1ubuntu1.3"
+            },
+            {
+              "name": "fonts-dejavu-extra",
+              "type": "deb",
+              "version": "2.37-2build1"
+            },
+            {
+              "name": "friendly-recovery",
+              "type": "deb",
+              "version": "0.2.42"
+            },
+            {
+              "name": "hsflowd",
+              "type": "deb",
+              "version": "2.0.53-1 /etc/hsflowd.conf c7504d393334ed92785866d3a5200d9e /etc/dbus-1/system.d/net.sflow.hsflowd.conf 1222fb8baf48e409b4ba870dc0881926"
+            },
+            {
+              "name": "iputils-tracepath",
+              "type": "deb",
+              "version": "3:20211215-1ubuntu0.1"
+            },
+            {
+              "name": "irqbalance",
+              "type": "deb",
+              "version": "1.8.0-1ubuntu0.2"
+            },
+            {
+              "name": "landscape-common",
+              "type": "deb",
+              "version": "23.02-0ubuntu1~22.04.4"
+            },
+            {
+              "name": "libatasmart4",
+              "type": "deb",
+              "version": "0.19-5build2"
+            },
+            {
+              "name": "libatk-wrapper-java-jni",
+              "type": "deb",
+              "version": "0.38.0-5build1"
+            },
+            {
+              "name": "libblockdev-crypto2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libblockdev-fs2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libblockdev-loop2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libblockdev-part2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libblockdev-swap2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libblockdev2",
+              "type": "deb",
+              "version": "2.26-1ubuntu0.1"
+            },
+            {
+              "name": "libcgi-fast-perl",
+              "type": "deb",
+              "version": "1:2.15-1"
+            },
+            {
+              "name": "libclone-perl",
+              "type": "deb",
+              "version": "0.45-1build3"
+            },
+            {
+              "name": "libdbd-mysql-perl",
+              "type": "deb",
+              "version": "4.050-5ubuntu0.22.04.1"
+            },
+            {
+              "name": "libfcgi-bin",
+              "type": "deb",
+              "version": "2.4.2-2ubuntu0.1"
+            },
+            {
+              "name": "libflashrom1",
+              "type": "deb",
+              "version": "1.2-5build1"
+            },
+            {
+              "name": "libfribidi0",
+              "type": "deb",
+              "version": "1.0.8-2ubuntu3.1"
+            },
+            {
+              "name": "libfwupdplugin5",
+              "type": "deb",
+              "version": "1.7.9-1~22.04.3"
+            },
+            {
+              "name": "libgl1-amber-dri",
+              "type": "deb",
+              "version": "21.3.9-0ubuntu1~22.04.1"
+            },
+            {
+              "name": "libhtml-template-perl",
+              "type": "deb",
+              "version": "2.97-1.1"
+            },
+            {
+              "name": "libhttp-message-perl",
+              "type": "deb",
+              "version": "6.36-1"
+            },
+            {
+              "name": "libmm-glib0",
+              "type": "deb",
+              "version": "1.20.0-1~ubuntu22.04.4"
+            },
+            {
+              "name": "libqmi-proxy",
+              "type": "deb",
+              "version": "1.32.0-1ubuntu0.22.04.1"
+            },
+            {
+              "name": "libsmbios-c2",
+              "type": "deb",
+              "version": "2.4.3-1build1"
+            },
+            {
+              "name": "libudisks2-0",
+              "type": "deb",
+              "version": "2.9.4-1ubuntu2.2"
+            },
+            {
+              "name": "libxt-dev",
+              "type": "deb",
+              "version": "1:1.2.1-1"
+            },
+            {
+              "name": "linux-headers-5.15.0-142-generic",
+              "type": "deb",
+              "version": "5.15.0-142.152"
+            },
+            {
+              "name": "linux-virtual",
+              "type": "deb",
+              "version": "5.15.0.152.152"
+            },
+            {
+              "name": "manpages",
+              "type": "deb",
+              "version": "5.10-1ubuntu1"
+            },
+            {
+              "name": "mariadb-server",
+              "type": "deb",
+              "version": "1:10.6.22-0ubuntu0.22.04.1"
+            },
+            {
+              "name": "mtr-tiny",
+              "type": "deb",
+              "version": "0.95-1"
+            },
+            {
+              "name": "nano",
+              "type": "deb",
+              "version": "6.2-1ubuntu0.1"
+            },
+            {
+              "name": "ncurses-term",
+              "type": "deb",
+              "version": "6.3-2ubuntu0.1"
+            },
+            {
+              "name": "net-tools",
+              "type": "deb",
+              "version": "1.60+git20181103.0eebece-1ubuntu5.4"
+            },
+            {
+              "name": "nginx",
+              "type": "deb",
+              "version": "1.18.0-6ubuntu14.7"
+            },
+            {
+              "name": "ntfs-3g",
+              "type": "deb",
+              "version": "1:2021.8.22-3ubuntu1.2"
+            },
+            {
+              "name": "open-vm-tools",
+              "type": "deb",
+              "version": "2:12.3.5-3~ubuntu0.22.04.2"
+            },
+            {
+              "name": "openjdk-11-jdk",
+              "type": "deb",
+              "version": "11.0.28+6-1ubuntu1~22.04.1"
+            },
+            {
+              "name": "packagekit-tools",
+              "type": "deb",
+              "version": "1.2.5-2ubuntu3"
+            },
+            {
+              "name": "pastebinit",
+              "type": "deb",
+              "version": "1.5.1-1ubuntu1"
+            },
+            {
+              "name": "php8.1-curl",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-fpm",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-gd",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-intl",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-mbstring",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-mysql",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-soap",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-xml",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "php8.1-xmlrpc",
+              "type": "deb",
+              "version": "3:1.0.0~rc3-2"
+            },
+            {
+              "name": "php8.1-zip",
+              "type": "deb",
+              "version": "8.1.2-1ubuntu2.22"
+            },
+            {
+              "name": "plymouth-theme-ubuntu-text",
+              "type": "deb",
+              "version": "0.9.5+git20211018-1ubuntu3"
+            },
+            {
+              "name": "powermgmt-base",
+              "type": "deb",
+              "version": "1.36"
+            },
+            {
+              "name": "publicsuffix",
+              "type": "deb",
+              "version": "20211207.1025-1"
+            },
+            {
+              "name": "python3-click",
+              "type": "deb",
+              "version": "8.0.3-1"
+            },
+            {
+              "name": "rsyslog",
+              "type": "deb",
+              "version": "8.2112.0-2ubuntu2.2"
+            },
+            {
+              "name": "run-one",
+              "type": "deb",
+              "version": "1.17-0ubuntu1"
+            },
+            {
+              "name": "shared-mime-info",
+              "type": "deb",
+              "version": "2.1-2"
+            },
+            {
+              "name": "tcpdump",
+              "type": "deb",
+              "version": "4.99.1-3ubuntu0.2"
+            },
+            {
+              "name": "telnet",
+              "type": "deb",
+              "version": "0.17-44build1"
+            },
+            {
+              "name": "ubuntu-minimal",
+              "type": "deb",
+              "version": "1.481.4"
+            },
+            {
+              "name": "ubuntu-server",
+              "type": "deb",
+              "version": "1.481.4"
+            },
+            {
+              "name": "ubuntu-standard",
+              "type": "deb",
+              "version": "1.481.4"
+            },
+            {
+              "name": "ufw",
+              "type": "deb",
+              "version": "0.36.1-4ubuntu0.1"
+            },
+            {
+              "name": "usb.ids",
+              "type": "deb",
+              "version": "2022.04.02-1"
+            },
+            {
+              "name": "uuid-runtime",
+              "type": "deb",
+              "version": "2.37.2-4ubuntu3.4"
+            },
+            {
+              "name": "xauth",
+              "type": "deb",
+              "version": "1:1.1-1build2"
+            },
+            {
+              "name": "xdg-user-dirs",
+              "type": "deb",
+              "version": "0.17-2ubuntu4"
+            }
+          ],
+          "containers": null,
+          "kubernetes": null
         }
-      ],
-      "errors": []
-    },
-    {
-      "connection_info_id": "d0b6a2a6-4cd8-4b36-ba41-a5f9a7aeef26",
-      "migration_list": [
-        {
-          "order": 1,
-          "software_id": "78d3664e-3eb7-4d37-bf8b-b57b7a238693",
-          "software_name": "docker",
-          "software_version": "latest",
-          "software_install_type": "package"
-        },
-        {
-          "order": 2,
-          "software_id": "aa34795f-3401-4c28-bbe9-157a5788fd75",
-          "software_name": "nginx",
-          "software_version": "latest",
-          "software_install_type": "package"
-        }
-      ],
-      "errors": []
-    }
-  ]
+      }
+    ]
+  }
 }
 ```
 </details>
 
-### 7. Run software migration
-When an array of software IDs intended for migration is provided in the migration list with identifiers such as NS ID, MCI ID, and VM ID, software migration will be performed to the target VM.
-
+### 6. Get software migration list from grasshopper
 ```shell
 curl -X 'POST' \
-  'http://127.0.0.1:8084/grasshopper/software/migrate' \
+  'http://127.0.0.1:8084/grasshopper/software/migration_list' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{
-  "software_ids": [
-    "78d3664e-3eb7-4d37-bf8b-b57b7a238693",
-    "aa34795f-3401-4c28-bbe9-157a5788fd75"
-  ],
-  "source_connection_info_id": "string",
-  "target": {
-    "mci_id": "mmci01",
-    "namespace_id": "mig01",
-    "vm_id": "rehosted-test-cm-web-1"
+  -d '...(Use sourceSoftwareModel in section 5)...'
+```
+
+<details>
+    <summary>Response Example</summary>
+
+```json
+{
+  "targetSoftwareModel": {
+    "servers": [
+      {
+        "source_connection_info_id": "8c90f085-4d6d-427a-ab69-5e1f8e8b04e5",
+        "migration_list": {
+          "binaries": null,
+          "packages": [
+            {
+              "order": 1,
+              "name": "acpid",
+              "version": "1:2.0.33-1ubuntu1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 2,
+              "name": "alsa-topology-conf",
+              "version": "1.2.5.1-2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 3,
+              "name": "alsa-ucm-conf",
+              "version": "1.2.6.3-1ubuntu1.12",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 4,
+              "name": "apport-symptoms",
+              "version": "0.24",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 5,
+              "name": "at-spi2-core",
+              "version": "2.44.0-3",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 6,
+              "name": "bash-completion",
+              "version": "1:2.11-5ubuntu1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 7,
+              "name": "bzip2",
+              "version": "1.0.8-5build1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 8,
+              "name": "command-not-found",
+              "version": "22.04.0",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 9,
+              "name": "cryptsetup-initramfs",
+              "version": "2:2.4.3-1ubuntu1.3",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 10,
+              "name": "fonts-dejavu-extra",
+              "version": "2.37-2build1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 11,
+              "name": "friendly-recovery",
+              "version": "0.2.42",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 12,
+              "name": "hsflowd",
+              "version": "2.0.53-1 /etc/hsflowd.conf c7504d393334ed92785866d3a5200d9e /etc/dbus-1/system.d/net.sflow.hsflowd.conf 1222fb8baf48e409b4ba870dc0881926",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 13,
+              "name": "iputils-tracepath",
+              "version": "3:20211215-1ubuntu0.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 14,
+              "name": "irqbalance",
+              "version": "1.8.0-1ubuntu0.2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 15,
+              "name": "libatk-wrapper-java-jni",
+              "version": "0.38.0-5build1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 16,
+              "name": "libcgi-fast-perl",
+              "version": "1:2.15-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 17,
+              "name": "libclone-perl",
+              "version": "0.45-1build3",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 18,
+              "name": "libdbd-mysql-perl",
+              "version": "4.050-5ubuntu0.22.04.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 19,
+              "name": "libfcgi-bin",
+              "version": "2.4.2-2ubuntu0.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 20,
+              "name": "libgl1-amber-dri",
+              "version": "21.3.9-0ubuntu1~22.04.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 21,
+              "name": "libhtml-template-perl",
+              "version": "2.97-1.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 22,
+              "name": "libhttp-message-perl",
+              "version": "6.36-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 23,
+              "name": "libqmi-proxy",
+              "version": "1.32.0-1ubuntu0.22.04.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 24,
+              "name": "linux-virtual",
+              "version": "5.15.0.152.152",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 25,
+              "name": "manpages",
+              "version": "5.10-1ubuntu1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 26,
+              "name": "mariadb-server",
+              "version": "1:10.6.22-0ubuntu0.22.04.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 27,
+              "name": "mtr-tiny",
+              "version": "0.95-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 28,
+              "name": "nano",
+              "version": "6.2-1ubuntu0.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 29,
+              "name": "ncurses-term",
+              "version": "6.3-2ubuntu0.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 30,
+              "name": "net-tools",
+              "version": "1.60+git20181103.0eebece-1ubuntu5.4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 31,
+              "name": "nginx",
+              "version": "1.18.0-6ubuntu14.7",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 32,
+              "name": "ntfs-3g",
+              "version": "1:2021.8.22-3ubuntu1.2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 33,
+              "name": "open-vm-tools",
+              "version": "2:12.3.5-3~ubuntu0.22.04.2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 34,
+              "name": "openjdk-11-jdk",
+              "version": "11.0.28+6-1ubuntu1~22.04.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 35,
+              "name": "packagekit-tools",
+              "version": "1.2.5-2ubuntu3",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 36,
+              "name": "pastebinit",
+              "version": "1.5.1-1ubuntu1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 37,
+              "name": "php8.1-curl",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 38,
+              "name": "php8.1-fpm",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 39,
+              "name": "php8.1-gd",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 40,
+              "name": "php8.1-intl",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 41,
+              "name": "php8.1-mbstring",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 42,
+              "name": "php8.1-mysql",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 43,
+              "name": "php8.1-soap",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 44,
+              "name": "php8.1-xml",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 45,
+              "name": "php8.1-xmlrpc",
+              "version": "3:1.0.0~rc3-2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 46,
+              "name": "php8.1-zip",
+              "version": "8.1.2-1ubuntu2.22",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 47,
+              "name": "plymouth-theme-ubuntu-text",
+              "version": "0.9.5+git20211018-1ubuntu3",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 48,
+              "name": "powermgmt-base",
+              "version": "1.36",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 49,
+              "name": "publicsuffix",
+              "version": "20211207.1025-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 50,
+              "name": "python3-click",
+              "version": "8.0.3-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 51,
+              "name": "rsyslog",
+              "version": "8.2112.0-2ubuntu2.2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 52,
+              "name": "run-one",
+              "version": "1.17-0ubuntu1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 53,
+              "name": "shared-mime-info",
+              "version": "2.1-2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 54,
+              "name": "tcpdump",
+              "version": "4.99.1-3ubuntu0.2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 55,
+              "name": "telnet",
+              "version": "0.17-44build1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 56,
+              "name": "ubuntu-minimal",
+              "version": "1.481.4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 57,
+              "name": "ubuntu-server",
+              "version": "1.481.4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 58,
+              "name": "ubuntu-standard",
+              "version": "1.481.4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 59,
+              "name": "ufw",
+              "version": "0.36.1-4ubuntu0.1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 60,
+              "name": "usb.ids",
+              "version": "2022.04.02-1",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 61,
+              "name": "uuid-runtime",
+              "version": "2.37.2-4ubuntu3.4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 62,
+              "name": "xauth",
+              "version": "1:1.1-1build2",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            },
+            {
+              "order": 63,
+              "name": "xdg-user-dirs",
+              "version": "0.17-2ubuntu4",
+              "needed_packages": [
+                ""
+              ],
+              "need_to_delete_packages": [
+                ""
+              ],
+              "custom_data_paths": [],
+              "custom_configs": null,
+              "repo_url": "",
+              "gpg_key_url": "",
+              "repo_use_os_version_code": false
+            }
+          ],
+          "containers": null,
+          "kubernetes": null
+        },
+        "errors": []
+      }
+    ]
   }
-}'
+}
+```
+</details>
+
+### 7. Run software migration from grasshopper
+```shell
+curl -X 'POST' \
+  'http://210.207.104.224:8084/grasshopper/software/migrate?nsId=mig01&mciId=mmci01' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '...(Use targetSoftwareModel in section 6)...'
 ```
 
 - Response
 ```json
 {
   "execution_id": "aa253834-0668-4eda-8416-a0dae9f8c483",
-  "execution_list": [
+  "target_mappings": [
     {
-      "order": 1,
-      "software_id": "78d3664e-3eb7-4d37-bf8b-b57b7a238693",
-      "software_install_type": "package",
-      "software_name": "docker",
-      "software_version": "latest"
-    },
-    {
-      "order": 2,
-      "software_id": "aa34795f-3401-4c28-bbe9-157a5788fd75",
-      "software_install_type": "package",
-      "software_name": "nginx",
-      "software_version": "latest"
+      "source_connection_info_id": "8c90f085-4d6d-427a-ab69-5e1f8e8b04e5",
+      "target": {
+        "namespace_id": "mig01",
+        "mci_id": "mmci01",
+        "vm_id": "migrated-cb95f7e4-570c-468c-af77-2263271bc138-1"
+      }
     }
   ]
 }
@@ -363,7 +1602,7 @@ You can check the logs by providing the execution ID.
 
 ```shell
 curl -X 'GET' \
-  'http://127.0.0.1:8084/grasshopper/software/migrate/log/aa253834-0668-4eda-8416-a0dae9f8c483' \
+  'http://127.0.0.1:8084/grasshopper/software/migrate/log/{execution_id in section 7}' \
   -H 'accept: application/json'
 ```
 
