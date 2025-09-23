@@ -2019,6 +2019,18 @@ total ------------------------------------------------------------------- 6.94s
 ```
 </details>
 
+### 9. How to check installed software in migrated VM
+
+- For Debian based OSs (Ubuntu, Debian, Linux Mint, ...)
+```
+dpkg -S {File or Package Name to Search}
+```
+
+- For Redhat based OSs (RHEL, Rocky, Fedora, CentOS ...)
+```
+rpm -qa | grep {Package Name to Search}
+```
+
 ## Health-check
 
 Check if CM-Grasshopper is running
