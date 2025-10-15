@@ -3,6 +3,12 @@ package ssh
 import (
 	"encoding/json"
 	"errors"
+	"strings"
+
+	"net"
+	"strconv"
+	"time"
+
 	comm "github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
@@ -11,9 +17,6 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
-	"net"
-	"strconv"
-	"time"
 )
 
 type ConnectionType int
@@ -109,7 +112,8 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 
 		var auth goph.Auth
 		if connectionInfo.PrivateKey != "" && connectionInfo.PrivateKey != "-" {
-			auth, err = goph.RawKey(connectionInfo.PrivateKey, "")
+			privateKey := strings.ReplaceAll(connectionInfo.PrivateKey, "\\n", "\n")
+			auth, err = goph.RawKey(privateKey, "")
 			if err != nil {
 				return nil, err
 			}
