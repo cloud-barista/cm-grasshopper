@@ -56,7 +56,7 @@ func Open() error {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
-	err = DB.AutoMigrate(&model.SoftwareInstallStatus{})
+	err = DB.AutoMigrate(&model.SoftwareMigrationStatus{})
 	if err != nil {
 		logger.Panicln(logger.ERROR, true, err)
 	}

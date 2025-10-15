@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
-	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	softwaremodel "github.com/cloud-barista/cm-model/sw"
@@ -78,41 +77,15 @@ func MigrateSoftware(c echo.Context) error {
 
 	executionID := uuid.New().String()
 
-	type ex struct {
-		ExID         string
-		ExList       *softwaremodel.MigrationList
-		ExStatusList []model.ExecutionStatus
-		SourceClient *ssh.Client
-		TargetClient *ssh.Client
-	}
-
-	var exList = make([]ex, 0)
-	var targetMappings []model.TargetMapping
-
-	for _, server := range targetSoftwareModel.TargetSoftwareModel.Servers {
-		executionStatusList, sourceClient, targetClient, target, err :=
-			software.PrepareSoftwareMigration(executionID, &server.MigrationList, server.SourceConnectionInfoID,
-				nsIdStr, mciIdStr)
-		if err != nil {
-			return common.ReturnErrorMsg(c, err.Error())
-		}
-
-		exList = append(exList, ex{
-			ExID:         executionID,
-			ExList:       &server.MigrationList,
-			ExStatusList: executionStatusList,
-			SourceClient: sourceClient,
-			TargetClient: targetClient,
-		})
-
-		targetMappings = append(targetMappings, model.TargetMapping{
-			SourceConnectionInfoID: server.SourceConnectionInfoID,
-			Target:                 *target,
-		})
+	exList, targetMappings, err :=
+		software.PrepareSoftwareMigration(executionID, targetSoftwareModel.TargetSoftwareModel.Servers,
+			nsIdStr, mciIdStr)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
 	}
 
 	for _, e := range exList {
-		go software.MigrateSoftware(e.ExID, e.ExList, e.ExStatusList, e.SourceClient, e.TargetClient)
+		go software.MigrateSoftware(e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
 	}
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{

@@ -5,10 +5,11 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-model/sw"
 	"gorm.io/gorm"
 )
 
-func SoftwareInstallStatusCreate(softwareInstallStatus *model.SoftwareInstallStatus) (*model.SoftwareInstallStatus, error) {
+func SoftwareMigrationStatusCreate(softwareInstallStatus *model.SoftwareMigrationStatus) (*model.SoftwareMigrationStatus, error) {
 	result := db.DB.Create(softwareInstallStatus)
 	err := result.Error
 	if err != nil {
@@ -18,19 +19,18 @@ func SoftwareInstallStatusCreate(softwareInstallStatus *model.SoftwareInstallSta
 	return softwareInstallStatus, nil
 }
 
-func SoftwareInstallStatusGet(executionID string) (*model.SoftwareInstallStatus, error) {
-	software := &model.SoftwareInstallStatus{}
+func SoftwareMigrationStatusGet(executionID string, sourceConnectionInfoID string, softwareInstallType softwaremodel.SoftwareType, order int) (*model.SoftwareMigrationStatus, error) {
+	software := &model.SoftwareMigrationStatus{}
 
-	// Ensure db.DB is not nil to avoid runtime panics
 	if db.DB == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
 
-	result := db.DB.Where("execution_id = ?", executionID).First(software)
+	result := db.DB.Where("execution_id = ? AND source_connection_info_id = ? AND software_install_type = ? AND `order` = ?", executionID, sourceConnectionInfoID, softwareInstallType, order).First(software)
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("SoftwareInstallStatus not found with the provided execution_id")
+			return nil, errors.New("SoftwareMigrationStatus not found with the provided execution_id, source_connection_info_id, software_install_type, and order")
 		}
 		return nil, err
 	}
@@ -38,9 +38,9 @@ func SoftwareInstallStatusGet(executionID string) (*model.SoftwareInstallStatus,
 	return software, nil
 }
 
-func SoftwareInstallStatusGetList(page int, row int) (*[]model.SoftwareInstallStatus, error) {
-	softwareInstallStatusList := &[]model.SoftwareInstallStatus{}
-	// Ensure db.DB is not nil to avoid runtime panics
+func SoftwareMigrationStatusGetList(page int, row int) (*[]model.SoftwareMigrationStatus, error) {
+	softwareInstallStatusList := &[]model.SoftwareMigrationStatus{}
+
 	if db.DB == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
@@ -70,8 +70,8 @@ func SoftwareInstallStatusGetList(page int, row int) (*[]model.SoftwareInstallSt
 	return softwareInstallStatusList, nil
 }
 
-func SoftwareInstallStatusUpdate(softwareInstallStatus *model.SoftwareInstallStatus) error {
-	result := db.DB.Model(&model.SoftwareInstallStatus{}).Where("execution_id = ?", softwareInstallStatus.ExecutionID).Updates(softwareInstallStatus)
+func SoftwareMigrationStatusUpdate(softwareInstallStatus *model.SoftwareMigrationStatus) error {
+	result := db.DB.Model(&model.SoftwareMigrationStatus{}).Where("execution_id = ? AND source_connection_info_id = ? AND software_install_type = ? AND `order` = ?", softwareInstallStatus.ExecutionID, softwareInstallStatus.SourceConnectionInfoID, softwareInstallStatus.SoftwareInstallType, softwareInstallStatus.Order).Updates(softwareInstallStatus)
 	err := result.Error
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func SoftwareInstallStatusUpdate(softwareInstallStatus *model.SoftwareInstallSta
 	return nil
 }
 
-func SoftwareInstallStatusDelete(softwareInstallStatus *model.SoftwareInstallStatus) error {
+func SoftwareMigrationStatusDelete(softwareInstallStatus *model.SoftwareMigrationStatus) error {
 	result := db.DB.Delete(softwareInstallStatus)
 	err := result.Error
 	if err != nil {

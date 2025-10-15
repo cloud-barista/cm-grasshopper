@@ -19,6 +19,14 @@ import (
 	"github.com/jollaman999/utils/logger"
 )
 
+type Execution struct {
+	ExecutionID         string
+	MigrationList       *softwaremodel.MigrationList
+	MigrationStatusList []model.SoftwareMigrationStatus
+	SourceClient        *ssh.Client
+	TargetClient        *ssh.Client
+}
+
 func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
@@ -74,76 +82,110 @@ func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 	return "", errors.New("can't find matched target vm")
 }
 
-func PrepareSoftwareMigration(executionID string, executionList *softwaremodel.MigrationList,
-	sourceConnectionInfoID string, nsId string, mciId string) (executionStatusList []model.ExecutionStatus,
-	sourceClient *ssh.Client, targetClient *ssh.Client, target *model.Target, err error) {
-	sourceClient, err = ssh.NewSSHClient(ssh.ConnectionTypeSource, sourceConnectionInfoID, "", "")
-	if err != nil {
-		return nil, nil, nil, nil,
-			fmt.Errorf("failed to connect to source host: %v", err)
-	}
+func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) ([]Execution, []model.TargetMapping, error) {
+	var sourceClient *ssh.Client
+	var targetClient *ssh.Client
+	var target *model.Target
+	var err error
 
-	vmId, err := getVMId(sourceConnectionInfoID, nsId, mciId)
-	if err != nil {
-		return nil, nil, nil, nil,
-			fmt.Errorf("failed to get VM ID: %v", err)
-	}
+	var exList = make([]Execution, 0)
+	var targetMappings []model.TargetMapping
 
-	target = &model.Target{
-		NamespaceID: nsId,
-		MCIID:       mciId,
-		VMID:        vmId,
-	}
+	for _, server := range targetServers {
+		var softwareMigrationStatusList []model.SoftwareMigrationStatus
 
-	targetClient, err = ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.VMID, target.NamespaceID, target.MCIID)
-	if err != nil {
-		_ = sourceClient.Close()
+		sourceClient, err = ssh.NewSSHClient(ssh.ConnectionTypeSource, server.SourceConnectionInfoID, "", "")
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
+		}
 
-		return nil, nil, nil, nil,
-			fmt.Errorf("failed to connect to target host: %v", err)
-	}
+		vmId, err := getVMId(server.SourceConnectionInfoID, nsId, mciId)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
+		}
 
-	for _, execution := range executionList.Packages {
-		executionStatusList = append(executionStatusList, model.ExecutionStatus{
-			Order:               execution.Order,
-			SoftwareName:        execution.Name,
-			SoftwareVersion:     execution.Version,
-			SoftwareInstallType: softwaremodel.SoftwareTypePackage,
-			Status:              "ready",
-			StartedAt:           time.Time{},
-			ErrorMessage:        "",
+		target = &model.Target{
+			NamespaceID: nsId,
+			MCIID:       mciId,
+			VMID:        vmId,
+		}
+
+		targetClient, err = ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.VMID, target.NamespaceID, target.MCIID)
+		if err != nil {
+			_ = sourceClient.Close()
+
+			return nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
+		}
+
+		for _, execution := range server.MigrationList.Packages {
+			softwareMigrationStatus := model.SoftwareMigrationStatus{
+				ExecutionID:            executionID,
+				SourceConnectionInfoID: server.SourceConnectionInfoID,
+				Target:                 *target,
+				Order:                  execution.Order,
+				SoftwareName:           execution.Name,
+				SoftwareVersion:        execution.Version,
+				SoftwareInstallType:    softwaremodel.SoftwareTypePackage,
+				Status:                 "ready",
+				StartedAt:              time.Time{},
+				UpdatedAt:              time.Time{},
+				ErrorMessage:           "",
+			}
+			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
+			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "Failed to create software migration status ("+
+					"SoftwareName: "+softwareMigrationStatus.SoftwareName+", "+
+					"SoftwareVersion: "+softwareMigrationStatus.SoftwareVersion+", "+
+					"SoftwareInstallType: "+string(softwareMigrationStatus.SoftwareInstallType)+")")
+			}
+		}
+
+		for _, execution := range server.MigrationList.Containers {
+			softwareMigrationStatus := model.SoftwareMigrationStatus{
+				ExecutionID:            executionID,
+				SourceConnectionInfoID: server.SourceConnectionInfoID,
+				Target:                 *target,
+				Order:                  execution.Order,
+				SoftwareName:           execution.Name,
+				SoftwareVersion:        execution.ContainerImage.ImageVersion,
+				SoftwareInstallType:    softwaremodel.SoftwareTypeContainer,
+				Status:                 "ready",
+				StartedAt:              time.Time{},
+				UpdatedAt:              time.Time{},
+				ErrorMessage:           "",
+			}
+			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
+			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "Failed to create software migration status ("+
+					"SoftwareName: "+softwareMigrationStatus.SoftwareName+", "+
+					"SoftwareVersion: "+softwareMigrationStatus.SoftwareVersion+", "+
+					"SoftwareInstallType: "+string(softwareMigrationStatus.SoftwareInstallType)+")")
+			}
+		}
+
+		// TODO - Kubernetes Migration
+
+		exList = append(exList, Execution{
+			ExecutionID:         executionID,
+			MigrationList:       &server.MigrationList,
+			MigrationStatusList: softwareMigrationStatusList,
+			SourceClient:        sourceClient,
+			TargetClient:        targetClient,
+		})
+
+		targetMappings = append(targetMappings, model.TargetMapping{
+			SourceConnectionInfoID: server.SourceConnectionInfoID,
+			Target:                 *target,
 		})
 	}
 
-	for _, execution := range executionList.Containers {
-		executionStatusList = append(executionStatusList, model.ExecutionStatus{
-			Order:               execution.Order,
-			SoftwareName:        execution.Name,
-			SoftwareVersion:     execution.ContainerImage.ImageVersion,
-			SoftwareInstallType: softwaremodel.SoftwareTypeContainer,
-			Status:              "ready",
-			StartedAt:           time.Time{},
-			ErrorMessage:        "",
-		})
-	}
-
-	_, err = dao.SoftwareInstallStatusCreate(&model.SoftwareInstallStatus{
-		ExecutionID:     executionID,
-		Target:          *target,
-		ExecutionStatus: executionStatusList,
-	})
-	if err != nil {
-		_ = sourceClient.Close()
-		_ = targetClient.Close()
-
-		return nil, nil, nil, nil, err
-	}
-
-	return executionStatusList, sourceClient, targetClient, target, nil
+	return exList, targetMappings, nil
 }
 
 func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationList,
-	executionStatusList []model.ExecutionStatus, sourceClient *ssh.Client, targetClient *ssh.Client) {
+	migrationStatusList []model.SoftwareMigrationStatus, sourceClient *ssh.Client, targetClient *ssh.Client) {
 	defer func() {
 		_ = sourceClient.Close()
 		_ = targetClient.Close()
@@ -180,19 +222,15 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 	}
 
 	var updateStatus = func(installType softwaremodel.SoftwareType, i int, status string, errMsg string, updateStartedTime bool) {
-		executionStatusList[i].Status = status
-		executionStatusList[i].ErrorMessage = errMsg
+		migrationStatusList[i].Status = status
+		migrationStatusList[i].ErrorMessage = errMsg
 		now := time.Now()
 		if updateStartedTime {
-			executionStatusList[i].StartedAt = now
+			migrationStatusList[i].StartedAt = now
 		}
-		executionStatusList[i].UpdatedAt = now
+		migrationStatusList[i].UpdatedAt = now
 
-		err := dao.SoftwareInstallStatusUpdate(&model.SoftwareInstallStatus{
-			SoftwareInstallType: installType,
-			ExecutionID:         executionID,
-			ExecutionStatus:     executionStatusList,
-		})
+		err := dao.SoftwareMigrationStatusUpdate(&migrationStatusList[i])
 		if err != nil {
 			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 				", Error="+err.Error())

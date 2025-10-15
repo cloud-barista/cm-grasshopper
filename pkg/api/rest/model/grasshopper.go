@@ -41,28 +41,24 @@ type SoftwareMigrateRes struct {
 	TargetMappings []TargetMapping `json:"target_mappings"`
 }
 
-type ExecutionStatus struct {
-	Order               int                        `json:"order"`
-	SoftwareName        string                     `json:"software_name"`
-	SoftwareVersion     string                     `json:"software_version"`
-	SoftwareInstallType softwaremodel.SoftwareType `json:"software_install_type"`
-	Status              string                     `json:"status"`
-	StartedAt           time.Time                  `json:"started_at"`
-	UpdatedAt           time.Time                  `json:"updated_at"`
-	ErrorMessage        string                     `json:"error_message"`
+type SoftwareMigrationStatus struct {
+	ExecutionID            string                     `json:"execution_id" gorm:"primaryKey"`
+	SourceConnectionInfoID string                     `json:"source_connection_info_id" gorm:"primaryKey"`
+	Target                 Target                     `json:"target"`
+	Order                  int                        `json:"order" gorm:"primaryKey"`
+	SoftwareName           string                     `json:"software_name"`
+	SoftwareVersion        string                     `json:"software_version"`
+	SoftwareInstallType    softwaremodel.SoftwareType `json:"software_install_type" gorm:"primaryKey"`
+	Status                 string                     `json:"status"`
+	StartedAt              time.Time                  `json:"started_at"`
+	UpdatedAt              time.Time                  `json:"updated_at"`
+	ErrorMessage           string                     `json:"error_message"`
 }
 
-type ExecutionStatusList []ExecutionStatus
+type SoftwareMigrationStatusList []SoftwareMigrationStatus
 
 type SoftwareInstallStatusReq struct {
 	ExecutionID string `json:"execution_id"`
-}
-
-type SoftwareInstallStatus struct {
-	SoftwareInstallType softwaremodel.SoftwareType `json:"software_install_type"`
-	ExecutionID         string                     `gorm:"primaryKey:,column:execution_id" json:"execution_id"`
-	Target              Target                     `gorm:"target" json:"target"`
-	ExecutionStatus     ExecutionStatusList        `gorm:"execution_status" json:"execution_status"`
 }
 
 func (t Target) Value() (driver.Value, error) {
@@ -80,17 +76,17 @@ func (t *Target) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, t)
 }
 
-func (esl ExecutionStatusList) Value() (driver.Value, error) {
+func (esl SoftwareMigrationStatusList) Value() (driver.Value, error) {
 	return json.Marshal(esl)
 }
 
-func (esl *ExecutionStatusList) Scan(value interface{}) error {
+func (esl *SoftwareMigrationStatusList) Scan(value interface{}) error {
 	if value == nil {
 		return nil
 	}
 	bytes, ok := value.([]byte)
 	if !ok {
-		return errors.New("invalid type for ExecutionStatusList")
+		return errors.New("invalid type for SoftwareMigrationStatusList")
 	}
 	return json.Unmarshal(bytes, esl)
 }
