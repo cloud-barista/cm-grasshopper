@@ -22,7 +22,7 @@ RUN apk --no-cache add tzdata
 RUN echo "Asia/Seoul" >  /etc/timezone
 RUN cp -f /usr/share/zoneinfo/Asia/Seoul /etc/localtime
 
-RUN apk --no-cache add ansible curl
+RUN apk --no-cache add ansible curl openssh-client
 
 COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/conf /conf
 COPY --from=builder /go/src/github.com/cloud-barista/cm-grasshopper/cmd/cm-grasshopper/cm-grasshopper /cm-grasshopper
