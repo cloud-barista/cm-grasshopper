@@ -55,9 +55,9 @@ func executeScript(client *ssh.Client, migrationLogger *Logger, scriptName strin
 
 	var cmd string
 	if len(args) > 0 {
-		cmd = fmt.Sprintf("cat << 'EOF' | sh -s %s\n%s\nEOF", strings.Join(args, " "), script)
+		cmd = fmt.Sprintf("cat << 'EOF' | bash -s %s\n%s\nEOF", strings.Join(args, " "), script)
 	} else {
-		cmd = fmt.Sprintf("cat << 'EOF' | sh\n%s\nEOF", script)
+		cmd = fmt.Sprintf("cat << 'EOF' | bash\n%s\nEOF", script)
 	}
 	wrappedCmd := sudoWrapper(cmd, client.SSHTarget.Password)
 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Certificate and key path finder script
 # Usage: cert_key_finder.sh <config_file_path>
