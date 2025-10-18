@@ -33,15 +33,15 @@ chown -R www-data:www-data /var/www/html/wordpress
 cat << EOF > /etc/nginx/sites-available/default
 server {
     listen 80;
-    server_name your_domain.com www.your_domain.com;
+    server_name localhost _;
     root /var/www/html/wordpress;
     index index.php;
 
     location / {
-        try_files $uri $uri/ /index.php?$args;
+        try_files \$uri \$uri/ /index.php?\$args;
     }
 
-    location ~ \.php$ {
+    location ~ \.php\$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
     }
@@ -61,7 +61,7 @@ server {
         allow all;
     }
 
-    location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
+    location ~* \.(css|gif|ico|jpeg|jpg|js|png)\$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
