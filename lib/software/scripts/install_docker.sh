@@ -5,11 +5,6 @@ set -e
 echo "[INFO] Starting Docker installation script"
 
 # Check permissions
-if [[ $EUID -eq 0 ]]; then
-    echo "[ERROR] Do not run as root. Run as regular user with sudo privileges."
-    exit 1
-fi
-
 if ! sudo -n true 2>/dev/null; then
     echo "[ERROR] sudo privileges required."
     exit 1
