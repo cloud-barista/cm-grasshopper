@@ -13,8 +13,8 @@ import (
 )
 
 var libraryPackagePatterns = []string{
-	"lib.*-dev",
-	"lib.*[0-9]+$",
+	"^lib.*-dev",
+	"^lib.*[0-9]+$",
 	".*-devel",
 	".*-headers",
 	".*-doc",
@@ -57,17 +57,17 @@ func isContainerRuntimeRelatedPackage(packageName string) bool {
 }
 
 var genericKernelPackagePatterns = []string{
-	"linux-generic.*",
-	"linux-image.*generic.*",
-	"linux-headers.*generic.*",
-	"linux-modules.*generic.*",
-	"linux-tools.*generic.*",
-	"kernel.*",
-	"kernel-core.*",
-	"kernel-modules.*",
-	"kernel-headers.*",
-	"kernel-devel.*",
-	"kernel-tools.*",
+	"^linux-generic.*",
+	"^linux-image.*generic.*",
+	"^linux-headers.*generic.*",
+	"^linux-modules.*generic.*",
+	"^linux-tools.*generic.*",
+	"^kernel.*",
+	"^kernel-core.*",
+	"^kernel-modules.*",
+	"^kernel-headers.*",
+	"^kernel-devel.*",
+	"^kernel-tools.*",
 }
 
 func isGenericKernelPackage(packageName string) bool {
