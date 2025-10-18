@@ -301,6 +301,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			// 3. copy docker compose
 			if execution.DockerComposePath != "" {
 				baseDir := filepath.Dir(execution.DockerComposePath) // => /home/ubuntu
+				dockerComposeFile := filepath.Base(execution.DockerComposePath)
 
 				migrationLogger.Println(INFO, true,
 					"ExecutionID="+executionID+", Info=Copying full directory: "+baseDir)
@@ -326,7 +327,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 					_, _ = targetClient.Run(rmNetCmd)
 				}
 
-				copCmd := fmt.Sprintf("cd %s && docker compose -f docker-compose.yml up -d", baseDir)
+				copCmd := fmt.Sprintf("cd %s && docker compose -f "+dockerComposeFile+" up -d", baseDir)
 				composeCmd := sudoWrapper(copCmd, targetClient.SSHTarget.Password)
 
 				if _, err := targetClient.Run(composeCmd); err != nil {
