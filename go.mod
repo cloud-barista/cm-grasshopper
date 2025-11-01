@@ -1,6 +1,6 @@
 module github.com/cloud-barista/cm-grasshopper
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20250929070435-0d466707349d
