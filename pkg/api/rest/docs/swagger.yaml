@@ -578,6 +578,62 @@ paths:
       summary: Get Software Migration Log
       tags:
       - '[Migration] Software migration APIs'
+  /software/migrate/status:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of software migration status.
+      operationId: list-software-migration-status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get a list of software migration status
+          schema:
+            items:
+              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes'
+            type: array
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get the software migration status
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: List Software Migration Status
+      tags:
+      - '[Migration] Software migration APIs'
+  /software/migrate/status/{executionId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the software migration status.
+      operationId: get-software-migration-status
+      parameters:
+      - description: ID of the software migration execution.
+        in: path
+        name: executionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully get the software migration status
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to get the software migration status
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Get Software Migration Status
+      tags:
+      - '[Migration] Software migration APIs'
   /software/migration_list:
     post:
       consumes:

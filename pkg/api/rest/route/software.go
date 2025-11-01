@@ -13,4 +13,6 @@ func Software(e *echo.Echo) {
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/migration_list", controller.GetSoftwareMigrationList)
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate", controller.MigrateSoftware)
 	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate/log/:executionId", controller.GetSoftwareMigrationLog)
+	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate/status/:executionId", controller.GetSoftwareMigrationStatus)
+	e.GET("/"+strings.ToLower(common.ShortModuleName)+"/software/migrate/status", controller.ListSoftwareMigrationStatus)
 }

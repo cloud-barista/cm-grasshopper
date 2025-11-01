@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -82,7 +83,7 @@ func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 	return "", errors.New("can't find matched target vm")
 }
 
-func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) ([]Execution, []model.TargetMapping, error) {
+func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) (*model.ExecutionStatus, []Execution, []model.TargetMapping, error) {
 	var sourceClient *ssh.Client
 	var targetClient *ssh.Client
 	var target *model.Target
@@ -96,12 +97,12 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 
 		sourceClient, err = ssh.NewSSHClient(ssh.ConnectionTypeSource, server.SourceConnectionInfoID, "", "")
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
 		}
 
 		vmId, err := getVMId(server.SourceConnectionInfoID, nsId, mciId)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
 		}
 
 		target = &model.Target{
@@ -114,7 +115,7 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 		if err != nil {
 			_ = sourceClient.Close()
 
-			return nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
+			return nil, nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
 		}
 
 		for _, execution := range server.MigrationList.Packages {
@@ -181,14 +182,35 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 		})
 	}
 
-	return exList, targetMappings, nil
+	executionStatus, err := dao.ExecutionStatusCreate(&model.ExecutionStatus{
+		ExecutionID:    executionID,
+		TargetMappings: targetMappings,
+		Status:         "ready",
+		StartedAt:      time.Time{},
+		FinishedAt:     time.Time{},
+	})
+	if err != nil {
+		logger.Println(logger.ERROR, true, "Failed to create execution status ("+
+			"ExecutionID: "+executionID+")")
+		return nil, nil, nil, err
+	}
+
+	return executionStatus, exList, targetMappings, nil
 }
 
-func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationList,
+func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID string, migrationList *softwaremodel.MigrationList,
 	migrationStatusList []model.SoftwareMigrationStatus, sourceClient *ssh.Client, targetClient *ssh.Client) {
+	exStatus := "finished"
+
 	defer func() {
 		_ = sourceClient.Close()
 		_ = targetClient.Close()
+		exs.Status = exStatus
+		err := dao.ExecutionStatusUpdate(exs)
+		if err != nil {
+			logger.Println(logger.ERROR, true, "Failed to update execution status ("+exs.ExecutionID+")")
+		}
+		wg.Done()
 	}()
 
 	// Cache system types once at the beginning
@@ -197,6 +219,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 	if loggerErr != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 			", Error=failed to initialize logger: "+loggerErr.Error())
+		exStatus = "failed"
 		return
 	}
 	defer migrationLogger.Close()
@@ -205,6 +228,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 			", Error=failed to detect source system type: "+err.Error())
+		exStatus = "failed"
 		return
 	}
 
@@ -212,16 +236,22 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 			", Error=failed to detect target system type: "+err.Error())
+		exStatus = "failed"
 		return
 	}
 
 	if sourceSystemType != targetSystemType {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 			", Error=system type mismatch")
+		exStatus = "failed"
 		return
 	}
 
-	var updateStatus = func(installType softwaremodel.SoftwareType, i int, status string, errMsg string, updateStartedTime bool) {
+	var updateSoftwareInstallStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
+		if status == "failed" {
+			exStatus = "finished with error"
+		}
+
 		migrationStatusList[i].Status = status
 		migrationStatusList[i].ErrorMessage = errMsg
 		now := time.Now()
@@ -242,7 +272,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 	var podmanRuntimeChecked bool
 	var podmanInstallOk bool
 
-	for i, execution := range executionList.Containers {
+	for i, execution := range migrationList.Containers {
 		if execution.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypeDocker) {
 			if dockerRuntimeChecked {
 				if !dockerInstallOk {
@@ -277,24 +307,24 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			}
 		}
 
-		updateStatus(softwaremodel.SoftwareTypeContainer, i, "installing", "", true)
+		updateSoftwareInstallStatus(i, "installing", "", true)
 
 		logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+executionID+
 			", InstallType=container, ContainerName="+execution.Name)
 
-		for i, execution := range executionList.Containers {
+		for i, execution := range migrationList.Containers {
 			// 1. image pull
 			imageRef := fmt.Sprintf("%s:%s", execution.ContainerImage.ImageName, execution.ContainerImage.ImageVersion)
 			pulCmd := fmt.Sprintf("docker pull %s", imageRef)
 			pullCmd := sudoWrapper(pulCmd, targetClient.SSHTarget.Password)
 			if _, err := targetClient.Run(pullCmd); err != nil {
-				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
 
 			// 2. port validation
 			if err := listenPortsValidator(sourceClient, targetClient, execution.Name, migrationLogger); err != nil {
-				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
 
@@ -307,7 +337,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 					"ExecutionID="+executionID+", Info=Copying full directory: "+baseDir)
 
 				if err := copyDirectoryWithChunks(sourceClient, targetClient, baseDir, executionID, migrationLogger); err != nil {
-					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+					updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 					continue
 				}
 
@@ -315,7 +345,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 				for _, mount := range execution.MountPaths {
 					hostPath := strings.Split(mount, ":")[0]
 					if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
-						updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
+						updateSoftwareInstallStatus(i, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
 						continue
 					}
 				}
@@ -331,9 +361,9 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 				composeCmd := sudoWrapper(copCmd, targetClient.SSHTarget.Password)
 
 				if _, err := targetClient.Run(composeCmd); err != nil {
-					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+					updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				} else {
-					updateStatus(softwaremodel.SoftwareTypeContainer, i, "finished", "", true)
+					updateSoftwareInstallStatus(i, "finished", "", false)
 				}
 
 				continue
@@ -350,7 +380,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 						createNetCmd := sudoWrapper(createCmd, targetClient.SSHTarget.Password)
 
 						if _, cerr := targetClient.Run(createNetCmd); cerr != nil {
-							updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", cerr.Error(), false)
+							updateSoftwareInstallStatus(i, "failed", cerr.Error(), false)
 							continue
 						}
 					}
@@ -373,7 +403,7 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 				hostPath := strings.Split(mount, ":")[0]
 
 				if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
-					updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
+					updateSoftwareInstallStatus(i, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
 					continue
 				}
 
@@ -392,15 +422,15 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			runCmd += " " + imageRef
 
 			if _, err := targetClient.Run(runCmd); err != nil {
-				updateStatus(softwaremodel.SoftwareTypeContainer, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
 
-			updateStatus(softwaremodel.SoftwareTypeContainer, i, "finished", "", true)
+			updateSoftwareInstallStatus(i, "finished", "", false)
 
 		}
 
-		if len(executionList.Packages) > 0 {
+		if len(migrationList.Packages) > 0 {
 			logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
 
 			// Migrate repository configuration
@@ -412,14 +442,14 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			}
 		}
 
-		for i, execution := range executionList.Packages {
-			updateStatus(softwaremodel.SoftwareTypePackage, i, "installing", "", true)
+		for i, execution := range migrationList.Packages {
+			updateSoftwareInstallStatus(i, "installing", "", true)
 
 			err := runPlaybook(executionID, "package", execution.Name, targetClient.SSHTarget)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 
 				return
 			}
@@ -428,17 +458,17 @@ func MigrateSoftware(executionID string, executionList *softwaremodel.MigrationL
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 			}
 
 			err = serviceMigrator(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
 					", InstallType=package, Error="+err.Error())
-				updateStatus(softwaremodel.SoftwareTypePackage, i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 			}
 
-			updateStatus(softwaremodel.SoftwareTypePackage, i, "finished", "", true)
+			updateSoftwareInstallStatus(i, "finished", "", false)
 		}
 	}
 }

@@ -61,6 +61,11 @@ func Open() error {
 		logger.Panicln(logger.ERROR, true, err)
 	}
 
+	err = DB.AutoMigrate(&model.ExecutionStatus{})
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err)
+	}
+
 	return err
 }
 

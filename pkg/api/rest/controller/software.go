@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
+	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
@@ -77,16 +79,24 @@ func MigrateSoftware(c echo.Context) error {
 
 	executionID := uuid.New().String()
 
-	exList, targetMappings, err :=
+	executionStatus, exList, targetMappings, err :=
 		software.PrepareSoftwareMigration(executionID, targetSoftwareModel.TargetSoftwareModel.Servers,
 			nsIdStr, mciIdStr)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	for _, e := range exList {
-		go software.MigrateSoftware(e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
-	}
+	go func(exs *model.ExecutionStatus) {
+		var wg *sync.WaitGroup
+
+		wg.Add(len(exList))
+
+		for _, e := range exList {
+			go software.MigrateSoftware(wg, exs, e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
+		}
+
+		wg.Wait()
+	}(executionStatus)
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:    executionID,
@@ -139,4 +149,77 @@ func GetSoftwareMigrationLog(c echo.Context) error {
 	}
 
 	return c.JSONPretty(http.StatusOK, response, " ")
+}
+
+// GetSoftwareMigrationStatus godoc
+//
+//	@ID				get-software-migration-status
+//	@Summary		Get Software Migration Status
+//	@Description	Get the software migration status.
+//	@Tags			[Migration] Software migration APIs
+//	@Accept			json
+//	@Produce		json
+//	@Param			executionId path string true "ID of the software migration execution."
+//	@Success		200	{object}	model.MigrationLogRes	"Successfully get the software migration status"
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration status"
+//	@Router			/software/migrate/status/{executionId} [get]
+func GetSoftwareMigrationStatus(c echo.Context) error {
+	executionID := c.Param("executionId")
+	if executionID == "" {
+		return common.ReturnErrorMsg(c, "Please provide the executionId.")
+	}
+
+	path, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder, executionID))
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return common.ReturnErrorMsg(c, fmt.Sprintf("Log path for executionID %s not found", executionID))
+	}
+
+	response := model.MigrationLogRes{
+		UUID: executionID,
+	}
+
+	if content, err := os.ReadFile(filepath.Join(path, "install.log")); err == nil {
+		response.InstallLog = string(content)
+	}
+
+	if content, err := os.ReadFile(filepath.Join(path, "migration.log")); err == nil {
+		response.MigrationLog = string(content)
+	}
+
+	if response.InstallLog == "" && response.MigrationLog == "" {
+		return common.ReturnErrorMsg(c, fmt.Sprintf("No log files found for executionID %s", executionID))
+	}
+
+	return c.JSONPretty(http.StatusOK, response, " ")
+}
+
+// ListSoftwareMigrationStatus godoc
+//
+//	@ID				list-software-migration-status
+//	@Summary		List Software Migration Status
+//	@Description	Get a list of software migration status.
+//	@Tags			[Migration] Software migration APIs
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	[]model.SoftwareMigrateRes	"Successfully get a list of software migration status"
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to get the software migration status"
+//	@Router			/software/migrate/status [get]
+func ListSoftwareMigrationStatus(c echo.Context) error {
+	page, row, err := common.CheckPageRow(c)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	softwareMigrationStatusList, err := dao.ExecutionStatusGetList(page, row)
+	if err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	return c.JSONPretty(http.StatusOK, softwareMigrationStatusList, " ")
 }

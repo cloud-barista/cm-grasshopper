@@ -115,11 +115,10 @@ func isPackageManagerPackage(packageName string) bool {
 //	return &infraInfo, nil
 //}
 
-func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.PackageMigrationInfo, []string) {
+func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) ([]softwaremodel.PackageMigrationInfo, []string) {
 	migrationPackages := make([]softwaremodel.PackageMigrationInfo, 0)
 	errMsgs := make([]string, 0)
 
-	var i int
 	for _, pkg := range packages {
 		if isLibraryPackage(pkg.Name) {
 			continue
@@ -137,10 +136,10 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 			continue
 		}
 
-		i++
+		*prevOrder++
 
 		newSoftware := softwaremodel.PackageMigrationInfo{
-			Order:                i,
+			Order:                *prevOrder,
 			Name:                 pkg.Name,
 			Version:              pkg.Version,
 			NeededPackages:       strings.Split(pkg.NeededPackages, ","),
@@ -158,16 +157,15 @@ func processSoftwarePackages(packages []softwaremodel.Package) ([]softwaremodel.
 	return migrationPackages, errMsgs
 }
 
-func processSoftwareContainers(containers []softwaremodel.Container) ([]softwaremodel.ContainerMigrationInfo, []string) {
+func processSoftwareContainers(prevOrder *int, containers []softwaremodel.Container) ([]softwaremodel.ContainerMigrationInfo, []string) {
 	migrationContainers := make([]softwaremodel.ContainerMigrationInfo, 0)
 	errMsgs := make([]string, 0)
 
-	var i int
 	for _, c := range containers {
-		i++
+		*prevOrder++
 
 		newContainer := softwaremodel.ContainerMigrationInfo{
-			Order:       i,
+			Order:       *prevOrder,
 			Name:        c.Name,
 			Runtime:     string(c.Runtime),
 			ContainerId: c.ContainerId,
@@ -223,8 +221,10 @@ func MakeMigrationListRes(sourceSoftwareModel *softwaremodel.SourceSoftwareModel
 
 		var server softwaremodel.MigrationServer
 
-		server.MigrationList.Packages, server.Errors = processSoftwarePackages(source.Softwares.Packages)
-		server.MigrationList.Containers, server.Errors = processSoftwareContainers(source.Softwares.Containers)
+		var prevOrder int
+
+		server.MigrationList.Packages, server.Errors = processSoftwarePackages(&prevOrder, source.Softwares.Packages)
+		server.MigrationList.Containers, server.Errors = processSoftwareContainers(&prevOrder, source.Softwares.Containers)
 		server.SourceConnectionInfoID = source.ConnectionId
 
 		servers = append(servers, server)

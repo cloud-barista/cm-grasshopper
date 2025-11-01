@@ -57,8 +57,22 @@ type SoftwareMigrationStatus struct {
 
 type SoftwareMigrationStatusList []SoftwareMigrationStatus
 
-type SoftwareInstallStatusReq struct {
+type TargetMappingList []TargetMapping
+
+type ExecutionStatus struct {
+	ExecutionID    string            `json:"execution_id" gorm:"primaryKey"`
+	TargetMappings TargetMappingList `json:"target_mappings"`
+	Status         string            `json:"status"`
+	StartedAt      time.Time         `json:"started_at"`
+	FinishedAt     time.Time         `json:"finished_at"`
+}
+
+type SoftwareMigrationStatusReq struct {
 	ExecutionID string `json:"execution_id"`
+}
+
+type SoftwareMigrationStatusRes struct {
+	ExecutionStatusList []ExecutionStatus `json:"execution_status_list"`
 }
 
 func (t Target) Value() (driver.Value, error) {
@@ -74,6 +88,36 @@ func (t *Target) Scan(value interface{}) error {
 		return errors.New("invalid type for Target")
 	}
 	return json.Unmarshal(bytes, t)
+}
+
+func (tm TargetMapping) Value() (driver.Value, error) {
+	return json.Marshal(tm)
+}
+
+func (tm *TargetMapping) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("invalid type for TargetMapping")
+	}
+	return json.Unmarshal(bytes, tm)
+}
+
+func (tml TargetMappingList) Value() (driver.Value, error) {
+	return json.Marshal(tml)
+}
+
+func (tml *TargetMappingList) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("invalid type for TargetMappingList")
+	}
+	return json.Unmarshal(bytes, tml)
 }
 
 func (esl SoftwareMigrationStatusList) Value() (driver.Value, error) {
