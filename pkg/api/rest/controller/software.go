@@ -86,17 +86,17 @@ func MigrateSoftware(c echo.Context) error {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	go func(exs *model.ExecutionStatus) {
-		var wg *sync.WaitGroup
+	go func(exs *model.ExecutionStatus, exl []software.Execution) {
+		var wg sync.WaitGroup
 
-		wg.Add(len(exList))
+		wg.Add(len(exl))
 
-		for _, e := range exList {
-			go software.MigrateSoftware(wg, exs, e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
+		for _, e := range exl {
+			go software.MigrateSoftware(&wg, exs, e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
 		}
 
 		wg.Wait()
-	}(executionStatus)
+	}(executionStatus, exList)
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:    executionID,
