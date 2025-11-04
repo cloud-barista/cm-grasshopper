@@ -86,7 +86,9 @@ func MigrateSoftware(c echo.Context) error {
 	}
 
 	for _, ex := range exList {
-		go software.MigrateSoftware(&ex)
+		go func(execution software.Execution) {
+			software.MigrateSoftware(&execution)
+		}(ex)
 	}
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
