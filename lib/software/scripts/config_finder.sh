@@ -39,6 +39,8 @@ should_skip_path() {
     case "$1" in
         /proc/*|/dev/*|/sys/*|/run/*|*/doc/*|*/man/*|*copyright*|*LICENSE*|*README*|*CHANGELOG*)
             return 0 ;;
+        /etc/passwd|/etc/group|/etc/shadow|/etc/shadow-|/etc/gshadow|/etc/gshadow-|/etc/sudoers|/etc/sudoers.d/*)
+            return 0 ;;
         *) return 1 ;;
     esac
 }
