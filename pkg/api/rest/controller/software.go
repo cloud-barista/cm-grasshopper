@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
@@ -79,24 +78,16 @@ func MigrateSoftware(c echo.Context) error {
 
 	executionID := uuid.New().String()
 
-	executionStatus, exList, targetMappings, err :=
+	exList, targetMappings, err :=
 		software.PrepareSoftwareMigration(executionID, targetSoftwareModel.TargetSoftwareModel.Servers,
 			nsIdStr, mciIdStr)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	go func(exs *model.ExecutionStatus, exl []software.Execution) {
-		var wg sync.WaitGroup
-
-		wg.Add(len(exl))
-
-		for _, e := range exl {
-			go software.MigrateSoftware(&wg, exs, e.ExecutionID, e.MigrationList, e.MigrationStatusList, e.SourceClient, e.TargetClient)
-		}
-
-		wg.Wait()
-	}(executionStatus, exList)
+	for _, ex := range exList {
+		go software.MigrateSoftware(&ex)
+	}
 
 	return c.JSONPretty(http.StatusOK, model.SoftwareMigrateRes{
 		ExecutionID:    executionID,

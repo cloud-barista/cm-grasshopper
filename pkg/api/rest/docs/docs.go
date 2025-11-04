@@ -360,6 +360,9 @@ const docTemplate = `{
                 "source_connection_info_id": {
                     "type": "string"
                 },
+                "status": {
+                    "type": "string"
+                },
                 "target": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
                 }

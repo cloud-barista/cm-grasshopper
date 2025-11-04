@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -21,11 +20,13 @@ import (
 )
 
 type Execution struct {
-	ExecutionID         string
-	MigrationList       *softwaremodel.MigrationList
-	MigrationStatusList []model.SoftwareMigrationStatus
-	SourceClient        *ssh.Client
-	TargetClient        *ssh.Client
+	ExecutionID            string
+	MigrationList          *softwaremodel.MigrationList
+	MigrationStatusList    []model.SoftwareMigrationStatus
+	Target                 model.Target
+	SourceConnectionInfoID string
+	SourceClient           *ssh.Client
+	TargetClient           *ssh.Client
 }
 
 func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
@@ -83,7 +84,7 @@ func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 	return "", errors.New("can't find matched target vm")
 }
 
-func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) (*model.ExecutionStatus, []Execution, []model.TargetMapping, error) {
+func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) ([]Execution, []model.TargetMapping, error) {
 	var sourceClient *ssh.Client
 	var targetClient *ssh.Client
 	var target *model.Target
@@ -97,12 +98,12 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 
 		sourceClient, err = ssh.NewSSHClient(ssh.ConnectionTypeSource, server.SourceConnectionInfoID, "", "")
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
+			return nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
 		}
 
 		vmId, err := getVMId(server.SourceConnectionInfoID, nsId, mciId)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
+			return nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
 		}
 
 		target = &model.Target{
@@ -115,7 +116,7 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 		if err != nil {
 			_ = sourceClient.Close()
 
-			return nil, nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
+			return nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
 		}
 
 		for _, execution := range server.MigrationList.Packages {
@@ -169,79 +170,98 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 		// TODO - Kubernetes Migration
 
 		exList = append(exList, Execution{
-			ExecutionID:         executionID,
-			MigrationList:       &server.MigrationList,
-			MigrationStatusList: softwareMigrationStatusList,
-			SourceClient:        sourceClient,
-			TargetClient:        targetClient,
+			ExecutionID:            executionID,
+			MigrationList:          &server.MigrationList,
+			MigrationStatusList:    softwareMigrationStatusList,
+			SourceConnectionInfoID: server.SourceConnectionInfoID,
+			Target:                 *target,
+			SourceClient:           sourceClient,
+			TargetClient:           targetClient,
 		})
 
 		targetMappings = append(targetMappings, model.TargetMapping{
 			SourceConnectionInfoID: server.SourceConnectionInfoID,
 			Target:                 *target,
+			Status:                 "ready",
 		})
 	}
 
-	executionStatus, err := dao.ExecutionStatusCreate(&model.ExecutionStatus{
+	_, err = dao.ExecutionStatusCreate(&model.ExecutionStatus{
 		ExecutionID:    executionID,
 		TargetMappings: targetMappings,
-		Status:         "ready",
 		StartedAt:      time.Time{},
 		FinishedAt:     time.Time{},
 	})
 	if err != nil {
 		logger.Println(logger.ERROR, true, "Failed to create execution status ("+
 			"ExecutionID: "+executionID+")")
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return executionStatus, exList, targetMappings, nil
+	return exList, targetMappings, nil
 }
 
-func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID string, migrationList *softwaremodel.MigrationList,
-	migrationStatusList []model.SoftwareMigrationStatus, sourceClient *ssh.Client, targetClient *ssh.Client) {
+func MigrateSoftware(execution *Execution) {
 	exStatus := "finished"
+	var idx int
+
+	executionStatus, err := dao.ExecutionStatusGet(execution.ExecutionID)
+	if err != nil {
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+			", Error=failed to initialize executionStatus: "+err.Error())
+		return
+	}
+
+	for i, target := range executionStatus.TargetMappings {
+		if target.Target.NamespaceID == execution.Target.NamespaceID &&
+			target.Target.MCIID == execution.Target.MCIID &&
+			target.Target.VMID == execution.Target.VMID &&
+			target.SourceConnectionInfoID == execution.SourceConnectionInfoID {
+			idx = i
+			break
+		}
+	}
 
 	defer func() {
-		_ = sourceClient.Close()
-		_ = targetClient.Close()
-		exs.Status = exStatus
-		err := dao.ExecutionStatusUpdate(exs)
+		_ = execution.SourceClient.Close()
+		_ = execution.TargetClient.Close()
+		executionStatus.TargetMappings[idx].Status = exStatus
+		err := dao.ExecutionStatusUpdate(executionStatus)
 		if err != nil {
-			logger.Println(logger.ERROR, true, "Failed to update execution status ("+exs.ExecutionID+")")
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+				", Error=failed to update execution status: "+err.Error())
 		}
-		wg.Done()
 	}()
 
 	// Cache system types once at the beginning
 	var sourceSystemType, targetSystemType SystemType
-	migrationLogger, loggerErr := initLoggerWithUUID(executionID)
+	migrationLogger, loggerErr := initLoggerWithUUID(execution.ExecutionID)
 	if loggerErr != nil {
-		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 			", Error=failed to initialize logger: "+loggerErr.Error())
 		exStatus = "failed"
 		return
 	}
 	defer migrationLogger.Close()
 
-	sourceSystemType, err := getSystemType(sourceClient, migrationLogger)
+	sourceSystemType, err = getSystemType(execution.SourceClient, migrationLogger)
 	if err != nil {
-		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 			", Error=failed to detect source system type: "+err.Error())
 		exStatus = "failed"
 		return
 	}
 
-	targetSystemType, err = getSystemType(targetClient, migrationLogger)
+	targetSystemType, err = getSystemType(execution.TargetClient, migrationLogger)
 	if err != nil {
-		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 			", Error=failed to detect target system type: "+err.Error())
 		exStatus = "failed"
 		return
 	}
 
 	if sourceSystemType != targetSystemType {
-		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 			", Error=system type mismatch")
 		exStatus = "failed"
 		return
@@ -252,17 +272,17 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 			exStatus = "finished with error"
 		}
 
-		migrationStatusList[i].Status = status
-		migrationStatusList[i].ErrorMessage = errMsg
+		execution.MigrationStatusList[i].Status = status
+		execution.MigrationStatusList[i].ErrorMessage = errMsg
 		now := time.Now()
 		if updateStartedTime {
-			migrationStatusList[i].StartedAt = now
+			execution.MigrationStatusList[i].StartedAt = now
 		}
-		migrationStatusList[i].UpdatedAt = now
+		execution.MigrationStatusList[i].UpdatedAt = now
 
-		err := dao.SoftwareMigrationStatusUpdate(&migrationStatusList[i])
+		err := dao.SoftwareMigrationStatusUpdate(&execution.MigrationStatusList[i])
 		if err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 				", Error="+err.Error())
 		}
 	}
@@ -272,16 +292,16 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 	var podmanRuntimeChecked bool
 	var podmanInstallOk bool
 
-	for i, execution := range migrationList.Containers {
-		if execution.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypeDocker) {
+	for i, ex := range execution.MigrationList.Containers {
+		if ex.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypeDocker) {
 			if dockerRuntimeChecked {
 				if !dockerInstallOk {
 					continue
 				}
 			} else {
-				err = runtimeInstaller(targetClient, softwaremodel.SoftwareContainerRuntimeTypeDocker, migrationLogger)
+				err = runtimeInstaller(execution.TargetClient, softwaremodel.SoftwareContainerRuntimeTypeDocker, migrationLogger)
 				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 						", InstallType=container, Error="+err.Error())
 					dockerInstallOk = false
 				} else {
@@ -289,15 +309,15 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 				}
 				dockerRuntimeChecked = true
 			}
-		} else if execution.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+		} else if ex.Runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
 			if podmanRuntimeChecked {
 				if !podmanInstallOk {
 					continue
 				}
 			} else {
-				err = runtimeInstaller(targetClient, softwaremodel.SoftwareContainerRuntimeTypePodman, migrationLogger)
+				err = runtimeInstaller(execution.TargetClient, softwaremodel.SoftwareContainerRuntimeTypePodman, migrationLogger)
 				if err != nil {
-					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 						", InstallType=container, Error="+err.Error())
 					podmanInstallOk = false
 				} else {
@@ -309,58 +329,58 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 
 		updateSoftwareInstallStatus(i, "installing", "", true)
 
-		logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+executionID+
-			", InstallType=container, ContainerName="+execution.Name)
+		logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+			", InstallType=container, ContainerName="+ex.Name)
 
-		for i, execution := range migrationList.Containers {
+		for i, ex := range execution.MigrationList.Containers {
 			// 1. image pull
-			imageRef := fmt.Sprintf("%s:%s", execution.ContainerImage.ImageName, execution.ContainerImage.ImageVersion)
+			imageRef := fmt.Sprintf("%s:%s", ex.ContainerImage.ImageName, ex.ContainerImage.ImageVersion)
 			pulCmd := fmt.Sprintf("docker pull %s", imageRef)
-			pullCmd := sudoWrapper(pulCmd, targetClient.SSHTarget.Password)
-			if _, err := targetClient.Run(pullCmd); err != nil {
+			pullCmd := sudoWrapper(pulCmd, execution.TargetClient.SSHTarget.Password)
+			if _, err := execution.TargetClient.Run(pullCmd); err != nil {
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
 
 			// 2. port validation
-			if err := listenPortsValidator(sourceClient, targetClient, execution.Name, migrationLogger); err != nil {
+			if err := listenPortsValidator(execution.SourceClient, execution.TargetClient, ex.Name, migrationLogger); err != nil {
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
 
 			// 3. copy docker compose
-			if execution.DockerComposePath != "" {
-				baseDir := filepath.Dir(execution.DockerComposePath) // => /home/ubuntu
-				dockerComposeFile := filepath.Base(execution.DockerComposePath)
+			if ex.DockerComposePath != "" {
+				baseDir := filepath.Dir(ex.DockerComposePath) // => /home/ubuntu
+				dockerComposeFile := filepath.Base(ex.DockerComposePath)
 
 				migrationLogger.Println(INFO, true,
-					"ExecutionID="+executionID+", Info=Copying full directory: "+baseDir)
+					"ExecutionID="+execution.ExecutionID+", Info=Copying full directory: "+baseDir)
 
-				if err := copyDirectoryWithChunks(sourceClient, targetClient, baseDir, executionID, migrationLogger); err != nil {
+				if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, baseDir, execution.ExecutionID, migrationLogger); err != nil {
 					updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 					continue
 				}
 
 				// 3-1 volume
-				for _, mount := range execution.MountPaths {
+				for _, mount := range ex.MountPaths {
 					hostPath := strings.Split(mount, ":")[0]
-					if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
+					if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
 						updateSoftwareInstallStatus(i, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
 						continue
 					}
 				}
 
 				// 3-2 create compose network
-				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
-					rmCmd := fmt.Sprintf("docker network rm %s || true", execution.NetworkMode)
-					rmNetCmd := sudoWrapper(rmCmd, targetClient.SSHTarget.Password)
-					_, _ = targetClient.Run(rmNetCmd)
+				if ex.NetworkMode != "" && ex.NetworkMode != "bridge" {
+					rmCmd := fmt.Sprintf("docker network rm %s || true", ex.NetworkMode)
+					rmNetCmd := sudoWrapper(rmCmd, execution.TargetClient.SSHTarget.Password)
+					_, _ = execution.TargetClient.Run(rmNetCmd)
 				}
 
 				copCmd := fmt.Sprintf("cd %s && docker compose -f "+dockerComposeFile+" up -d", baseDir)
-				composeCmd := sudoWrapper(copCmd, targetClient.SSHTarget.Password)
+				composeCmd := sudoWrapper(copCmd, execution.TargetClient.SSHTarget.Password)
 
-				if _, err := targetClient.Run(composeCmd); err != nil {
+				if _, err := execution.TargetClient.Run(composeCmd); err != nil {
 					updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				} else {
 					updateSoftwareInstallStatus(i, "finished", "", false)
@@ -370,16 +390,16 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 			}
 
 			// 4. generate network
-			if execution.DockerComposePath == "" {
-				if execution.NetworkMode != "" && execution.NetworkMode != "bridge" {
-					checkCmd := fmt.Sprintf("docker network ls --format '{{.Name}}' | grep -w %s", execution.NetworkMode)
-					checkNetCmd := sudoWrapper(checkCmd, targetClient.SSHTarget.Password)
+			if ex.DockerComposePath == "" {
+				if ex.NetworkMode != "" && ex.NetworkMode != "bridge" {
+					checkCmd := fmt.Sprintf("docker network ls --format '{{.Name}}' | grep -w %s", ex.NetworkMode)
+					checkNetCmd := sudoWrapper(checkCmd, execution.TargetClient.SSHTarget.Password)
 
-					if _, err := targetClient.Run(checkNetCmd); err != nil {
-						createCmd := fmt.Sprintf("docker network create %s", execution.NetworkMode)
-						createNetCmd := sudoWrapper(createCmd, targetClient.SSHTarget.Password)
+					if _, err := execution.TargetClient.Run(checkNetCmd); err != nil {
+						createCmd := fmt.Sprintf("docker network create %s", ex.NetworkMode)
+						createNetCmd := sudoWrapper(createCmd, execution.TargetClient.SSHTarget.Password)
 
-						if _, cerr := targetClient.Run(createNetCmd); cerr != nil {
+						if _, cerr := execution.TargetClient.Run(createNetCmd); cerr != nil {
 							updateSoftwareInstallStatus(i, "failed", cerr.Error(), false)
 							continue
 						}
@@ -388,21 +408,21 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 			}
 
 			// 5. docker run
-			dockerRunCmd := fmt.Sprintf("docker run -d --name %s", execution.Name)
-			runCmd := sudoWrapper(dockerRunCmd, targetClient.SSHTarget.Password)
+			dockerRunCmd := fmt.Sprintf("docker run -d --name %s", ex.Name)
+			runCmd := sudoWrapper(dockerRunCmd, execution.TargetClient.SSHTarget.Password)
 
 			validatedPorts := make(map[int]bool)
-			for _, port := range execution.ContainerPorts {
+			for _, port := range ex.ContainerPorts {
 				if port.HostPort > 0 && !validatedPorts[port.HostPort] {
 					runCmd += fmt.Sprintf(" -p %d:%d/%s", port.HostPort, port.ContainerPort, port.Protocol)
 					validatedPorts[port.HostPort] = true
 				}
 			}
 
-			for _, mount := range execution.MountPaths {
+			for _, mount := range ex.MountPaths {
 				hostPath := strings.Split(mount, ":")[0]
 
-				if err := copyDirectoryWithChunks(sourceClient, targetClient, hostPath, executionID, migrationLogger); err != nil {
+				if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
 					updateSoftwareInstallStatus(i, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
 					continue
 				}
@@ -410,18 +430,18 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 				runCmd += fmt.Sprintf(" -v %s", mount)
 			}
 
-			for _, env := range execution.Envs {
+			for _, env := range ex.Envs {
 				runCmd += fmt.Sprintf(" -e %s=%s", env.Name, env.Value)
 			}
-			if execution.NetworkMode != "" {
-				runCmd += fmt.Sprintf(" --network %s", execution.NetworkMode)
+			if ex.NetworkMode != "" {
+				runCmd += fmt.Sprintf(" --network %s", ex.NetworkMode)
 			}
-			if execution.RestartPolicy != "" {
-				runCmd += fmt.Sprintf(" --restart %s", execution.RestartPolicy)
+			if ex.RestartPolicy != "" {
+				runCmd += fmt.Sprintf(" --restart %s", ex.RestartPolicy)
 			}
 			runCmd += " " + imageRef
 
-			if _, err := targetClient.Run(runCmd); err != nil {
+			if _, err := execution.TargetClient.Run(runCmd); err != nil {
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 				continue
 			}
@@ -430,11 +450,11 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 
 		}
 
-		if len(migrationList.Packages) > 0 {
+		if len(execution.MigrationList.Packages) > 0 {
 			logger.Println(logger.INFO, true, "migrateSoftware: Starting repository and GPG keys migration")
 
 			// Migrate repository configuration
-			if err := MigrateRepositoryConfiguration(sourceClient, targetClient, executionID, migrationLogger); err != nil {
+			if err := MigrateRepositoryConfiguration(execution.SourceClient, execution.TargetClient, execution.ExecutionID, migrationLogger); err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: Repository migration failed: "+err.Error())
 				// Continue with package migration even if repo migration fails
 			} else {
@@ -442,28 +462,28 @@ func MigrateSoftware(wg *sync.WaitGroup, exs *model.ExecutionStatus, executionID
 			}
 		}
 
-		for i, execution := range migrationList.Packages {
+		for i, ex := range execution.MigrationList.Packages {
 			updateSoftwareInstallStatus(i, "installing", "", true)
 
-			err := runPlaybook(executionID, "package", execution.Name, targetClient.SSHTarget)
+			err := runPlaybook(execution.ExecutionID, "package", ex.Name, execution.TargetClient.SSHTarget)
 			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 
 				return
 			}
 
-			err = configCopier(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
+			err = configCopier(execution.SourceClient, execution.TargetClient, ex.Name, execution.ExecutionID, migrationLogger)
 			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 			}
 
-			err = serviceMigrator(sourceClient, targetClient, execution.Name, executionID, migrationLogger)
+			err = serviceMigrator(execution.SourceClient, execution.TargetClient, ex.Name, execution.ExecutionID, migrationLogger)
 			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+executionID+
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
 			}

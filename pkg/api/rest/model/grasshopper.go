@@ -25,15 +25,10 @@ type MigrationLogRes struct {
 	MigrationLog string `json:"migration_log"`
 }
 
-type SoftwareMigrateReq struct {
-	SourceConnectionInfoID string                      `json:"source_connection_info_id" validate:"required"`
-	Target                 Target                      `json:"target" validate:"required"`
-	MigrationList          softwaremodel.MigrationList `json:"migration_list"`
-}
-
 type TargetMapping struct {
 	SourceConnectionInfoID string `json:"source_connection_info_id"`
 	Target                 Target `json:"target" validate:"required"`
+	Status                 string `json:"status"`
 }
 
 type SoftwareMigrateRes struct {
@@ -62,7 +57,6 @@ type TargetMappingList []TargetMapping
 type ExecutionStatus struct {
 	ExecutionID    string            `json:"execution_id" gorm:"primaryKey"`
 	TargetMappings TargetMappingList `json:"target_mappings"`
-	Status         string            `json:"status"`
 	StartedAt      time.Time         `json:"started_at"`
 	FinishedAt     time.Time         `json:"finished_at"`
 }
