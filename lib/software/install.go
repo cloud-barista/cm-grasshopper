@@ -123,7 +123,9 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
-				Target:                 *target,
+				NamespaceID:            nsId,
+				MCIID:                  mciId,
+				VMID:                   vmId,
 				Order:                  execution.Order,
 				SoftwareName:           execution.Name,
 				SoftwareVersion:        execution.Version,
@@ -147,7 +149,9 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
-				Target:                 *target,
+				NamespaceID:            nsId,
+				MCIID:                  mciId,
+				VMID:                   vmId,
 				Order:                  execution.Order,
 				SoftwareName:           execution.Name,
 				SoftwareVersion:        execution.ContainerImage.ImageVersion,
@@ -447,7 +451,6 @@ func MigrateSoftware(execution *Execution) {
 			}
 
 			updateSoftwareInstallStatus(i, "finished", "", false)
-
 		}
 
 		if len(execution.MigrationList.Packages) > 0 {

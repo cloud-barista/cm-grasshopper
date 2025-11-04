@@ -161,32 +161,50 @@ func GetSoftwareMigrationStatus(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the executionId.")
 	}
 
-	path, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.LogFolder, executionID))
+	ex, err := dao.ExecutionStatusGet(executionID)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return common.ReturnErrorMsg(c, fmt.Sprintf("Log path for executionID %s not found", executionID))
+	var targetMappings []model.TargetMappingWithSoftwareMigrationList
+
+	for _, target := range ex.TargetMappings {
+		list, err := dao.SoftwareMigrationStatusGetList(executionID, target.Target, target.SourceConnectionInfoID, 0, 0)
+		if err != nil {
+			return common.ReturnErrorMsg(c, err.Error())
+		}
+
+		var softwareMigrationStatusList []model.SoftwareMigrationStatusSoftwareStatusOnly
+
+		for _, sm := range *list {
+			softwareMigrationStatusList = append(softwareMigrationStatusList, model.SoftwareMigrationStatusSoftwareStatusOnly{
+				Order:               sm.Order,
+				SoftwareName:        sm.SoftwareName,
+				SoftwareVersion:     sm.SoftwareVersion,
+				SoftwareInstallType: sm.SoftwareInstallType,
+				Status:              sm.Status,
+				StartedAt:           sm.StartedAt,
+				UpdatedAt:           sm.UpdatedAt,
+				ErrorMessage:        sm.ErrorMessage,
+			})
+		}
+
+		targetMappings = append(targetMappings, model.TargetMappingWithSoftwareMigrationList{
+			SourceConnectionInfoID:      target.SourceConnectionInfoID,
+			Target:                      target.Target,
+			Status:                      target.Status,
+			SoftwareMigrationStatusList: softwareMigrationStatusList,
+		})
 	}
 
-	response := model.MigrationLogRes{
-		UUID: executionID,
+	executionStatus := model.ExecutionStatusWithSoftwareMigrationList{
+		ExecutionID:    executionID,
+		TargetMappings: targetMappings,
+		StartedAt:      ex.StartedAt,
+		FinishedAt:     ex.FinishedAt,
 	}
 
-	if content, err := os.ReadFile(filepath.Join(path, "install.log")); err == nil {
-		response.InstallLog = string(content)
-	}
-
-	if content, err := os.ReadFile(filepath.Join(path, "migration.log")); err == nil {
-		response.MigrationLog = string(content)
-	}
-
-	if response.InstallLog == "" && response.MigrationLog == "" {
-		return common.ReturnErrorMsg(c, fmt.Sprintf("No log files found for executionID %s", executionID))
-	}
-
-	return c.JSONPretty(http.StatusOK, response, " ")
+	return c.JSONPretty(http.StatusOK, executionStatus, " ")
 }
 
 // ListSoftwareMigrationStatus godoc

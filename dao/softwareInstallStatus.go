@@ -38,7 +38,7 @@ func SoftwareMigrationStatusGet(executionID string, sourceConnectionInfoID strin
 	return software, nil
 }
 
-func SoftwareMigrationStatusGetList(page int, row int) (*[]model.SoftwareMigrationStatus, error) {
+func SoftwareMigrationStatusGetList(executionID string, target model.Target, sourceConnectionInfoID string, page int, row int) (*[]model.SoftwareMigrationStatus, error) {
 	softwareInstallStatusList := &[]model.SoftwareMigrationStatus{}
 
 	if db.DB == nil {
@@ -60,7 +60,8 @@ func SoftwareMigrationStatusGetList(page int, row int) (*[]model.SoftwareMigrati
 			return filtered
 		}
 		return filtered
-	}).Find(softwareInstallStatusList)
+	}).Where("execution_id = ? AND source_connection_info_id = ? AND namespace_id = ? AND mci_id = ? AND vm_id = ?",
+		executionID, sourceConnectionInfoID, target.NamespaceID, target.MCIID, target.VMID).Find(softwareInstallStatusList)
 
 	err := result.Error
 	if err != nil {

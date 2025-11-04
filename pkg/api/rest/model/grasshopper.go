@@ -39,7 +39,9 @@ type SoftwareMigrateRes struct {
 type SoftwareMigrationStatus struct {
 	ExecutionID            string                     `json:"execution_id" gorm:"primaryKey"`
 	SourceConnectionInfoID string                     `json:"source_connection_info_id" gorm:"primaryKey"`
-	Target                 Target                     `json:"target"`
+	NamespaceID            string                     `json:"namespace_id" validate:"required"`
+	MCIID                  string                     `json:"mci_id" validate:"required"`
+	VMID                   string                     `json:"vm_id" validate:"required"`
 	Order                  int                        `json:"order" gorm:"primaryKey"`
 	SoftwareName           string                     `json:"software_name"`
 	SoftwareVersion        string                     `json:"software_version"`
@@ -67,6 +69,31 @@ type SoftwareMigrationStatusReq struct {
 
 type SoftwareMigrationStatusRes struct {
 	ExecutionStatusList []ExecutionStatus `json:"execution_status_list"`
+}
+
+type SoftwareMigrationStatusSoftwareStatusOnly struct {
+	Order               int                        `json:"order" gorm:"primaryKey"`
+	SoftwareName        string                     `json:"software_name"`
+	SoftwareVersion     string                     `json:"software_version"`
+	SoftwareInstallType softwaremodel.SoftwareType `json:"software_install_type" gorm:"primaryKey"`
+	Status              string                     `json:"status"`
+	StartedAt           time.Time                  `json:"started_at"`
+	UpdatedAt           time.Time                  `json:"updated_at"`
+	ErrorMessage        string                     `json:"error_message"`
+}
+
+type TargetMappingWithSoftwareMigrationList struct {
+	SourceConnectionInfoID      string                                      `json:"source_connection_info_id"`
+	Target                      Target                                      `json:"target" validate:"required"`
+	Status                      string                                      `json:"status"`
+	SoftwareMigrationStatusList []SoftwareMigrationStatusSoftwareStatusOnly `json:"software_migration_status_list"`
+}
+
+type ExecutionStatusWithSoftwareMigrationList struct {
+	ExecutionID    string                                   `json:"execution_id" gorm:"primaryKey"`
+	TargetMappings []TargetMappingWithSoftwareMigrationList `json:"target_mappings"`
+	StartedAt      time.Time                                `json:"started_at"`
+	FinishedAt     time.Time                                `json:"finished_at"`
 }
 
 func (t Target) Value() (driver.Value, error) {
