@@ -54,7 +54,7 @@ func checkDirectorySize(client *ssh.Client, dirPath string) (int64, error) {
 	cmd := fmt.Sprintf("du -sb '%s' 2>/dev/null | cut -f1 || echo 0", dirPath)
 	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("%s", string(output))
 	}
 
 	sizeStr := strings.TrimSpace(string(output))
@@ -191,8 +191,8 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 	output, err := sourceSession.CombinedOutput(sudoWrapper(cmd, sourcePassword))
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to get file stats: %v\n", err)
-		return fmt.Errorf("failed to get file stats: %v", err)
+		migrationLogger.Printf(ERROR, "Failed to get file stats: %s\n", string(output))
+		return fmt.Errorf("failed to get file stats: %s", string(output))
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -227,8 +227,8 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 		content, err := session.CombinedOutput(sudoWrapper(contentCmd, sourcePassword))
 		if err != nil {
-			migrationLogger.Printf(ERROR, "Failed to read symlink target content: %v\n", err)
-			return fmt.Errorf("failed to read symlink target: %v", err)
+			migrationLogger.Printf(ERROR, "Failed to read symlink target content: %s\n", string(content))
+			return fmt.Errorf("failed to read symlink target: %s", string(content))
 		}
 		defer func() {
 			_ = session.Close()
@@ -247,8 +247,8 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 
 		content, err := session.CombinedOutput(sudoWrapper(contentCmd, sourcePassword))
 		if err != nil {
-			migrationLogger.Printf(ERROR, "Failed to read file content: %v\n", err)
-			return fmt.Errorf("failed to read file content: %v", err)
+			migrationLogger.Printf(ERROR, "Failed to read file content: %s\n", string(content))
+			return fmt.Errorf("failed to read file content: %s", string(content))
 		}
 		defer func() {
 			_ = session.Close()
@@ -319,7 +319,7 @@ EOL
 	}()
 
 	if output, err := targetSession.CombinedOutput(sudoWrapper(copyCmd, targetPassword)); err != nil {
-		migrationLogger.Printf(ERROR, "Failed to execute copy command: %v\n", err)
+		migrationLogger.Printf(ERROR, "Failed to execute copy command: %s\n", string(output))
 		return fmt.Errorf("failed to copy file: %s", string(output))
 	}
 
@@ -435,7 +435,7 @@ func findReferencedDirectories(sourceClient *ssh.Client, filePath string) ([]Dir
 	catCmd := fmt.Sprintf("cat '%s'", filePath)
 	output, err := session.CombinedOutput(sudoWrapper(catCmd, sourceClient.SSHTarget.Password))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %s", string(output))
 	}
 
 	content := string(output)
@@ -559,7 +559,7 @@ func transferChunk(sourceClient, targetClient *ssh.Client, sourceDir, targetDir,
 
 	chunkData, err := sourceSession.CombinedOutput(sudoWrapper(readChunkCmd, sourceClient.SSHTarget.Password))
 	if err != nil {
-		return fmt.Errorf("failed to read chunk: %v", err)
+		return fmt.Errorf("failed to read chunk: %s", string(chunkData))
 	}
 
 	migrationLogger.Printf(DEBUG, "Read %d bytes from source chunk %s\n", len(chunkData), chunkName)
@@ -588,9 +588,9 @@ func transferChunk(sourceClient, targetClient *ssh.Client, sourceDir, targetDir,
 			return fmt.Errorf("failed to create target session: %v", err)
 		}
 
-		if _, err := targetSession.CombinedOutput(sudoWrapper(writeCmd, targetClient.SSHTarget.Password)); err != nil {
+		if output, err := targetSession.CombinedOutput(sudoWrapper(writeCmd, targetClient.SSHTarget.Password)); err != nil {
 			_ = targetSession.Close()
-			return fmt.Errorf("failed to write chunk part: %v", err)
+			return fmt.Errorf("failed to write chunk part: %v", string(output))
 		}
 		_ = targetSession.Close()
 	}
@@ -689,7 +689,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 		sizeOutput, err := sourceSession.CombinedOutput(sudoWrapper(checkChunkSizeCmd, sourceClient.SSHTarget.Password))
 		_ = sourceSession.Close()
 		if err != nil {
-			migrationLogger.Printf(WARN, "Failed to get chunk size: %v\n", err)
+			migrationLogger.Printf(WARN, "Failed to get chunk size: %s\n", string(sizeOutput))
 			continue
 		}
 
@@ -716,7 +716,7 @@ func copyDirectoryWithChunks(sourceClient, targetClient *ssh.Client, dirPath str
 		targetSizeOutput, err := targetSession.CombinedOutput(sudoWrapper(verifyTargetChunkCmd, targetClient.SSHTarget.Password))
 		_ = targetSession.Close()
 		if err != nil {
-			migrationLogger.Printf(WARN, "Failed to verify target chunk size: %v\n", err)
+			migrationLogger.Printf(WARN, "Failed to verify target chunk size: %s\n", string(targetSizeOutput))
 			continue
 		}
 

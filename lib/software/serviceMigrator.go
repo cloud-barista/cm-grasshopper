@@ -64,7 +64,7 @@ func getRealServiceName(client *ssh.Client, name string, migrationLogger *Logger
 	cmd := fmt.Sprintf("systemctl show -p Id --value %s", name)
 	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to get real service name for %s: %v\n", name, err)
+		migrationLogger.Printf(ERROR, "Failed to get real service name for %s: %s\n", name, string(output))
 		return name, err
 	}
 
@@ -319,8 +319,8 @@ func getSystemType(client *ssh.Client, migrationLogger *Logger) (SystemType, err
 
 	output, err := session.CombinedOutput(sudoWrapper("cat /etc/os-release", client.SSHTarget.Password))
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to read os-release: %v\n", err)
-		return Unknown, fmt.Errorf("failed to read os-release: %v", err)
+		migrationLogger.Printf(ERROR, "Failed to read os-release: %s\n", string(output))
+		return Unknown, fmt.Errorf("failed to read os-release: %s", string(output))
 	}
 
 	var id string

@@ -106,12 +106,10 @@ func updatePackageRepositories(client *ssh.Client, migrationLogger *Logger) erro
 
 	wrappedCmd := sudoWrapper(updateCmd, client.SSHTarget.Password)
 	output, err := session.CombinedOutput(wrappedCmd)
-
 	migrationLogger.Printf(DEBUG, "Repository update output: %s\n", string(output))
-
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Repository update failed: %v\n", err)
-		return fmt.Errorf("repository update failed: %v", err)
+		migrationLogger.Printf(ERROR, "Repository update failed: %s\n", string(output))
+		return fmt.Errorf("repository update failed: %s", string(output))
 	}
 
 	migrationLogger.Printf(INFO, "Package repositories updated successfully\n")
@@ -157,8 +155,8 @@ func copyFromRemoteToLocal(client *ssh.Client, remotePath, localPath string, mig
 
 	output, err := session.CombinedOutput(wrappedCmd)
 	if err != nil {
-		migrationLogger.Printf(ERROR, "Failed to create tar archive: %v\n", err)
-		return fmt.Errorf("tar archive creation failed: %v", err)
+		migrationLogger.Printf(ERROR, "Failed to create tar archive: %s\n", string(output))
+		return fmt.Errorf("tar archive creation failed: %s", string(output))
 	}
 
 	// Save tar content to local file
@@ -192,9 +190,9 @@ func copyFromLocalToRemote(client *ssh.Client, localPath, remotePath string, mig
 	}()
 
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", remotePath)
-	_, err = session.CombinedOutput(mkdirCmd)
+	output, err := session.CombinedOutput(mkdirCmd)
 	if err != nil {
-		return fmt.Errorf("failed to create remote directory: %v", err)
+		return fmt.Errorf("failed to create remote directory: %s", string(output))
 	}
 
 	// Transfer and extract tar file
@@ -254,9 +252,9 @@ func cleanupRemoteDir(client *ssh.Client, remotePath string, migrationLogger *Lo
 
 	cleanupCmd := fmt.Sprintf("rm -rf %s", remotePath)
 	wrappedCmd := sudoWrapper(cleanupCmd, client.SSHTarget.Password)
-	_, err = session.CombinedOutput(wrappedCmd)
+	output, err := session.CombinedOutput(wrappedCmd)
 	if err != nil {
-		migrationLogger.Printf(WARN, "Failed to cleanup remote directory %s: %v\n", remotePath, err)
+		migrationLogger.Printf(WARN, "Failed to cleanup remote directory %s: %s\n", remotePath, string(output))
 	} else {
 		migrationLogger.Printf(DEBUG, "Successfully cleaned up remote directory: %s\n", remotePath)
 	}
