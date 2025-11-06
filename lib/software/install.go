@@ -193,7 +193,7 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 	_, err = dao.ExecutionStatusCreate(&model.ExecutionStatus{
 		ExecutionID:    executionID,
 		TargetMappings: targetMappings,
-		StartedAt:      time.Time{},
+		StartedAt:      time.Now(),
 		FinishedAt:     time.Time{},
 	})
 	if err != nil {
@@ -246,6 +246,7 @@ func MigrateSoftware(execution *Execution) {
 		_ = execution.SourceClient.Close()
 		_ = execution.TargetClient.Close()
 		executionStatus.TargetMappings[idx].Status = exStatus
+		executionStatus.FinishedAt = time.Now()
 		err := dao.ExecutionStatusUpdate(executionStatus)
 		if err != nil {
 			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
