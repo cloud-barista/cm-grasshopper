@@ -300,20 +300,29 @@ func MigrateSoftware(execution *Execution) {
 		return
 	}
 
-	var updateSoftwareInstallStatus = func(i int, status string, errMsg string, updateStartedTime bool) {
+	var updateSoftwareInstallStatus = func(order int, status string, errMsg string, updateStartedTime bool) {
 		if status == "failed" {
 			exStatus = "finished with error"
 		}
 
-		execution.MigrationStatusList[i].Status = status
-		execution.MigrationStatusList[i].ErrorMessage = errMsg
+		var softwareMigrationStatus model.SoftwareMigrationStatus
+
+		for _, sms := range execution.MigrationStatusList {
+			if sms.Order == order {
+				softwareMigrationStatus = sms
+				break
+			}
+		}
+
+		softwareMigrationStatus.Status = status
+		softwareMigrationStatus.ErrorMessage = errMsg
 		now := time.Now()
 		if updateStartedTime {
-			execution.MigrationStatusList[i].StartedAt = now
+			softwareMigrationStatus.StartedAt = now
 		}
-		execution.MigrationStatusList[i].UpdatedAt = now
+		softwareMigrationStatus.UpdatedAt = now
 
-		err := dao.SoftwareMigrationStatusUpdate(&execution.MigrationStatusList[i])
+		err := dao.SoftwareMigrationStatusUpdate(&softwareMigrationStatus)
 		if err != nil {
 			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
@@ -347,8 +356,8 @@ func MigrateSoftware(execution *Execution) {
 		}
 	}
 
-	for i, ex := range execution.MigrationList.Containers {
-		updateSoftwareInstallStatus(i, "installing", "", true)
+	for _, ex := range execution.MigrationList.Containers {
+		updateSoftwareInstallStatus(ex.Order, "installing", "", true)
 
 		logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
@@ -360,13 +369,13 @@ func MigrateSoftware(execution *Execution) {
 		pulCmd := fmt.Sprintf("docker pull %s", imageRef)
 		pullCmd := sudoWrapper(pulCmd, execution.TargetClient.SSHTarget.Password)
 		if _, err := execution.TargetClient.Run(pullCmd); err != nil {
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
 		// 2. port validation
 		if err := listenPortsValidator(execution.SourceClient, execution.TargetClient, ex.Name, migrationLogger); err != nil {
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
@@ -381,7 +390,7 @@ func MigrateSoftware(execution *Execution) {
 				"ExecutionID="+execution.ExecutionID+", Info=Copying full directory: "+baseDir)
 
 			if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, baseDir, execution.ExecutionID, migrationLogger); err != nil {
-				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 				continue
 			}
 
@@ -389,7 +398,7 @@ func MigrateSoftware(execution *Execution) {
 			for _, mount := range ex.MountPaths {
 				hostPath := strings.Split(mount, ":")[0]
 				if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
-					updateSoftwareInstallStatus(i, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
+					updateSoftwareInstallStatus(ex.Order, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
 					continue
 				}
 			}
@@ -405,9 +414,9 @@ func MigrateSoftware(execution *Execution) {
 			composeCmd := sudoWrapper(copCmd, execution.TargetClient.SSHTarget.Password)
 
 			if _, err := execution.TargetClient.Run(composeCmd); err != nil {
-				updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+				updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			} else {
-				updateSoftwareInstallStatus(i, "finished", "", false)
+				updateSoftwareInstallStatus(ex.Order, "finished", "", false)
 			}
 
 			continue
@@ -424,7 +433,7 @@ func MigrateSoftware(execution *Execution) {
 					createNetCmd := sudoWrapper(createCmd, execution.TargetClient.SSHTarget.Password)
 
 					if _, cerr := execution.TargetClient.Run(createNetCmd); cerr != nil {
-						updateSoftwareInstallStatus(i, "failed", cerr.Error(), false)
+						updateSoftwareInstallStatus(ex.Order, "failed", cerr.Error(), false)
 						continue
 					}
 				}
@@ -447,7 +456,7 @@ func MigrateSoftware(execution *Execution) {
 			hostPath := strings.Split(mount, ":")[0]
 
 			if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
-				updateSoftwareInstallStatus(i, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
+				updateSoftwareInstallStatus(ex.Order, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
 				continue
 			}
 
@@ -466,11 +475,11 @@ func MigrateSoftware(execution *Execution) {
 		runCmd += " " + imageRef
 
 		if _, err := execution.TargetClient.Run(runCmd); err != nil {
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
-		updateSoftwareInstallStatus(i, "finished", "", false)
+		updateSoftwareInstallStatus(ex.Order, "finished", "", false)
 	}
 
 	if len(execution.MigrationList.Packages) > 0 {
@@ -494,8 +503,8 @@ func MigrateSoftware(execution *Execution) {
 		}
 	}
 
-	for i, ex := range execution.MigrationList.Packages {
-		updateSoftwareInstallStatus(i, "installing", "", true)
+	for _, ex := range execution.MigrationList.Packages {
+		updateSoftwareInstallStatus(ex.Order, "installing", "", true)
 
 		err := runPlaybook(execution.ExecutionID, "package", ex.Name, execution.TargetClient.SSHTarget)
 		if err != nil {
@@ -503,7 +512,7 @@ func MigrateSoftware(execution *Execution) {
 				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				", InstallType=package, Error="+err.Error())
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
@@ -513,7 +522,7 @@ func MigrateSoftware(execution *Execution) {
 				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				", InstallType=package, Error="+err.Error())
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
@@ -523,10 +532,10 @@ func MigrateSoftware(execution *Execution) {
 				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				", InstallType=package, Error="+err.Error())
-			updateSoftwareInstallStatus(i, "failed", err.Error(), false)
+			updateSoftwareInstallStatus(ex.Order, "failed", err.Error(), false)
 			continue
 		}
 
-		updateSoftwareInstallStatus(i, "finished", "", false)
+		updateSoftwareInstallStatus(ex.Order, "finished", "", false)
 	}
 }
