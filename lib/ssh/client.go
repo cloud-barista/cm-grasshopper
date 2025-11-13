@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 
 	"net"
 	"strconv"
@@ -33,6 +34,8 @@ type Client struct {
 	id             string
 	nsID           string
 	mciID          string
+	keepAliveStop  chan struct{}
+	keepAliveOnce  sync.Once
 }
 
 func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
@@ -70,6 +73,37 @@ func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
 	}
 
 	return nil, err
+}
+
+func (c *Client) startKeepAlive() {
+	c.keepAliveOnce.Do(func() {
+		c.keepAliveStop = make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(1 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					if c.Client != nil {
+						_, _, _ = c.SendRequest("keepalive@"+comm.ShortModuleName, true, nil)
+					}
+				case <-c.keepAliveStop:
+					return
+				}
+			}
+		}()
+	})
+}
+
+func (c *Client) Close() error {
+	if c.keepAliveStop != nil {
+		close(c.keepAliveStop)
+	}
+	if c.Client != nil {
+		return c.Client.Close()
+	}
+	return nil
 }
 
 func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
@@ -228,12 +262,17 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 		return nil, errors.New("invalid connection type")
 	}
 
-	return &Client{
+	sshClient := &Client{
 		Client:         client,
 		SSHTarget:      sshTarget,
 		connectionType: connectionType,
 		id:             id,
 		nsID:           nsID,
 		mciID:          mciID,
-	}, nil
+	}
+
+	// Start SSH KeepAlive to prevent connection timeout
+	sshClient.startKeepAlive()
+
+	return sshClient, nil
 }
