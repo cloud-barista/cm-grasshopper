@@ -3,13 +3,13 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.25.0
 
 require (
-	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251210120621-8135c4681772
-	github.com/cloud-barista/cm-honeybee/server v0.0.0-20251210120621-8135c4681772
+	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251219035137-b7836f652d06
+	github.com/cloud-barista/cm-honeybee/server v0.0.0-20251219035137-b7836f652d06
 	github.com/cloud-barista/cm-model v0.0.15
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
-	github.com/labstack/echo/v4 v4.13.4
+	github.com/labstack/echo/v4 v4.14.0
 	github.com/melbahja/goph v1.4.0
 	github.com/otiai10/copy v1.14.1
 	github.com/swaggo/echo-swagger v1.4.1

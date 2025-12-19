@@ -2,10 +2,10 @@ github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/apparentlymart/go-cidr v1.1.0 h1:2mAhrMoF+nhXqxTzSZMUzDHkLjmIHC+Zzn4tdgBZjnU=
 github.com/apparentlymart/go-cidr v1.1.0/go.mod h1:EBcsNrHc3zQeuaeCeCtQruQm+n9/YjEn/vI25Lg7Gwc=
-github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251210120621-8135c4681772 h1:wkPpelSbKoV++cpvjGTUGGXlCG9UHvJoSxAHIfYSb9I=
-github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251210120621-8135c4681772/go.mod h1:RLWzJB0w72PCNlKkPtHzvGYjLLB+0e8MXDhM6BQXFVk=
-github.com/cloud-barista/cm-honeybee/server v0.0.0-20251210120621-8135c4681772 h1:ar8tM5wDFZ6mDApEewvF55hOl/Lmk9J6sNru3Ctd4Fc=
-github.com/cloud-barista/cm-honeybee/server v0.0.0-20251210120621-8135c4681772/go.mod h1:bwmRbBSqx2xTa9ktYXM4YTen17AziinRRQ2XCZK0xIs=
+github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251219035137-b7836f652d06 h1:3T8vwBaCixO6bKDkL8Z5you3hgnaLVT92P3XsBo3vGw=
+github.com/cloud-barista/cm-honeybee/agent v0.0.0-20251219035137-b7836f652d06/go.mod h1:3zwLKAs5n0unOx0sPR+lbkqY6YDRxQMCox+P1ySE4kk=
+github.com/cloud-barista/cm-honeybee/server v0.0.0-20251219035137-b7836f652d06 h1:Ks6F207jfs7TGd2HSk6w84PqNzuNXH/uBfUPdlIdQNU=
+github.com/cloud-barista/cm-honeybee/server v0.0.0-20251219035137-b7836f652d06/go.mod h1:6Z5jnSFad3ZbDt4T9RPiyDoOSfVc4cNiPk6HyqecWVU=
 github.com/cloud-barista/cm-model v0.0.15 h1:OJcQrJnCcQTLXXJitnBmp0XJiBwfpB1mye0qhddRyZM=
 github.com/cloud-barista/cm-model v0.0.15/go.mod h1:gSuMhQxD813KIdSvkp8uGptYOeyDik749sYcICZjhj8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -68,8 +68,8 @@ github.com/jollaman999/utils v1.0.10 h1:LBXsM9fKH1tXACTgsRnSKHXkHE3TaCymwiMp2kFX
 github.com/jollaman999/utils v1.0.10/go.mod h1:fb4x+o0k105MFIBBaNRN+tat7F3RbkolnURccQd3UEA=
 github.com/kr/fs v0.1.0 h1:Jskdu9ieNAYnjxsi0LbQp1ulIKZV1LAFgK1tWhpZgl8=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
-github.com/labstack/echo/v4 v4.13.4 h1:oTZZW+T3s9gAu5L8vmzihV7/lkXGZuITzTQkTEhcXEA=
-github.com/labstack/echo/v4 v4.13.4/go.mod h1:g63b33BZ5vZzcIUF8AtRH40DrTlXnx4UMC8rBdndmjQ=
+github.com/labstack/echo/v4 v4.14.0 h1:+tiMrDLxwv6u0oKtD03mv+V1vXXB3wCqPHJqPuIe+7M=
+github.com/labstack/echo/v4 v4.14.0/go.mod h1:xmw1clThob0BSVRX1CRQkGQ/vjwcpOMjQZSZa9fKA/c=
 github.com/labstack/gommon v0.4.2 h1:F8qTUNXgG1+6WQmqoUWnz8WiEU60mXVVw0P4ht1WRA0=
 github.com/labstack/gommon v0.4.2/go.mod h1:QlUFxVM+SNXhDL/Z7YhocGIBYOiwB0mXm1+1bAPHPyU=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
@@ -102,8 +102,8 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
-github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
+github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/swaggo/echo-swagger v1.4.1 h1:Yf0uPaJWp1uRtDloZALyLnvdBeoEL5Kc7DtnjzO/TUk=
 github.com/swaggo/echo-swagger v1.4.1/go.mod h1:C8bSi+9yH2FLZsnhqMZLIZddpUxZdBYuNHbtaS1Hljc=
 github.com/swaggo/files/v2 v2.0.2 h1:Bq4tgS/yxLB/3nwOMcul5oLEUKa877Ykgz3CJMVbQKU=
