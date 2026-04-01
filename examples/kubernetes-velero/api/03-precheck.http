@@ -24,10 +24,7 @@ Content-Type: application/json
   },
   "precheck": {
     "sourceNamespace": "demo",
-    "targetNamespace": "demo-restored",
-    "storageClassMappings": {
-      "nfs-client": "nfs-client"
-    }
+    "targetNamespace": "demo-restored"
   }
 }
 

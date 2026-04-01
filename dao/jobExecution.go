@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func JobExecutionCreate(job *model.JobExecution) (*model.JobExecution, error) {
+func CreateExecution(job *model.JobExecution) (*model.JobExecution, error) {
 	if db.DB == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
@@ -21,7 +21,7 @@ func JobExecutionCreate(job *model.JobExecution) (*model.JobExecution, error) {
 	return job, nil
 }
 
-func JobExecutionGet(jobID string) (*model.JobExecution, error) {
+func GetExecution(jobID string) (*model.JobExecution, error) {
 	job := &model.JobExecution{}
 
 	if db.DB == nil {
@@ -39,7 +39,7 @@ func JobExecutionGet(jobID string) (*model.JobExecution, error) {
 	return job, nil
 }
 
-func JobExecutionGetList(page int, row int) (*[]model.JobExecution, error) {
+func ListExecutions(page int, row int) (*[]model.JobExecution, error) {
 	jobList := &[]model.JobExecution{}
 
 	if db.DB == nil {
@@ -69,7 +69,7 @@ func JobExecutionGetList(page int, row int) (*[]model.JobExecution, error) {
 	return jobList, nil
 }
 
-func JobExecutionUpdate(job *model.JobExecution) error {
+func UpdateExecution(job *model.JobExecution) error {
 	if db.DB == nil {
 		return errors.New("database connection is not initialized")
 	}

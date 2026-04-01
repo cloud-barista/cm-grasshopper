@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	k8scommon "github.com/cloud-barista/cm-grasshopper/lib/k8s/common"
-	restmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	velerov1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
@@ -21,7 +21,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewRESTConfig(cluster *restmodel.ClusterAccess) (*rest.Config, error) {
+func NewRESTConfig(cluster *commonmodel.ClusterAccess) (*rest.Config, error) {
 	if err := k8scommon.ValidateClusterAccess(cluster); err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func NewScheme() (*runtime.Scheme, error) {
 	return scheme, nil
 }
 
-func NewKubernetesClient(cluster *restmodel.ClusterAccess) (*kubernetes.Clientset, ctrlclient.Client, error) {
+func NewKubernetesClient(cluster *commonmodel.ClusterAccess) (*kubernetes.Clientset, ctrlclient.Client, error) {
 	cfg, err := NewRESTConfig(cluster)
 	if err != nil {
 		return nil, nil, err
@@ -76,7 +76,7 @@ func NewKubernetesClient(cluster *restmodel.ClusterAccess) (*kubernetes.Clientse
 	return clientset, controllerClient, nil
 }
 
-func NewHelmActionConfig(cluster *restmodel.ClusterAccess) (*action.Configuration, error) {
+func NewHelmActionConfig(cluster *commonmodel.ClusterAccess) (*action.Configuration, error) {
 	cfg, err := NewRESTConfig(cluster)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func NewHelmActionConfig(cluster *restmodel.ClusterAccess) (*action.Configuratio
 	return actionConfig, nil
 }
 
-func NewMinIOClient(minioAccess *restmodel.MinIOAccess) (*minio.Client, error) {
+func NewMinIOClient(minioAccess *commonmodel.MinIOAccess) (*minio.Client, error) {
 	if err := k8scommon.ValidateMinIOAccess(minioAccess); err != nil {
 		return nil, err
 	}

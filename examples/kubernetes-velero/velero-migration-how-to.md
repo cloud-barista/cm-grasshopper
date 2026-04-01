@@ -19,7 +19,7 @@
 - [README.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/README.md)
 - [source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml)
 - [velero-migration-api.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/velero-migration-api.md)
-- [rest-client.env.json](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/rest-client.env.json)
+- [http-client.env.json](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/http-client.env.json)
 - [01-install.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/01-install.http)
 - [02-health.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/02-health.http)
 - [03-precheck.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/03-precheck.http)
@@ -187,7 +187,7 @@ kubectl -n demo exec deploy/app -- sh -c 'cat /usr/share/nginx/html/data/check.t
    - [velero-migration-api.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/velero-migration-api.md)
 2. REST Client 사용
    - flow files: `01-` ~ `07-` `.http`
-   - environment file: `api/rest-client.env.json`
+   - environment file: `api/http-client.env.json`
 
 처음엔 `.http` 파일로 하는 것을 권장합니다. source/target kubeconfig와 MinIO 값만 바꾸면 순서대로 테스트하기 편합니다.
 
@@ -220,6 +220,8 @@ API
 ```bash
 curl http://localhost:8084/grasshopper/job/status/{{job_id}}
 ```
+
+- `current_stage` 를 보면 지금 precheck/backup/backup_sync/restore 중 어디인지 빠르게 파악할 수 있습니다.
 
 ```bash
 curl http://localhost:8084/grasshopper/job/log/{{job_id}}
@@ -325,6 +327,7 @@ API
 - `services`
 - `configmaps`
 - `secrets`
+- `persistentvolumes`,
 - `persistentvolumeclaims`
 - `pods`
 
@@ -359,6 +362,11 @@ kubectl -n velero get backup backup-demo-fsb -o yaml
 
 backup이 정상 완료되면 restore를 따로 검증합니다.
 
+중요
+
+- restore 생성 전에 target cluster에서 backup sync가 끝났는지 먼저 확인합니다.
+- backup sync 전이면 restore API가 바로 실패하도록 바뀌었으니, 이 단계를 건너뛰지 않는 것이 좋습니다.
+
 
 
 API
@@ -375,6 +383,22 @@ API
 - `storageClassMappings`
 - `existingResourcePolicy: "update"`
 - `restorePVs: true`
+
+### 10-0. target cluster에서 backup sync 먼저 확인
+
+아래처럼 target kubeconfig 기준으로 backup 조회가 먼저 성공해야 합니다.
+
+```bash
+curl -X POST http://localhost:8084/grasshopper/velero/source/backups/backup-demo-fsb \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "sourceCluster": {
+      "name": "target-cluster",
+      "namespace": "velero",
+      "kubeconfig": "{{base64_target_kubeconfig}}"
+    }
+  }'
+```
 
 
 
@@ -548,6 +572,8 @@ API
 curl http://localhost:8084/grasshopper/job/status/{{job_id}}
 ```
 
+- `current_stage` 는 execute 흐름의 상위 단계 요약입니다.
+
 ```bash
 curl http://localhost:8084/grasshopper/job/log/{{job_id}}
 ```
@@ -669,7 +695,7 @@ base64 -i /tmp/source-kubeconfig.yaml | tr -d '\n'
 base64 -i /tmp/target-kubeconfig.yaml | tr -d '\n'
 ```
 
-이 값을 `api/rest-client.env.json` 의 `local` 환경에 넣습니다.
+이 값을 `api/http-client.env.json` 의 `local` 환경에 넣습니다.
 
 
 
@@ -746,7 +772,7 @@ kubectl --kubeconfig /tmp/source-kubeconfig -n demo exec deploy/app -- sh -c 'ca
 
 ### 18-7. cm-grasshopper API 요청 값 채우기
 
-`api/rest-client.env.json` 의 `local` 환경에 아래 값을 채웁니다.
+`api/http-client.env.json` 의 `local` 환경에 아래 값을 채웁니다.
 
 1. `base64_source_kubeconfig`
 2. `base64_target_kubeconfig`
@@ -823,6 +849,10 @@ hello-velero
 - source pod에 실제로 파일이 기록됐는지 확인
 - backup validate / restore validate 먼저 확인
 - velero node-agent pod 상태 확인
+
+4. restore create가 바로 실패함
+- `backup is not available on target cluster yet` 메시지면 target backup sync 대기 후 재시도
+- `validationErrors`가 보이면 restore validate 또는 restore get 응답에서 상세 원인 확인
 
 예시
 

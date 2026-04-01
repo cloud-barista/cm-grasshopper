@@ -12,7 +12,8 @@ import (
 	k8sclient "github.com/cloud-barista/cm-grasshopper/lib/k8s/client"
 	k8scommon "github.com/cloud-barista/cm-grasshopper/lib/k8s/common"
 	k8sinstaller "github.com/cloud-barista/cm-grasshopper/lib/k8s/installer"
-	restmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
+	veleromodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/velero"
 	"github.com/google/uuid"
 	velerov1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,7 +41,28 @@ func NewService() *Service {
 	}
 }
 
-func (s *Service) HealthCheck(ctx context.Context, cluster *restmodel.ClusterAccess) (*restmodel.VeleroHealthResponse, error) {
+func updateJobProgressSafe(jobID string, progress int, message string) {
+	if joblib.DefaultManager == nil {
+		return
+	}
+	_ = joblib.DefaultManager.UpdateJobStatus(jobID, joblib.StatusProcessing, progress, message)
+}
+
+func formatMetaTime(t metav1.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+func formatMetaTimePtr(t *metav1.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+func (s *Service) HealthCheck(ctx context.Context, cluster *commonmodel.ClusterAccess) (*veleromodel.HealthResponse, error) {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -52,7 +74,7 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *restmodel.ClusterAcc
 		return nil, err
 	}
 
-	response := &restmodel.VeleroHealthResponse{
+	response := &veleromodel.HealthResponse{
 		Status:    "ok",
 		Cluster:   strings.TrimSpace(cluster.Name),
 		Namespace: namespace,
@@ -60,7 +82,7 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *restmodel.ClusterAcc
 
 	bsl := &velerov1.BackupStorageLocation{}
 	if err := controllerClient.Get(ctx, ctrlclient.ObjectKey{Namespace: namespace, Name: "minio"}, bsl); err == nil {
-		summary := &restmodel.VeleroBackupStorageLocationHealth{
+		summary := &veleromodel.BackupStorageLocationHealth{
 			Name:  bsl.Name,
 			Phase: string(bsl.Status.Phase),
 		}
@@ -68,7 +90,7 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *restmodel.ClusterAcc
 			summary.Message = bsl.Status.Message
 		}
 		if !bsl.Status.LastValidationTime.IsZero() {
-			summary.LastValidationTime = bsl.Status.LastValidationTime
+			summary.LastValidationTime = formatMetaTimePtr(bsl.Status.LastValidationTime)
 		}
 		response.BackupStorageLocation = summary
 		if bsl.Status.Phase != velerov1.BackupStorageLocationPhaseAvailable {
@@ -79,12 +101,12 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *restmodel.ClusterAcc
 	return response, nil
 }
 
-func (s *Service) InstallAsync(clusterRole string, cluster *restmodel.ClusterAccess, minioAccess *restmodel.MinIOAccess, force bool, volumeBackupMode string) (*joblib.Info, error) {
+func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) (*joblib.Info, error) {
 	if joblib.DefaultManager == nil {
 		return nil, fmt.Errorf("job manager is not initialized")
 	}
 	if volumeBackupMode == "" {
-		volumeBackupMode = restmodel.VeleroVolumeBackupModeFilesystem
+		volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
 	}
 
 	metadata := map[string]interface{}{
@@ -128,7 +150,7 @@ func (s *Service) InstallAsync(clusterRole string, cluster *restmodel.ClusterAcc
 	return job, nil
 }
 
-func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *restmodel.ClusterAccess, minioAccess *restmodel.MinIOAccess, spec restmodel.VeleroMigrationPrecheckSpec) (*restmodel.VeleroPrecheckResponse, error) {
+func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, spec veleromodel.MigrationPrecheckSpec) (*veleromodel.PrecheckResponse, error) {
 	sourceHealth, err := s.HealthCheck(ctx, sourceCluster)
 	if err != nil {
 		return nil, fmt.Errorf("source cluster velero health check failed: %w", err)
@@ -157,17 +179,17 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 		return nil, fmt.Errorf("failed to ensure minio bucket %q: %w", bucketName, err)
 	}
 
-	result := &restmodel.VeleroPrecheckResponse{
+	result := &veleromodel.PrecheckResponse{
 		Status: "ready",
-		Source: restmodel.VeleroPrecheckClusterSummary{
+		Source: veleromodel.PrecheckClusterSummary{
 			Name:      sourceCluster.Name,
 			Namespace: k8scommon.DefaultNamespace(sourceCluster, k8sinstaller.DefaultVeleroNamespace),
 		},
-		Target: restmodel.VeleroPrecheckClusterSummary{
+		Target: veleromodel.PrecheckClusterSummary{
 			Name:      targetCluster.Name,
 			Namespace: k8scommon.DefaultNamespace(targetCluster, k8sinstaller.DefaultVeleroNamespace),
 		},
-		Storage: restmodel.VeleroPrecheckStorageSummary{
+		Storage: veleromodel.PrecheckStorageSummary{
 			Endpoint: minioAccess.Endpoint,
 			Bucket:   bucketName,
 		},
@@ -252,7 +274,7 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 		result.Source.StorageClasses = sourceStorageClasses
 	}
 	if len(targetStorageClasses) > 0 {
-		result.Target.StorageClasses = targetStorageClasses
+		result.Target.StorageClasses = sortedKeys(targetStorageClasses)
 	}
 
 	missingMappings := []string{}
@@ -288,11 +310,11 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 		unusedMappings[sourceStorageClass] = targetStorageClass
 	}
 	if len(usedMappings) > 0 || len(unusedMappings) > 0 || len(missingMappings) > 0 {
-		recommendation := map[string]interface{}{
-			"mappingRequired": len(missingMappings) > 0,
-			"usedMappings":    usedMappings,
-			"unusedMappings":  unusedMappings,
-			"missingMappings": missingMappings,
+		recommendation := &veleromodel.StorageClassRecommendation{
+			MappingRequired: len(missingMappings) > 0,
+			UsedMappings:    usedMappings,
+			UnusedMappings:  unusedMappings,
+			MissingMappings: missingMappings,
 		}
 		if len(missingMappings) > 0 {
 			suggestedMappings := map[string]string{}
@@ -302,7 +324,7 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 					break
 				}
 			}
-			recommendation["suggestedMappings"] = suggestedMappings
+			recommendation.SuggestedMappings = suggestedMappings
 		}
 		result.Source.StorageClassRecommendation = recommendation
 	}
@@ -313,32 +335,32 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 	}
 	if compatibility != nil {
 		supportedModes := []string{}
-		if filesystemReady, ok := compatibility["filesystemBackupReady"].(bool); ok && filesystemReady {
-			supportedModes = append(supportedModes, restmodel.VeleroVolumeBackupModeFilesystem)
+		if compatibility.FilesystemBackupReady {
+			supportedModes = append(supportedModes, veleromodel.VolumeBackupModeFilesystem)
 		}
 		snapshotSupport, snapshotWarnings, snapshotErrors, snapshotErr := assessSnapshotCompatibility(ctx, sourceClientset, targetClientset, sourceControllerClient, targetControllerClient, sourceNamespaces, spec.StorageClassMappings)
 		if snapshotErr != nil {
 			return nil, snapshotErr
 		}
 		if snapshotSupport != nil {
-			compatibility["snapshotSupport"] = snapshotSupport
-			if snapshotReady, ok := snapshotSupport["snapshotReady"].(bool); ok && snapshotReady {
-				supportedModes = append(supportedModes, restmodel.VeleroVolumeBackupModeSnapshot)
+			compatibility.SnapshotSupport = snapshotSupport
+			if snapshotSupport.SnapshotReady {
+				supportedModes = append(supportedModes, veleromodel.VolumeBackupModeSnapshot)
 			}
 			result.Warnings = append(result.Warnings, snapshotWarnings...)
 			result.Errors = append(result.Errors, snapshotErrors...)
 		}
-		compatibility["supportedVolumeBackupModes"] = supportedModes
+		compatibility.SupportedVolumeBackupModes = supportedModes
 		switch {
-		case containsString(supportedModes, restmodel.VeleroVolumeBackupModeSnapshot):
-			compatibility["recommendedVolumeBackupMode"] = restmodel.VeleroVolumeBackupModeSnapshot
-			compatibility["recommendedAction"] = "snapshot backup is available and preferred for the inspected source volumes"
-		case containsString(supportedModes, restmodel.VeleroVolumeBackupModeFilesystem):
-			compatibility["recommendedVolumeBackupMode"] = restmodel.VeleroVolumeBackupModeFilesystem
-			compatibility["recommendedAction"] = "filesystem backup is acceptable for the inspected source volumes"
+		case containsString(supportedModes, veleromodel.VolumeBackupModeSnapshot):
+			compatibility.RecommendedVolumeBackupMode = veleromodel.VolumeBackupModeSnapshot
+			compatibility.RecommendedAction = "snapshot backup is available and preferred for the inspected source volumes"
+		case containsString(supportedModes, veleromodel.VolumeBackupModeFilesystem):
+			compatibility.RecommendedVolumeBackupMode = veleromodel.VolumeBackupModeFilesystem
+			compatibility.RecommendedAction = "filesystem backup is acceptable for the inspected source volumes"
 		default:
-			compatibility["recommendedVolumeBackupMode"] = ""
-			compatibility["recommendedAction"] = "change the source storage class to a non-hostPath-backed volume or migrate PVC data outside Velero"
+			compatibility.RecommendedVolumeBackupMode = ""
+			compatibility.RecommendedAction = "change the source storage class to a non-hostPath-backed volume or migrate PVC data outside Velero"
 		}
 		result.Source.VolumeBackupCompatibility = compatibility
 	}
@@ -354,12 +376,13 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *re
 	return result, nil
 }
 
-func CompactPrecheckResponse(response *restmodel.VeleroPrecheckResponse) *restmodel.VeleroPrecheckCompactResponse {
+func CompactPrecheckResponse(response *veleromodel.PrecheckResponse) *veleromodel.PrecheckCompactResponse {
 	if response == nil {
 		return nil
 	}
 
-	summary := restmodel.VeleroPrecheckSummary{
+	recommendedMode := ""
+	summary := veleromodel.PrecheckSummary{
 		SourceNamespaces: response.Source.SourceNamespaces,
 		TargetNamespaces: response.Target.NamespaceStatus,
 	}
@@ -368,25 +391,56 @@ func CompactPrecheckResponse(response *restmodel.VeleroPrecheckResponse) *restmo
 		summary.BackupStorageLocationReady = response.Source.BackupStorageLocation.Phase == string(velerov1.BackupStorageLocationPhaseAvailable)
 	}
 	if recommendation := response.Source.StorageClassRecommendation; recommendation != nil {
-		if mappingRequired, ok := recommendation["mappingRequired"].(bool); ok {
-			summary.StorageClassMappingRequired = mappingRequired
-		}
+		summary.StorageClassMappingRequired = recommendation.MappingRequired
 	}
 	if compatibility := response.Source.VolumeBackupCompatibility; compatibility != nil {
-		if mode, ok := compatibility["recommendedVolumeBackupMode"].(string); ok {
-			summary.RecommendedVolumeBackupMode = mode
-		}
+		recommendedMode = compatibility.RecommendedVolumeBackupMode
+		summary.RecommendedVolumeBackupMode = recommendedMode
 	}
 
-	return &restmodel.VeleroPrecheckCompactResponse{
+	return &veleromodel.PrecheckCompactResponse{
 		Status:   response.Status,
 		Summary:  summary,
-		Warnings: response.Warnings,
+		Warnings: filterCompactPrecheckWarnings(response.Warnings, recommendedMode),
 		Errors:   response.Errors,
 	}
 }
 
-func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.ClusterAccess, minioAccess *restmodel.MinIOAccess, spec restmodel.VeleroMigrationExecuteSpec) (*joblib.Info, error) {
+func filterCompactPrecheckWarnings(warnings []string, recommendedMode string) []string {
+	if len(warnings) == 0 {
+		return warnings
+	}
+
+	filtered := make([]string, 0, len(warnings))
+	seen := map[string]struct{}{}
+
+	for _, warning := range warnings {
+		if recommendedMode == veleromodel.VolumeBackupModeFilesystem && isSnapshotOnlyPrecheckWarning(warning) {
+			continue
+		}
+		if _, exists := seen[warning]; exists {
+			continue
+		}
+		seen[warning] = struct{}{}
+		filtered = append(filtered, warning)
+	}
+
+	return filtered
+}
+
+func isSnapshotOnlyPrecheckWarning(warning string) bool {
+	lower := strings.ToLower(strings.TrimSpace(warning))
+	if lower == "" {
+		return false
+	}
+
+	return strings.Contains(lower, "volumesnapshotclass") ||
+		strings.Contains(lower, "snapshot backup is not available") ||
+		strings.Contains(lower, "snapshot restore is not available") ||
+		strings.Contains(lower, "snapshot backup check skipped")
+}
+
+func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, spec veleromodel.MigrationExecuteSpec) (*joblib.Info, error) {
 	if joblib.DefaultManager == nil {
 		return nil, fmt.Errorf("job manager is not initialized")
 	}
@@ -427,13 +481,13 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 	}
 
 	joblib.DefaultManager.Submit(func() {
-		_ = joblib.DefaultManager.UpdateJobStatus(job.JobID, joblib.StatusProcessing, 5, "Starting migration precheck")
+		updateJobProgressSafe(job.JobID, 5, "Starting migration precheck")
 		_ = joblib.DefaultManager.AddJobLog(job.JobID, "Starting migration precheck")
 
 		ctx, cancel := context.WithTimeout(context.Background(), config.GetK8sBackupTimeout()+config.GetK8sRestoreTimeout())
 		defer cancel()
 
-		precheckSpec := restmodel.VeleroMigrationPrecheckSpec{
+		precheckSpec := veleromodel.MigrationPrecheckSpec{
 			BackupName:              backupName,
 			RestoreName:             restoreName,
 			SourceNamespace:         spec.SourceNamespace,
@@ -463,8 +517,9 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 			_ = joblib.DefaultManager.FailJob(job.JobID, fmt.Errorf("migration precheck failed"))
 			return
 		}
+		updateJobProgressSafe(job.JobID, 15, fmt.Sprintf("Migration precheck finished with status %s", precheckResult.Status))
 
-		backupSpec := restmodel.VeleroBackupSpec{
+		backupSpec := veleromodel.BackupSpec{
 			Name:                     backupName,
 			SourceNamespace:          spec.SourceNamespace,
 			IncludedNamespaces:       spec.IncludedNamespaces,
@@ -478,7 +533,7 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 			DefaultVolumesToFsBackup: spec.DefaultVolumesToFsBackup,
 		}
 
-		_ = joblib.DefaultManager.UpdateJobStatus(job.JobID, joblib.StatusProcessing, 20, fmt.Sprintf("Creating source backup %s", backupName))
+		updateJobProgressSafe(job.JobID, 20, fmt.Sprintf("Creating source backup %s", backupName))
 		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Creating source backup %s", backupName))
 		backupResult, createErr := s.CreateBackup(ctx, sourceCluster, backupSpec)
 		if createErr != nil {
@@ -488,15 +543,24 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 		if backupResult != nil && backupResult.Name != "" {
 			backupName = backupResult.Name
 		}
+		updateJobProgressSafe(job.JobID, 30, fmt.Sprintf("Source backup %s created; waiting for completion", backupName))
 
-		backup, waitBackupErr := s.waitForBackupCompletion(ctx, sourceCluster, backupName, job.JobID)
+		backup, waitBackupErr := s.waitForBackupCompletion(ctx, sourceCluster, backupName, job.JobID, 40)
 		if waitBackupErr != nil {
 			_ = joblib.DefaultManager.FailJob(job.JobID, waitBackupErr)
 			return
 		}
-		_ = joblib.DefaultManager.UpdateJobStatus(job.JobID, joblib.StatusProcessing, 65, fmt.Sprintf("Backup %s completed with phase %s", backupName, backup.Status.Phase))
+		updateJobProgressSafe(job.JobID, 65, fmt.Sprintf("Backup %s completed with phase %s", backupName, backup.Status.Phase))
 
-		restoreSpec := restmodel.VeleroRestoreSpec{
+		updateJobProgressSafe(job.JobID, 70, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
+		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
+		if waitSyncErr := s.waitForBackupSync(ctx, targetCluster, backupName, job.JobID, 72); waitSyncErr != nil {
+			_ = joblib.DefaultManager.FailJob(job.JobID, waitSyncErr)
+			return
+		}
+		updateJobProgressSafe(job.JobID, 75, fmt.Sprintf("Backup %s is available on target cluster", backupName))
+
+		restoreSpec := veleromodel.RestoreSpec{
 			Name:                    restoreName,
 			BackupName:              backupName,
 			SourceNamespace:         spec.SourceNamespace,
@@ -512,13 +576,15 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 			RestorePVs:              spec.RestorePVs,
 		}
 
+		updateJobProgressSafe(job.JobID, 80, fmt.Sprintf("Creating target restore %s", restoreName))
 		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Creating target restore %s", restoreName))
 		if _, createErr := s.CreateRestore(ctx, targetCluster, restoreSpec); createErr != nil {
 			_ = joblib.DefaultManager.FailJob(job.JobID, createErr)
 			return
 		}
+		updateJobProgressSafe(job.JobID, 85, fmt.Sprintf("Target restore %s created; waiting for completion", restoreName))
 
-		restore, waitRestoreErr := s.waitForRestoreCompletion(ctx, targetCluster, restoreName, job.JobID)
+		restore, waitRestoreErr := s.waitForRestoreCompletion(ctx, targetCluster, restoreName, job.JobID, 90)
 		if waitRestoreErr != nil {
 			_ = joblib.DefaultManager.FailJob(job.JobID, waitRestoreErr)
 			return
@@ -532,7 +598,7 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *restmodel.
 	return job, nil
 }
 
-func (s *Service) ListBackups(ctx context.Context, cluster *restmodel.ClusterAccess) ([]velerov1.Backup, error) {
+func (s *Service) ListBackups(ctx context.Context, cluster *commonmodel.ClusterAccess) ([]*veleromodel.BackupResponse, error) {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -544,13 +610,23 @@ func (s *Service) ListBackups(ctx context.Context, cluster *restmodel.ClusterAcc
 		return nil, err
 	}
 
+	result := make([]*veleromodel.BackupResponse, 0, len(list.Items))
 	for i := range list.Items {
 		list.Items[i].ManagedFields = nil
+		result = append(result, backupResponse(&list.Items[i]))
 	}
-	return list.Items, nil
+	return result, nil
 }
 
-func (s *Service) GetBackup(ctx context.Context, cluster *restmodel.ClusterAccess, name string) (*velerov1.Backup, error) {
+func (s *Service) GetBackup(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*veleromodel.BackupResponse, error) {
+	backup, err := s.getBackupResource(ctx, cluster, name)
+	if err != nil {
+		return nil, err
+	}
+	return backupResponse(backup), nil
+}
+
+func (s *Service) getBackupResource(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*velerov1.Backup, error) {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -565,7 +641,7 @@ func (s *Service) GetBackup(ctx context.Context, cluster *restmodel.ClusterAcces
 	return backup, nil
 }
 
-func (s *Service) CreateBackup(ctx context.Context, cluster *restmodel.ClusterAccess, spec restmodel.VeleroBackupSpec) (*restmodel.VeleroBackupResponse, error) {
+func (s *Service) CreateBackup(ctx context.Context, cluster *commonmodel.ClusterAccess, spec veleromodel.BackupSpec) (*veleromodel.BackupResponse, error) {
 	clientset, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -600,7 +676,7 @@ func (s *Service) CreateBackup(ctx context.Context, cluster *restmodel.ClusterAc
 
 		if err := controllerClient.Create(ctx, backup); err != nil {
 			if apierrors.IsAlreadyExists(err) {
-				if spec.NameConflictPolicy == restmodel.VeleroNameConflictPolicyFail {
+				if spec.NameConflictPolicy == veleromodel.NameConflictPolicyFail {
 					return nil, fmt.Errorf("backup %q already exists", actualName)
 				}
 				actualName = uniqueBackupName(requestedName)
@@ -631,16 +707,16 @@ func (s *Service) CreateBackup(ctx context.Context, cluster *restmodel.ClusterAc
 	return nil, fmt.Errorf("failed to allocate unique backup name for %q", requestedName)
 }
 
-func backupResponse(backup *velerov1.Backup) *restmodel.VeleroBackupResponse {
-	response := &restmodel.VeleroBackupResponse{
+func backupResponse(backup *velerov1.Backup) *veleromodel.BackupResponse {
+	response := &veleromodel.BackupResponse{
 		Name:      backup.Name,
 		Namespace: backup.Namespace,
 		Phase:     string(backup.Status.Phase),
 		Warnings:  backup.Status.Warnings,
 		Errors:    backup.Status.Errors,
-		CreatedAt: backup.CreationTimestamp,
-		Started:   backup.Status.StartTimestamp,
-		Completed: backup.Status.CompletionTimestamp,
+		CreatedAt: formatMetaTime(backup.CreationTimestamp),
+		Started:   formatMetaTimePtr(backup.Status.StartTimestamp),
+		Completed: formatMetaTimePtr(backup.Status.CompletionTimestamp),
 		BackupMode: deriveBackupMode(
 			backup.Spec.DefaultVolumesToFsBackup,
 			backup.Spec.SnapshotVolumes,
@@ -668,7 +744,7 @@ func backupResponse(backup *velerov1.Backup) *restmodel.VeleroBackupResponse {
 	return response
 }
 
-func (s *Service) DeleteBackup(ctx context.Context, cluster *restmodel.ClusterAccess, name string) error {
+func (s *Service) DeleteBackup(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) error {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return err
@@ -680,8 +756,8 @@ func (s *Service) DeleteBackup(ctx context.Context, cluster *restmodel.ClusterAc
 	})
 }
 
-func (s *Service) ValidateBackup(ctx context.Context, cluster *restmodel.ClusterAccess, name string) (*restmodel.VeleroBackupResponse, error) {
-	backup, err := s.GetBackup(ctx, cluster, name)
+func (s *Service) ValidateBackup(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*veleromodel.BackupResponse, error) {
+	backup, err := s.getBackupResource(ctx, cluster, name)
 	if err != nil {
 		return nil, err
 	}
@@ -706,7 +782,7 @@ func (s *Service) ValidateBackup(ctx context.Context, cluster *restmodel.Cluster
 	return response, nil
 }
 
-func (s *Service) ListRestores(ctx context.Context, cluster *restmodel.ClusterAccess) ([]velerov1.Restore, error) {
+func (s *Service) ListRestores(ctx context.Context, cluster *commonmodel.ClusterAccess) ([]*veleromodel.RestoreResponse, error) {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -717,13 +793,24 @@ func (s *Service) ListRestores(ctx context.Context, cluster *restmodel.ClusterAc
 	if err := controllerClient.List(ctx, list, ctrlclient.InNamespace(namespace)); err != nil {
 		return nil, err
 	}
+
+	result := make([]*veleromodel.RestoreResponse, 0, len(list.Items))
 	for i := range list.Items {
 		list.Items[i].ManagedFields = nil
+		result = append(result, restoreResponse(&list.Items[i]))
 	}
-	return list.Items, nil
+	return result, nil
 }
 
-func (s *Service) GetRestore(ctx context.Context, cluster *restmodel.ClusterAccess, name string) (*velerov1.Restore, error) {
+func (s *Service) GetRestore(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*veleromodel.RestoreResponse, error) {
+	restore, err := s.getRestoreResource(ctx, cluster, name)
+	if err != nil {
+		return nil, err
+	}
+	return restoreResponse(restore), nil
+}
+
+func (s *Service) getRestoreResource(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*velerov1.Restore, error) {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -738,44 +825,43 @@ func (s *Service) GetRestore(ctx context.Context, cluster *restmodel.ClusterAcce
 	return restore, nil
 }
 
-func restoreResponse(restore *velerov1.Restore) map[string]interface{} {
-	response := map[string]interface{}{
-		"name":                   restore.Name,
-		"namespace":              restore.Namespace,
-		"phase":                  restore.Status.Phase,
-		"warnings":               restore.Status.Warnings,
-		"errors":                 restore.Status.Errors,
-		"started":                restore.Status.StartTimestamp,
-		"completed":              restore.Status.CompletionTimestamp,
-		"createdAt":              restore.CreationTimestamp,
-		"backupName":             restore.Spec.BackupName,
-		"restorePVs":             restore.Spec.RestorePVs,
-		"existingResourcePolicy": restore.Spec.ExistingResourcePolicy,
+func restoreResponse(restore *velerov1.Restore) *veleromodel.RestoreResponse {
+	response := &veleromodel.RestoreResponse{
+		Name:                   restore.Name,
+		Namespace:              restore.Namespace,
+		Phase:                  string(restore.Status.Phase),
+		Warnings:               restore.Status.Warnings,
+		Errors:                 restore.Status.Errors,
+		ValidationErrors:       restore.Status.ValidationErrors,
+		Started:                formatMetaTimePtr(restore.Status.StartTimestamp),
+		Completed:              formatMetaTimePtr(restore.Status.CompletionTimestamp),
+		CreatedAt:              formatMetaTime(restore.CreationTimestamp),
+		BackupName:             restore.Spec.BackupName,
+		RestorePVs:             restore.Spec.RestorePVs,
+		ExistingResourcePolicy: string(restore.Spec.ExistingResourcePolicy),
 	}
 
 	if len(restore.Spec.IncludedNamespaces) > 0 {
-		response["includedNamespaces"] = restore.Spec.IncludedNamespaces
+		response.IncludedNamespaces = restore.Spec.IncludedNamespaces
 	}
 	if len(restore.Spec.ExcludedNamespaces) > 0 {
-		response["excludedNamespaces"] = restore.Spec.ExcludedNamespaces
+		response.ExcludedNamespaces = restore.Spec.ExcludedNamespaces
 	}
 	if len(restore.Spec.IncludedResources) > 0 {
-		response["includedResources"] = restore.Spec.IncludedResources
+		response.IncludedResources = restore.Spec.IncludedResources
 	}
 	if len(restore.Spec.ExcludedResources) > 0 {
-		response["excludedResources"] = restore.Spec.ExcludedResources
+		response.ExcludedResources = restore.Spec.ExcludedResources
 	}
 	if len(restore.Spec.NamespaceMapping) > 0 {
-		response["namespaceMapping"] = restore.Spec.NamespaceMapping
+		response.NamespaceMapping = restore.Spec.NamespaceMapping
 	}
-	if restore.Spec.IncludeClusterResources != nil {
-		response["includeClusterResources"] = *restore.Spec.IncludeClusterResources
-	}
+	response.IncludeClusterResources = restore.Spec.IncludeClusterResources
 
 	return response
 }
 
-func (s *Service) CreateRestore(ctx context.Context, cluster *restmodel.ClusterAccess, spec restmodel.VeleroRestoreSpec) (map[string]interface{}, error) {
+func (s *Service) CreateRestore(ctx context.Context, cluster *commonmodel.ClusterAccess, spec veleromodel.RestoreSpec) (*veleromodel.RestoreResponse, error) {
 	clientset, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return nil, err
@@ -783,6 +869,9 @@ func (s *Service) CreateRestore(ctx context.Context, cluster *restmodel.ClusterA
 
 	spec, err = normalizeRestoreSpec(spec)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := s.getBackupResource(ctx, cluster, spec.BackupName); err != nil {
 		return nil, err
 	}
 
@@ -805,7 +894,7 @@ func (s *Service) CreateRestore(ctx context.Context, cluster *restmodel.ClusterA
 			NamespaceMapping:        spec.NamespaceMapping,
 			IncludeClusterResources: spec.IncludeClusterResources,
 			ExistingResourcePolicy:  velerov1.PolicyType(spec.ExistingResourcePolicy),
-			RestorePVs:              &spec.RestorePVs,
+			RestorePVs:              spec.RestorePVs,
 		},
 	}
 
@@ -815,7 +904,7 @@ func (s *Service) CreateRestore(ctx context.Context, cluster *restmodel.ClusterA
 	return restoreResponse(restore), nil
 }
 
-func normalizeBackupSpec(spec restmodel.VeleroBackupSpec) (restmodel.VeleroBackupSpec, error) {
+func normalizeBackupSpec(spec veleromodel.BackupSpec) (veleromodel.BackupSpec, error) {
 	if spec.Name == "" {
 		spec.Name = uniqueBackupName("backup")
 	}
@@ -823,18 +912,19 @@ func normalizeBackupSpec(spec restmodel.VeleroBackupSpec) (restmodel.VeleroBacku
 		spec.IncludedNamespaces = []string{spec.SourceNamespace}
 	}
 	switch spec.NameConflictPolicy {
-	case "", restmodel.VeleroNameConflictPolicyRename:
-		spec.NameConflictPolicy = restmodel.VeleroNameConflictPolicyRename
-	case restmodel.VeleroNameConflictPolicyFail:
+	case "", veleromodel.NameConflictPolicyRename:
+		spec.NameConflictPolicy = veleromodel.NameConflictPolicyRename
+	case veleromodel.NameConflictPolicyFail:
 	default:
 		return spec, fmt.Errorf("nameConflictPolicy must be one of: rename, fail")
 	}
 
 	switch spec.VolumeBackupMode {
-	case "", restmodel.VeleroVolumeBackupModeFilesystem:
+	case "", veleromodel.VolumeBackupModeFilesystem:
 		spec.DefaultVolumesToFsBackup = true
 		spec.SnapshotVolumes = false
-	case restmodel.VeleroVolumeBackupModeSnapshot:
+		spec.IncludedResources = ensureFilesystemVolumeResources(spec.IncludedResources)
+	case veleromodel.VolumeBackupModeSnapshot:
 		spec.DefaultVolumesToFsBackup = false
 		spec.SnapshotVolumes = true
 	default:
@@ -851,25 +941,38 @@ func uniqueBackupName(prefix string) string {
 	return fmt.Sprintf("%s-%s-%s", base, time.Now().Format("20060102-150405"), uuid.NewString()[:8])
 }
 
-func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kubernetes.Clientset, namespaces []string, volumeBackupMode string) (map[string]interface{}, []string, []string, error) {
-	mode := volumeBackupMode
-	if mode == "" {
-		mode = restmodel.VeleroVolumeBackupModeFilesystem
+func ensureFilesystemVolumeResources(resources []string) []string {
+	if len(resources) == 0 {
+		return resources
+	}
+	if !containsResource(resources, "persistentvolumeclaims") || containsResource(resources, "persistentvolumes") {
+		return resources
 	}
 
-	result := map[string]interface{}{
-		"volumeBackupMode": mode,
+	result := append([]string{}, resources...)
+	result = append(result, "persistentvolumes")
+	return result
+}
+
+func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kubernetes.Clientset, namespaces []string, volumeBackupMode string) (*veleromodel.VolumeBackupCompatibility, []string, []string, error) {
+	mode := volumeBackupMode
+	if mode == "" {
+		mode = veleromodel.VolumeBackupModeFilesystem
 	}
-	if mode != restmodel.VeleroVolumeBackupModeFilesystem || len(namespaces) == 0 {
-		result["supportedVolumeBackupModes"] = []string{mode}
-		result["recommendedVolumeBackupMode"] = mode
+
+	result := &veleromodel.VolumeBackupCompatibility{
+		VolumeBackupMode: mode,
+	}
+	if mode != veleromodel.VolumeBackupModeFilesystem || len(namespaces) == 0 {
+		result.SupportedVolumeBackupModes = []string{mode}
+		result.RecommendedVolumeBackupMode = mode
 		return result, nil, nil, nil
 	}
 
 	podWarnings := []string{}
 	storageWarnings := []string{}
 	compatibilityErrors := []string{}
-	unsupportedVolumes := []map[string]string{}
+	unsupportedVolumes := []veleromodel.UnsupportedVolume{}
 	storageClasses := map[string]storagev1.StorageClass{}
 
 	for _, namespace := range namespaces {
@@ -883,12 +986,12 @@ func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kuber
 					continue
 				}
 				podWarnings = append(podWarnings, fmt.Sprintf("pod %s/%s uses direct hostPath volume %q, which is not supported by Velero file system backup", namespace, pod.Name, volume.Name))
-				unsupportedVolumes = append(unsupportedVolumes, map[string]string{
-					"type":      "podHostPath",
-					"namespace": namespace,
-					"pod":       pod.Name,
-					"volume":    volume.Name,
-					"reason":    "hostPath is not supported by Velero file system backup",
+				unsupportedVolumes = append(unsupportedVolumes, veleromodel.UnsupportedVolume{
+					Type:      "podHostPath",
+					Namespace: namespace,
+					Pod:       pod.Name,
+					Volume:    volume.Name,
+					Reason:    "hostPath is not supported by Velero file system backup",
 				})
 			}
 		}
@@ -923,14 +1026,14 @@ func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kuber
 
 			if pv.Spec.HostPath != nil {
 				compatibilityErrors = append(compatibilityErrors, fmt.Sprintf("PVC %s/%s is backed by PV %s with hostPath, which Velero file system backup does not support", namespace, pvc.Name, pv.Name))
-				unsupportedVolumes = append(unsupportedVolumes, map[string]string{
-					"type":         "persistentVolume",
-					"namespace":    namespace,
-					"pvc":          pvc.Name,
-					"pv":           pv.Name,
-					"storageClass": storageClassName,
-					"provisioner":  provisioner,
-					"reason":       "hostPath-backed persistent volume is not supported by Velero file system backup",
+				unsupportedVolumes = append(unsupportedVolumes, veleromodel.UnsupportedVolume{
+					Type:         "persistentVolume",
+					Namespace:    namespace,
+					PVC:          pvc.Name,
+					PV:           pv.Name,
+					StorageClass: storageClassName,
+					Provisioner:  provisioner,
+					Reason:       "hostPath-backed persistent volume is not supported by Velero file system backup",
 				})
 				continue
 			}
@@ -942,23 +1045,23 @@ func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kuber
 	}
 
 	if len(unsupportedVolumes) > 0 {
-		result["unsupportedVolumes"] = unsupportedVolumes
+		result.UnsupportedVolumes = unsupportedVolumes
 	}
 	if len(podWarnings) > 0 {
-		result["podWarnings"] = podWarnings
+		result.PodWarnings = podWarnings
 	}
 	if len(storageWarnings) > 0 {
-		result["storageWarnings"] = storageWarnings
+		result.StorageWarnings = storageWarnings
 	}
-	result["filesystemBackupReady"] = len(compatibilityErrors) == 0 && len(podWarnings) == 0
+	result.FilesystemBackupReady = len(compatibilityErrors) == 0 && len(podWarnings) == 0
 	if len(compatibilityErrors) == 0 && len(podWarnings) == 0 {
-		result["supportedVolumeBackupModes"] = []string{restmodel.VeleroVolumeBackupModeFilesystem}
-		result["recommendedVolumeBackupMode"] = restmodel.VeleroVolumeBackupModeFilesystem
-		result["recommendedAction"] = "filesystem backup is acceptable for the inspected source volumes"
+		result.SupportedVolumeBackupModes = []string{veleromodel.VolumeBackupModeFilesystem}
+		result.RecommendedVolumeBackupMode = veleromodel.VolumeBackupModeFilesystem
+		result.RecommendedAction = "filesystem backup is acceptable for the inspected source volumes"
 	} else {
-		result["supportedVolumeBackupModes"] = []string{}
-		result["recommendedVolumeBackupMode"] = ""
-		result["recommendedAction"] = "change the source storage class to a non-hostPath-backed volume or migrate PVC data outside Velero"
+		result.SupportedVolumeBackupModes = []string{}
+		result.RecommendedVolumeBackupMode = ""
+		result.RecommendedAction = "change the source storage class to a non-hostPath-backed volume or migrate PVC data outside Velero"
 	}
 
 	return result, storageWarnings, append(compatibilityErrors, podWarnings...), nil
@@ -966,12 +1069,12 @@ func assessSourceVolumeBackupCompatibility(ctx context.Context, clientset *kuber
 
 func deriveBackupMode(defaultVolumesToFsBackup, snapshotVolumes *bool) string {
 	if defaultVolumesToFsBackup != nil && *defaultVolumesToFsBackup {
-		return restmodel.VeleroVolumeBackupModeFilesystem
+		return veleromodel.VolumeBackupModeFilesystem
 	}
 	if snapshotVolumes != nil && *snapshotVolumes {
-		return restmodel.VeleroVolumeBackupModeSnapshot
+		return veleromodel.VolumeBackupModeSnapshot
 	}
-	return restmodel.VeleroVolumeBackupModeFilesystem
+	return veleromodel.VolumeBackupModeFilesystem
 }
 
 func assessSnapshotCompatibility(
@@ -980,10 +1083,10 @@ func assessSnapshotCompatibility(
 	sourceControllerClient, targetControllerClient ctrlclient.Client,
 	namespaces []string,
 	storageClassMappings map[string]string,
-) (map[string]interface{}, []string, []string, error) {
-	result := map[string]interface{}{}
+) (*veleromodel.SnapshotSupport, []string, []string, error) {
+	result := &veleromodel.SnapshotSupport{}
 	if len(namespaces) == 0 {
-		result["snapshotReady"] = false
+		result.SnapshotReady = false
 		return result, nil, nil, nil
 	}
 
@@ -1004,10 +1107,10 @@ func assessSnapshotCompatibility(
 		return nil, nil, nil, err
 	}
 
-	result["sourceProvisioners"] = sortedValues(sourceDrivers)
-	result["targetProvisioners"] = sortedValues(targetDrivers)
-	result["sourceSnapshotDrivers"] = sortedKeys(sourceSnapshotDrivers)
-	result["targetSnapshotDrivers"] = sortedKeys(targetSnapshotDrivers)
+	result.SourceProvisioners = sortedValues(sourceDrivers)
+	result.TargetProvisioners = sortedValues(targetDrivers)
+	result.SourceSnapshotDrivers = sortedKeys(sourceSnapshotDrivers)
+	result.TargetSnapshotDrivers = sortedKeys(targetSnapshotDrivers)
 
 	warnings := []string{}
 	errors := []string{}
@@ -1042,7 +1145,7 @@ func assessSnapshotCompatibility(
 	if len(sourceDrivers) == 0 {
 		snapshotReady = false
 	}
-	result["snapshotReady"] = snapshotReady
+	result.SnapshotReady = snapshotReady
 	return result, warnings, errors, nil
 }
 
@@ -1148,6 +1251,16 @@ func containsString(values []string, target string) bool {
 	return false
 }
 
+func containsResource(values []string, target string) bool {
+	target = strings.TrimSpace(strings.ToLower(target))
+	for _, value := range values {
+		if strings.TrimSpace(strings.ToLower(value)) == target {
+			return true
+		}
+	}
+	return false
+}
+
 func buildSourceNamespaces(namespace string, includedNamespaces []string) []string {
 	if namespace != "" {
 		return []string{namespace}
@@ -1155,7 +1268,7 @@ func buildSourceNamespaces(namespace string, includedNamespaces []string) []stri
 	return includedNamespaces
 }
 
-func normalizeRestoreSpec(spec restmodel.VeleroRestoreSpec) (restmodel.VeleroRestoreSpec, error) {
+func normalizeRestoreSpec(spec veleromodel.RestoreSpec) (veleromodel.RestoreSpec, error) {
 	if spec.Name == "" {
 		spec.Name = fmt.Sprintf("restore-%d", time.Now().Unix())
 	}
@@ -1167,7 +1280,10 @@ func normalizeRestoreSpec(spec restmodel.VeleroRestoreSpec) (restmodel.VeleroRes
 	if spec.TargetNamespace != "" && len(spec.NamespaceMapping) == 0 {
 		return spec, fmt.Errorf("targetNamespace requires namespace or a single included namespace")
 	}
-	spec.RestorePVs = true
+	if spec.RestorePVs == nil {
+		restorePVs := true
+		spec.RestorePVs = &restorePVs
+	}
 
 	switch spec.ExistingResourcePolicy {
 	case "", string(velerov1.PolicyTypeNone), string(velerov1.PolicyTypeUpdate):
@@ -1291,7 +1407,7 @@ func (s *Service) ensureStorageClassConfigMap(ctx context.Context, clientset *ku
 	return err
 }
 
-func (s *Service) DeleteRestore(ctx context.Context, cluster *restmodel.ClusterAccess, name string) error {
+func (s *Service) DeleteRestore(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) error {
 	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
 	if err != nil {
 		return err
@@ -1303,15 +1419,15 @@ func (s *Service) DeleteRestore(ctx context.Context, cluster *restmodel.ClusterA
 	})
 }
 
-func (s *Service) ValidateRestore(ctx context.Context, cluster *restmodel.ClusterAccess, name string) (map[string]interface{}, error) {
+func (s *Service) ValidateRestore(ctx context.Context, cluster *commonmodel.ClusterAccess, name string) (*veleromodel.RestoreResponse, error) {
 	restore, err := s.GetRestore(ctx, cluster, name)
 	if err != nil {
 		return nil, err
 	}
-	return restoreResponse(restore), nil
+	return restore, nil
 }
 
-func (s *Service) waitForBackupCompletion(ctx context.Context, cluster *restmodel.ClusterAccess, name, jobID string) (*velerov1.Backup, error) {
+func (s *Service) waitForBackupCompletion(ctx context.Context, cluster *commonmodel.ClusterAccess, name, jobID string, progress int) (*velerov1.Backup, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, config.GetK8sBackupTimeout())
 	defer cancel()
 
@@ -1323,12 +1439,13 @@ func (s *Service) waitForBackupCompletion(ctx context.Context, cluster *restmode
 		case <-timeoutCtx.Done():
 			return nil, fmt.Errorf("timed out waiting for backup %s", name)
 		case <-ticker.C:
-			backup, err := s.GetBackup(timeoutCtx, cluster, name)
+			backup, err := s.getBackupResource(timeoutCtx, cluster, name)
 			if err != nil {
 				return nil, err
 			}
 
 			phase := strings.ToLower(string(backup.Status.Phase))
+			updateJobProgressSafe(jobID, progress, fmt.Sprintf("Waiting for backup %s completion: %s", name, backup.Status.Phase))
 			_ = joblib.DefaultManager.AddJobLog(jobID, fmt.Sprintf("Backup %s phase: %s", name, backup.Status.Phase))
 
 			if phase == "completed" || phase == "partiallyfailed" {
@@ -1341,7 +1458,36 @@ func (s *Service) waitForBackupCompletion(ctx context.Context, cluster *restmode
 	}
 }
 
-func (s *Service) waitForRestoreCompletion(ctx context.Context, cluster *restmodel.ClusterAccess, name, jobID string) (*velerov1.Restore, error) {
+func (s *Service) waitForBackupSync(ctx context.Context, cluster *commonmodel.ClusterAccess, name, jobID string, progress int) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, config.GetK8sBackupTimeout())
+	defer cancel()
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			return fmt.Errorf("timed out waiting for backup %s to sync into target cluster", name)
+		case <-ticker.C:
+			backup, err := s.GetBackup(timeoutCtx, cluster, name)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					updateJobProgressSafe(jobID, progress, fmt.Sprintf("Waiting for backup %s to appear in target cluster", name))
+					joblib.AddJobLogSafe(jobID, fmt.Sprintf("Waiting for backup %s to appear in target cluster", name))
+					continue
+				}
+				return err
+			}
+
+			updateJobProgressSafe(jobID, progress, fmt.Sprintf("Backup %s synced into target cluster with phase %s", name, backup.Phase))
+			joblib.AddJobLogSafe(jobID, fmt.Sprintf("Backup %s synced into target cluster with phase %s", name, backup.Phase))
+			return nil
+		}
+	}
+}
+
+func (s *Service) waitForRestoreCompletion(ctx context.Context, cluster *commonmodel.ClusterAccess, name, jobID string, progress int) (*velerov1.Restore, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, config.GetK8sRestoreTimeout())
 	defer cancel()
 
@@ -1353,16 +1499,24 @@ func (s *Service) waitForRestoreCompletion(ctx context.Context, cluster *restmod
 		case <-timeoutCtx.Done():
 			return nil, fmt.Errorf("timed out waiting for restore %s", name)
 		case <-ticker.C:
-			restore, err := s.GetRestore(timeoutCtx, cluster, name)
+			restore, err := s.getRestoreResource(timeoutCtx, cluster, name)
 			if err != nil {
 				return nil, err
 			}
 
 			phase := strings.ToLower(string(restore.Status.Phase))
+			updateJobProgressSafe(jobID, progress, fmt.Sprintf("Waiting for restore %s completion: %s", name, restore.Status.Phase))
 			joblib.AddJobLogSafe(jobID, fmt.Sprintf("Restore %s phase: %s", name, restore.Status.Phase))
 
 			if phase == "completed" || phase == "partiallyfailed" {
 				return restore, nil
+			}
+			if len(restore.Status.ValidationErrors) > 0 || phase == "failedvalidation" {
+				message := strings.Join(restore.Status.ValidationErrors, "; ")
+				if strings.TrimSpace(message) == "" {
+					message = "validation failed without a detailed error message"
+				}
+				return nil, fmt.Errorf("restore %s failed validation: %s", name, message)
 			}
 			if strings.Contains(phase, "failed") {
 				return nil, fmt.Errorf("restore %s failed with phase %s", name, restore.Status.Phase)

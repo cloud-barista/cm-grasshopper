@@ -3,16 +3,21 @@ package controller
 import (
 	"net/http"
 
+	joblib "github.com/cloud-barista/cm-grasshopper/lib/job"
 	k8scommon "github.com/cloud-barista/cm-grasshopper/lib/k8s/common"
 	k8svelero "github.com/cloud-barista/cm-grasshopper/lib/k8s/velero"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
+	jobmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/job"
+	veleromodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/velero"
 	"github.com/labstack/echo/v4"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var veleroService = k8svelero.NewService()
 
-func getClusterFromRole(req *model.MultiClusterEnvelope, role string) *model.ClusterAccess {
+func getClusterFromRole(req *commonmodel.MultiClusterEnvelope, role string) *commonmodel.ClusterAccess {
 	if role == "source" {
 		return req.SourceCluster
 	}
@@ -28,14 +33,14 @@ func getClusterFromRole(req *model.MultiClusterEnvelope, role string) *model.Clu
 //	@Accept			json
 //	@Produce		json
 //	@Param			role path string true "Cluster role. Use source or target."
-//	@Param			request body model.MultiClusterEnvelope true "Cluster access request."
-//	@Success		200	{object}	model.VeleroHealthResponse	"Successfully checked Velero health."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Cluster access request."
+//	@Success		200	{object}	veleromodel.HealthResponse	"Successfully checked Velero health."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to check Velero health."
 //	@Router			/velero/{role}/health [post]
 func VeleroHealth(c echo.Context) error {
 	role := c.Param("role")
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -62,14 +67,14 @@ func VeleroHealth(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			role path string true "Cluster role. Use source or target."
-//	@Param			request body model.VeleroInstallRequest true "Velero install request."
-//	@Success		200	{object}	model.JobExecution		"Successfully started Velero installation."
+//	@Param			request body veleromodel.InstallRequest true "Velero install request."
+//	@Success		200	{object}	jobmodel.StartResponse	"Successfully started Velero installation."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to install Velero."
 //	@Router			/velero/{role}/install [post]
 func VeleroInstall(c echo.Context) error {
 	role := c.Param("role")
-	req := new(model.VeleroInstallRequest)
+	req := new(veleromodel.InstallRequest)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -90,7 +95,7 @@ func VeleroInstall(c echo.Context) error {
 		return common.ReturnInternalError(c, err, "velero install failed")
 	}
 
-	return c.JSONPretty(http.StatusOK, job, " ")
+	return c.JSONPretty(http.StatusOK, toJobStartResponse(job), " ")
 }
 
 // ListBackups godoc
@@ -101,13 +106,13 @@ func VeleroInstall(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.MultiClusterEnvelope true "Source cluster access request."
-//	@Success		200	{array}		map[string]interface{}	"Successfully listed backups."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Source cluster access request."
+//	@Success		200	{array}		veleromodel.BackupResponse	"Successfully listed backups."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to list backups."
 //	@Router			/velero/source/backups/list [post]
 func ListBackups(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -131,13 +136,13 @@ func ListBackups(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Backup name."
-//	@Param			request body model.MultiClusterEnvelope true "Source cluster access request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully got backup detail."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Source cluster access request."
+//	@Success		200	{object}	veleromodel.BackupResponse	"Successfully got backup detail."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get backup detail."
 //	@Router			/velero/source/backups/{name} [post]
 func GetBackup(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -160,13 +165,13 @@ func GetBackup(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.VeleroBackupRequest true "Velero backup request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully created backup."
+//	@Param			request body veleromodel.BackupRequest true "Velero backup request."
+//	@Success		200	{object}	veleromodel.BackupResponse	"Successfully created backup."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to create backup."
 //	@Router			/velero/source/backups [post]
 func CreateBackup(c echo.Context) error {
-	req := new(model.VeleroBackupRequest)
+	req := new(veleromodel.BackupRequest)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -190,13 +195,13 @@ func CreateBackup(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Backup name."
-//	@Param			request body model.MultiClusterEnvelope true "Source cluster access request."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Source cluster access request."
 //	@Success		200	{object}	model.SimpleMsg			"Successfully deleted backup."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to delete backup."
 //	@Router			/velero/source/backups/{name}/delete [post]
 func DeleteBackup(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -219,13 +224,13 @@ func DeleteBackup(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Backup name."
-//	@Param			request body model.MultiClusterEnvelope true "Source cluster access request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully validated backup."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Source cluster access request."
+//	@Success		200	{object}	veleromodel.BackupResponse	"Successfully validated backup."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to validate backup."
 //	@Router			/velero/source/backups/{name}/validate [post]
 func ValidateBackup(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -248,13 +253,13 @@ func ValidateBackup(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.MultiClusterEnvelope true "Target cluster access request."
-//	@Success		200	{array}		map[string]interface{}	"Successfully listed restores."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Target cluster access request."
+//	@Success		200	{array}		veleromodel.RestoreResponse	"Successfully listed restores."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to list restores."
 //	@Router			/velero/target/restores/list [post]
 func ListRestores(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -278,13 +283,13 @@ func ListRestores(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Restore name."
-//	@Param			request body model.MultiClusterEnvelope true "Target cluster access request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully got restore detail."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Target cluster access request."
+//	@Success		200	{object}	veleromodel.RestoreResponse	"Successfully got restore detail."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get restore detail."
 //	@Router			/velero/target/restores/{name} [post]
 func GetRestore(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -307,13 +312,13 @@ func GetRestore(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.VeleroRestoreRequest true "Velero restore request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully created restore."
+//	@Param			request body veleromodel.RestoreRequest true "Velero restore request."
+//	@Success		200	{object}	veleromodel.RestoreResponse	"Successfully created restore."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to create restore."
 //	@Router			/velero/target/restores [post]
 func CreateRestore(c echo.Context) error {
-	req := new(model.VeleroRestoreRequest)
+	req := new(veleromodel.RestoreRequest)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -326,6 +331,9 @@ func CreateRestore(c echo.Context) error {
 
 	result, err := veleroService.CreateRestore(c.Request().Context(), req.TargetCluster, req.Restore)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return common.ReturnErrorMsg(c, "backup is not available on target cluster yet; wait for backup sync and retry")
+		}
 		return common.ReturnInternalError(c, err, "create restore failed")
 	}
 	return c.JSONPretty(http.StatusOK, result, " ")
@@ -340,13 +348,13 @@ func CreateRestore(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Restore name."
-//	@Param			request body model.MultiClusterEnvelope true "Target cluster access request."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Target cluster access request."
 //	@Success		200	{object}	model.SimpleMsg			"Successfully deleted restore."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to delete restore."
 //	@Router			/velero/target/restores/{name}/delete [post]
 func DeleteRestore(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -369,13 +377,13 @@ func DeleteRestore(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			name path string true "Restore name."
-//	@Param			request body model.MultiClusterEnvelope true "Target cluster access request."
-//	@Success		200	{object}	map[string]interface{}	"Successfully validated restore."
+//	@Param			request body commonmodel.MultiClusterEnvelope true "Target cluster access request."
+//	@Success		200	{object}	veleromodel.RestoreResponse	"Successfully validated restore."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to validate restore."
 //	@Router			/velero/target/restores/{name}/validate [post]
 func ValidateRestore(c echo.Context) error {
-	req := new(model.MultiClusterEnvelope)
+	req := new(commonmodel.MultiClusterEnvelope)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -398,13 +406,13 @@ func ValidateRestore(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.VeleroMigrationPrecheckRequest true "Velero migration precheck request."
-//	@Success		200	{object}	model.VeleroPrecheckResponse	"Successfully completed precheck."
+//	@Param			request body veleromodel.MigrationPrecheckRequest true "Velero migration precheck request."
+//	@Success		200	{object}	veleromodel.PrecheckResponse	"Successfully completed precheck."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to run migration precheck."
 //	@Router			/velero/migration/precheck [post]
 func VeleroMigrationPrecheck(c echo.Context) error {
-	req := new(model.VeleroMigrationPrecheckRequest)
+	req := new(veleromodel.MigrationPrecheckRequest)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -439,13 +447,13 @@ func VeleroMigrationPrecheck(c echo.Context) error {
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
-//	@Param			request body model.VeleroMigrationExecuteRequest true "Velero migration execute request."
-//	@Success		200	{object}	model.JobExecution		"Successfully started migration job."
+//	@Param			request body veleromodel.MigrationExecuteRequest true "Velero migration execute request."
+//	@Success		200	{object}	jobmodel.StartResponse	"Successfully started migration job."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to start migration job."
 //	@Router			/velero/migration/execute [post]
 func VeleroMigrationExecute(c echo.Context) error {
-	req := new(model.VeleroMigrationExecuteRequest)
+	req := new(veleromodel.MigrationExecuteRequest)
 	if err := c.Bind(req); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -466,5 +474,27 @@ func VeleroMigrationExecute(c echo.Context) error {
 	if err != nil {
 		return common.ReturnInternalError(c, err, "velero migration execute failed")
 	}
-	return c.JSONPretty(http.StatusOK, job, " ")
+	return c.JSONPretty(http.StatusOK, toJobStartResponse(job), " ")
+}
+
+func toJobStartResponse(job *joblib.Info) jobmodel.StartResponse {
+	if job == nil {
+		return jobmodel.StartResponse{}
+	}
+
+	return jobmodel.StartResponse{
+		JobID:        job.JobID,
+		JobType:      job.JobType,
+		ResourceType: job.ResourceType,
+		ResourceName: job.ResourceName,
+		Status:       string(job.Status),
+		Progress:     job.Progress,
+		Message:      job.Message,
+		Metadata:     job.Metadata,
+		LogPath:      job.LogPath,
+		ErrorMessage: job.ErrorMessage,
+		StartedAt:    job.StartedAt,
+		UpdatedAt:    job.UpdatedAt,
+		FinishedAt:   job.FinishedAt,
+	}
 }

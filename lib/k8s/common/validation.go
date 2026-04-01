@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	restmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
 )
 
 func DecodeKubeconfig(value string) (string, error) {
@@ -22,14 +22,14 @@ func DecodeKubeconfig(value string) (string, error) {
 	return value, nil
 }
 
-func DefaultNamespace(cluster *restmodel.ClusterAccess, fallback string) string {
+func DefaultNamespace(cluster *commonmodel.ClusterAccess, fallback string) string {
 	if cluster == nil || strings.TrimSpace(cluster.Namespace) == "" {
 		return fallback
 	}
 	return cluster.Namespace
 }
 
-func ValidateClusterAccess(cluster *restmodel.ClusterAccess) error {
+func ValidateClusterAccess(cluster *commonmodel.ClusterAccess) error {
 	if cluster == nil {
 		return errors.New("cluster access is required")
 	}
@@ -39,7 +39,7 @@ func ValidateClusterAccess(cluster *restmodel.ClusterAccess) error {
 	return nil
 }
 
-func ValidateMinIOAccess(minio *restmodel.MinIOAccess) error {
+func ValidateMinIOAccess(minio *commonmodel.MinIOAccess) error {
 	if minio == nil {
 		return errors.New("minio access is required")
 	}
@@ -61,7 +61,7 @@ func ValidateMinIOAccess(minio *restmodel.MinIOAccess) error {
 	return nil
 }
 
-func NormalizeMinIOEndpoint(minio *restmodel.MinIOAccess) (string, bool, error) {
+func NormalizeMinIOEndpoint(minio *commonmodel.MinIOAccess) (string, bool, error) {
 	if minio == nil {
 		return "", false, errors.New("minio access is required")
 	}
@@ -87,7 +87,7 @@ func NormalizeMinIOEndpoint(minio *restmodel.MinIOAccess) (string, bool, error) 
 	return normalized, minio.UseSSL, nil
 }
 
-func BuildMinIOS3URL(minio *restmodel.MinIOAccess) (string, error) {
+func BuildMinIOS3URL(minio *commonmodel.MinIOAccess) (string, error) {
 	endpoint, useSSL, err := NormalizeMinIOEndpoint(minio)
 	if err != nil {
 		return "", err
@@ -101,7 +101,7 @@ func BuildMinIOS3URL(minio *restmodel.MinIOAccess) (string, error) {
 	return fmt.Sprintf("%s://%s", scheme, endpoint), nil
 }
 
-func DefaultMinIOBucket(minio *restmodel.MinIOAccess, fallback string) string {
+func DefaultMinIOBucket(minio *commonmodel.MinIOAccess, fallback string) string {
 	if minio == nil || strings.TrimSpace(minio.Bucket) == "" {
 		return fallback
 	}

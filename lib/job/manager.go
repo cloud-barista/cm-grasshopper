@@ -111,7 +111,7 @@ func (m *Manager) CreateJob(jobType, resourceType, resourceName string, metadata
 		UpdatedAt:    now,
 	}
 
-	_, err := dao.JobExecutionCreate(job)
+	_, err := dao.CreateExecution(job)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (m *Manager) UpdateJobStatus(jobID string, status Status, progress int, mes
 	}
 	m.mutex.Unlock()
 
-	job, err := dao.JobExecutionGet(jobID)
+	job, err := dao.GetExecution(jobID)
 	if err != nil {
 		return err
 	}
@@ -153,11 +153,11 @@ func (m *Manager) UpdateJobStatus(jobID string, status Status, progress int, mes
 		job.FinishedAt = job.UpdatedAt
 	}
 
-	return dao.JobExecutionUpdate(job)
+	return dao.UpdateExecution(job)
 }
 
 func (m *Manager) AddJobLog(jobID string, message string) error {
-	job, err := dao.JobExecutionGet(jobID)
+	job, err := dao.GetExecution(jobID)
 	if err != nil {
 		return err
 	}
@@ -182,12 +182,12 @@ func (m *Manager) AddJobLog(jobID string, message string) error {
 func (m *Manager) FailJob(jobID string, err error) error {
 	updateErr := m.UpdateJobStatus(jobID, StatusFailed, 0, err.Error())
 
-	job, getErr := dao.JobExecutionGet(jobID)
+	job, getErr := dao.GetExecution(jobID)
 	if getErr == nil {
 		job.ErrorMessage = err.Error()
 		job.UpdatedAt = time.Now()
 		job.FinishedAt = job.UpdatedAt
-		_ = dao.JobExecutionUpdate(job)
+		_ = dao.UpdateExecution(job)
 	}
 
 	_ = m.AddJobLog(jobID, "Job failed: "+err.Error())

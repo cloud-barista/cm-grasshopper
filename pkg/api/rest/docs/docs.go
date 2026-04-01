@@ -46,7 +46,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully got the job log.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobLogRes"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse"
                         }
                     },
                     "400": {
@@ -98,7 +98,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution"
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse"
                             }
                         }
                     },
@@ -144,7 +144,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully got the job status.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse"
                         }
                     },
                     "400": {
@@ -450,7 +450,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteRequest"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest"
                         }
                     }
                 ],
@@ -458,7 +458,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully started migration job.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
                         }
                     },
                     "400": {
@@ -497,7 +497,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckRequest"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest"
                         }
                     }
                 ],
@@ -505,7 +505,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully completed precheck.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckResponse"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse"
                         }
                     },
                     "400": {
@@ -544,7 +544,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupRequest"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest"
                         }
                     }
                 ],
@@ -552,8 +552,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully created backup.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
                         }
                     },
                     "400": {
@@ -592,7 +591,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -602,8 +601,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "object",
-                                "additionalProperties": true
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
                             }
                         }
                     },
@@ -650,7 +648,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -658,8 +656,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully got backup detail.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
                         }
                     },
                     "400": {
@@ -705,7 +702,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -759,7 +756,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -767,8 +764,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully validated backup.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
                         }
                     },
                     "400": {
@@ -807,7 +803,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreRequest"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest"
                         }
                     }
                 ],
@@ -815,8 +811,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully created restore.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
                         }
                     },
                     "400": {
@@ -855,7 +850,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -865,8 +860,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "object",
-                                "additionalProperties": true
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
                             }
                         }
                     },
@@ -913,7 +907,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -921,8 +915,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully got restore detail.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
                         }
                     },
                     "400": {
@@ -968,7 +961,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -1022,7 +1015,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -1030,8 +1023,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully validated restore.",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
                         }
                     },
                     "400": {
@@ -1077,7 +1069,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
                         }
                     }
                 ],
@@ -1085,7 +1077,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully checked Velero health.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroHealthResponse"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse"
                         }
                     },
                     "400": {
@@ -1131,7 +1123,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallRequest"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest"
                         }
                     }
                 ],
@@ -1139,7 +1131,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully started Velero installation.",
                         "schema": {
-                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution"
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
                         }
                     },
                     "400": {
@@ -1167,7 +1159,79 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes": {
+            "type": "object",
+            "properties": {
+                "install_log": {
+                    "type": "string"
+                },
+                "migration_log": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes": {
+            "type": "object",
+            "properties": {
+                "execution_id": {
+                    "type": "string"
+                },
+                "target_mappings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target": {
+            "type": "object",
+            "required": [
+                "mci_id",
+                "namespace_id",
+                "vm_id"
+            ],
+            "properties": {
+                "mci_id": {
+                    "type": "string"
+                },
+                "namespace_id": {
+                    "type": "string"
+                },
+                "vm_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping": {
+            "type": "object",
+            "required": [
+                "target"
+            ],
+            "properties": {
+                "source_connection_info_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess": {
             "type": "object",
             "properties": {
                 "context": {
@@ -1184,9 +1248,54 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess": {
             "type": "object",
             "properties": {
+                "accessKey": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "secretKey": {
+                    "type": "string"
+                },
+                "useSSL": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope": {
+            "type": "object",
+            "properties": {
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess": {
+            "type": "object",
+            "properties": {
+                "minio": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse": {
+            "type": "object",
+            "properties": {
+                "current_stage": {
+                    "type": "string"
+                },
                 "error_message": {
                     "type": "string"
                 },
@@ -1240,7 +1349,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobLogRes": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse": {
             "type": "object",
             "properties": {
                 "job_id": {
@@ -1257,138 +1366,161 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse": {
             "type": "object",
             "properties": {
-                "install_log": {
+                "error_message": {
                     "type": "string"
                 },
-                "migration_log": {
+                "finished_at": {
                     "type": "string"
                 },
-                "uuid": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MinIOAccess": {
-            "type": "object",
-            "properties": {
-                "accessKey": {
+                "job_id": {
                     "type": "string"
                 },
-                "bucket": {
+                "job_type": {
                     "type": "string"
                 },
-                "endpoint": {
+                "log_path": {
                     "type": "string"
                 },
-                "secretKey": {
-                    "type": "string"
-                },
-                "useSSL": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope": {
-            "type": "object",
-            "properties": {
-                "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
-                },
-                "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
-                },
-                "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg": {
-            "type": "object",
-            "properties": {
                 "message": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes": {
-            "type": "object",
-            "properties": {
-                "execution_id": {
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "resource_name": {
                     "type": "string"
                 },
-                "target_mappings": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping"
-                    }
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess": {
-            "type": "object",
-            "properties": {
-                "minio": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MinIOAccess"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target": {
-            "type": "object",
-            "required": [
-                "mci_id",
-                "namespace_id",
-                "vm_id"
-            ],
-            "properties": {
-                "mci_id": {
+                "resource_type": {
                     "type": "string"
                 },
-                "namespace_id": {
-                    "type": "string"
-                },
-                "vm_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping": {
-            "type": "object",
-            "required": [
-                "target"
-            ],
-            "properties": {
-                "source_connection_info_id": {
+                "started_at": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
                 },
-                "target": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target"
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupRequest": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest": {
             "type": "object",
             "properties": {
                 "backup": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupSpec"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec"
                 },
                 "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
                 },
                 "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupSpec": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse": {
+            "type": "object",
+            "properties": {
+                "backupMode": {
+                    "type": "string"
+                },
+                "compatibilityErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "compatibilityWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "completed": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "defaultVolumesToFsBackup": {
+                    "type": "boolean"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nameAdjusted": {
+                    "type": "boolean"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "requestedName": {
+                    "type": "string"
+                },
+                "snapshotVolumes": {
+                    "type": "boolean"
+                },
+                "started": {
+                    "type": "string"
+                },
+                "storage": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "string"
+                },
+                "volumeBackupCompatibility": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility"
+                },
+                "warnings": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec": {
             "type": "object",
             "properties": {
                 "defaultVolumesToFsBackup": {
@@ -1438,10 +1570,12 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth": {
             "type": "object",
             "properties": {
-                "lastValidationTime": {},
+                "lastValidationTime": {
+                    "type": "string"
+                },
                 "message": {
                     "type": "string"
                 },
@@ -1453,11 +1587,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroHealthResponse": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse": {
             "type": "object",
             "properties": {
                 "backupStorageLocation": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth"
                 },
                 "cluster": {
                     "type": "string"
@@ -1470,24 +1604,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallRequest": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest": {
             "type": "object",
             "properties": {
                 "install": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallSpec"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec"
                 },
                 "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
                 },
                 "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallSpec": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec": {
             "type": "object",
             "properties": {
                 "force": {
@@ -1498,24 +1632,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteRequest": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest": {
             "type": "object",
             "properties": {
                 "migration": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteSpec"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec"
                 },
                 "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
                 },
                 "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteSpec": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec": {
             "type": "object",
             "properties": {
                 "backupName": {
@@ -1589,24 +1723,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckRequest": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest": {
             "type": "object",
             "properties": {
                 "precheck": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckSpec"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec"
                 },
                 "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
                 },
                 "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckSpec": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec": {
             "type": "object",
             "properties": {
                 "backupName": {
@@ -1665,11 +1799,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary": {
             "type": "object",
             "properties": {
                 "backupStorageLocation": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth"
                 },
                 "name": {
                     "type": "string"
@@ -1690,17 +1824,20 @@ const docTemplate = `{
                     }
                 },
                 "storageClassRecommendation": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation"
                 },
-                "storageClasses": {},
+                "storageClasses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "volumeBackupCompatibility": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckResponse": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse": {
             "type": "object",
             "properties": {
                 "errors": {
@@ -1710,16 +1847,16 @@ const docTemplate = `{
                     }
                 },
                 "source": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary"
                 },
                 "status": {
                     "type": "string"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckStorageSummary"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary"
                 },
                 "target": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary"
                 },
                 "warnings": {
                     "type": "array",
@@ -1729,7 +1866,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckStorageSummary": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary": {
             "type": "object",
             "properties": {
                 "bucket": {
@@ -1740,24 +1877,101 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreRequest": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest": {
             "type": "object",
             "properties": {
                 "restore": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreSpec"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec"
                 },
                 "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 },
                 "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
                 },
                 "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess"
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreSpec": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse": {
+            "type": "object",
+            "properties": {
+                "backupName": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "existingResourcePolicy": {
+                    "type": "string"
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "namespaceMapping": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "restorePVs": {
+                    "type": "boolean"
+                },
+                "started": {
+                    "type": "string"
+                },
+                "validationErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "warnings": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec": {
             "type": "object",
             "properties": {
                 "backupName": {
@@ -1815,6 +2029,146 @@ const docTemplate = `{
                     }
                 },
                 "targetNamespace": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport": {
+            "type": "object",
+            "properties": {
+                "snapshotReady": {
+                    "type": "boolean"
+                },
+                "sourceProvisioners": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sourceSnapshotDrivers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetProvisioners": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetSnapshotDrivers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation": {
+            "type": "object",
+            "properties": {
+                "mappingRequired": {
+                    "type": "boolean"
+                },
+                "missingMappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "suggestedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "unusedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "usedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume": {
+            "type": "object",
+            "properties": {
+                "namespace": {
+                    "type": "string"
+                },
+                "pod": {
+                    "type": "string"
+                },
+                "provisioner": {
+                    "type": "string"
+                },
+                "pv": {
+                    "type": "string"
+                },
+                "pvc": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility": {
+            "type": "object",
+            "properties": {
+                "filesystemBackupReady": {
+                    "type": "boolean"
+                },
+                "podWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "recommendedAction": {
+                    "type": "string"
+                },
+                "recommendedVolumeBackupMode": {
+                    "type": "string"
+                },
+                "snapshotSupport": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport"
+                },
+                "storageWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "supportedVolumeBackupModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "unsupportedVolumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume"
+                    }
+                },
+                "volumeBackupMode": {
                     "type": "string"
                 }
             }

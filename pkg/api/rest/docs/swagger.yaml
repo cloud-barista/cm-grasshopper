@@ -5,7 +5,54 @@ definitions:
       error:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes:
+    properties:
+      install_log:
+        type: string
+      migration_log:
+        type: string
+      uuid:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
+    properties:
+      message:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
+    properties:
+      execution_id:
+        type: string
+      target_mappings:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping'
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
+    properties:
+      mci_id:
+        type: string
+      namespace_id:
+        type: string
+      vm_id:
+        type: string
+    required:
+    - mci_id
+    - namespace_id
+    - vm_id
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping:
+    properties:
+      source_connection_info_id:
+        type: string
+      status:
+        type: string
+      target:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
+    required:
+    - target
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess:
     properties:
       context:
         type: string
@@ -16,8 +63,37 @@ definitions:
       namespace:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess:
     properties:
+      accessKey:
+        type: string
+      bucket:
+        type: string
+      endpoint:
+        type: string
+      secretKey:
+        type: string
+      useSSL:
+        type: boolean
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope:
+    properties:
+      sourceCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+      storage:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
+      targetCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess:
+    properties:
+      minio:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess'
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse:
+    properties:
+      current_stage:
+        type: string
       error_message:
         type: string
       finished_at:
@@ -53,7 +129,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobLogRes:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse:
     properties:
       job_id:
         type: string
@@ -64,92 +140,109 @@ definitions:
       status:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MigrationLogRes:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse:
     properties:
-      install_log:
+      error_message:
         type: string
-      migration_log:
+      finished_at:
         type: string
-      uuid:
+      job_id:
         type: string
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MinIOAccess:
-    properties:
-      accessKey:
+      job_type:
         type: string
-      bucket:
+      log_path:
         type: string
-      endpoint:
-        type: string
-      secretKey:
-        type: string
-      useSSL:
-        type: boolean
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope:
-    properties:
-      sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
-      storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
-      targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg:
-    properties:
       message:
         type: string
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SoftwareMigrateRes:
-    properties:
-      execution_id:
+      metadata:
+        additionalProperties: true
+        type: object
+      progress:
+        type: integer
+      resource_name:
         type: string
-      target_mappings:
-        items:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping'
-        type: array
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess:
-    properties:
-      minio:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MinIOAccess'
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
-    properties:
-      mci_id:
+      resource_type:
         type: string
-      namespace_id:
-        type: string
-      vm_id:
-        type: string
-    required:
-    - mci_id
-    - namespace_id
-    - vm_id
-    type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping:
-    properties:
-      source_connection_info_id:
+      started_at:
         type: string
       status:
         type: string
-      target:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target'
-    required:
-    - target
+      updated_at:
+        type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupRequest:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest:
     properties:
       backup:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupSpec'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec'
       sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
       targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupSpec:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse:
+    properties:
+      backupMode:
+        type: string
+      compatibilityErrors:
+        items:
+          type: string
+        type: array
+      compatibilityWarnings:
+        items:
+          type: string
+        type: array
+      completed:
+        type: string
+      createdAt:
+        type: string
+      defaultVolumesToFsBackup:
+        type: boolean
+      errors:
+        type: integer
+      excludedNamespaces:
+        items:
+          type: string
+        type: array
+      excludedResources:
+        items:
+          type: string
+        type: array
+      includeClusterResources:
+        type: boolean
+      includedNamespaces:
+        items:
+          type: string
+        type: array
+      includedResources:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      nameAdjusted:
+        type: boolean
+      namespace:
+        type: string
+      phase:
+        type: string
+      requestedName:
+        type: string
+      snapshotVolumes:
+        type: boolean
+      started:
+        type: string
+      storage:
+        type: string
+      ttl:
+        type: string
+      volumeBackupCompatibility:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility'
+      warnings:
+        type: integer
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec:
     properties:
       defaultVolumesToFsBackup:
         type: boolean
@@ -182,9 +275,10 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth:
     properties:
-      lastValidationTime: {}
+      lastValidationTime:
+        type: string
       message:
         type: string
       name:
@@ -192,10 +286,10 @@ definitions:
       phase:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroHealthResponse:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse:
     properties:
       backupStorageLocation:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth'
       cluster:
         type: string
       namespace:
@@ -203,36 +297,36 @@ definitions:
       status:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallRequest:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest:
     properties:
       install:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallSpec'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec'
       sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
       targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallSpec:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec:
     properties:
       force:
         type: boolean
       volumeBackupMode:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteRequest:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest:
     properties:
       migration:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteSpec'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec'
       sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
       targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteSpec:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec:
     properties:
       backupName:
         type: string
@@ -281,18 +375,18 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckRequest:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest:
     properties:
       precheck:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckSpec'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec'
       sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
       targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckSpec:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec:
     properties:
       backupName:
         type: string
@@ -331,10 +425,10 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary:
     properties:
       backupStorageLocation:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupStorageLocationHealth'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth'
       name:
         type: string
       namespace:
@@ -348,51 +442,103 @@ definitions:
           type: string
         type: array
       storageClassRecommendation:
-        additionalProperties: true
-        type: object
-      storageClasses: {}
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation'
+      storageClasses:
+        items:
+          type: string
+        type: array
       volumeBackupCompatibility:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckResponse:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse:
     properties:
       errors:
         items:
           type: string
         type: array
       source:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary'
       status:
         type: string
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckStorageSummary'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary'
       target:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckClusterSummary'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary'
       warnings:
         items:
           type: string
         type: array
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckStorageSummary:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary:
     properties:
       bucket:
         type: string
       endpoint:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreRequest:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest:
     properties:
       restore:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreSpec'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec'
       sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
       storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.StorageAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
       targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.ClusterAccess'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreSpec:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse:
+    properties:
+      backupName:
+        type: string
+      completed:
+        type: string
+      createdAt:
+        type: string
+      errors:
+        type: integer
+      excludedNamespaces:
+        items:
+          type: string
+        type: array
+      excludedResources:
+        items:
+          type: string
+        type: array
+      existingResourcePolicy:
+        type: string
+      includeClusterResources:
+        type: boolean
+      includedNamespaces:
+        items:
+          type: string
+        type: array
+      includedResources:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      namespace:
+        type: string
+      namespaceMapping:
+        additionalProperties:
+          type: string
+        type: object
+      phase:
+        type: string
+      restorePVs:
+        type: boolean
+      started:
+        type: string
+      validationErrors:
+        items:
+          type: string
+        type: array
+      warnings:
+        type: integer
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec:
     properties:
       backupName:
         type: string
@@ -431,6 +577,98 @@ definitions:
           type: string
         type: object
       targetNamespace:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport:
+    properties:
+      snapshotReady:
+        type: boolean
+      sourceProvisioners:
+        items:
+          type: string
+        type: array
+      sourceSnapshotDrivers:
+        items:
+          type: string
+        type: array
+      targetProvisioners:
+        items:
+          type: string
+        type: array
+      targetSnapshotDrivers:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation:
+    properties:
+      mappingRequired:
+        type: boolean
+      missingMappings:
+        items:
+          type: string
+        type: array
+      suggestedMappings:
+        additionalProperties:
+          type: string
+        type: object
+      unusedMappings:
+        additionalProperties:
+          type: string
+        type: object
+      usedMappings:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume:
+    properties:
+      namespace:
+        type: string
+      pod:
+        type: string
+      provisioner:
+        type: string
+      pv:
+        type: string
+      pvc:
+        type: string
+      reason:
+        type: string
+      storageClass:
+        type: string
+      type:
+        type: string
+      volume:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility:
+    properties:
+      filesystemBackupReady:
+        type: boolean
+      podWarnings:
+        items:
+          type: string
+        type: array
+      recommendedAction:
+        type: string
+      recommendedVolumeBackupMode:
+        type: string
+      snapshotSupport:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport'
+      storageWarnings:
+        items:
+          type: string
+        type: array
+      supportedVolumeBackupModes:
+        items:
+          type: string
+        type: array
+      unsupportedVolumes:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume'
+        type: array
+      volumeBackupMode:
         type: string
     type: object
   softwaremodel.Binary:
@@ -933,7 +1171,7 @@ paths:
         "200":
           description: Successfully got the job log.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobLogRes'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -967,7 +1205,7 @@ paths:
           description: Successfully listed jobs.
           schema:
             items:
-              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution'
+              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse'
             type: array
         "400":
           description: Sent bad request.
@@ -998,7 +1236,7 @@ paths:
         "200":
           description: Successfully got the job status.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1205,14 +1443,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully checked Velero health.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroHealthResponse'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1241,14 +1479,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroInstallRequest'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully started Velero installation.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1273,14 +1511,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationExecuteRequest'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully started migration job.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.JobExecution'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1305,14 +1543,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroMigrationPrecheckRequest'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully completed precheck.
           schema:
-            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroPrecheckResponse'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1336,15 +1574,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroBackupRequest'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully created backup.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1373,15 +1610,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully got backup detail.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1410,7 +1646,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
@@ -1446,15 +1682,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully validated backup.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1478,7 +1713,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
@@ -1486,8 +1721,7 @@ paths:
           description: Successfully listed backups.
           schema:
             items:
-              additionalProperties: true
-              type: object
+              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse'
             type: array
         "400":
           description: Sent bad request.
@@ -1512,15 +1746,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.VeleroRestoreRequest'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully created restore.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1549,15 +1782,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully got restore detail.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1586,7 +1818,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
@@ -1622,15 +1854,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully validated restore.
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse'
         "400":
           description: Sent bad request.
           schema:
@@ -1654,7 +1885,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.MultiClusterEnvelope'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope'
       produces:
       - application/json
       responses:
@@ -1662,8 +1893,7 @@ paths:
           description: Successfully listed restores.
           schema:
             items:
-              additionalProperties: true
-              type: object
+              $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse'
             type: array
         "400":
           description: Sent bad request.

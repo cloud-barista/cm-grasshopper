@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
 	joblib "github.com/cloud-barista/cm-grasshopper/lib/job"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	jobmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/job"
 	"github.com/labstack/echo/v4"
 )
 
@@ -21,7 +23,7 @@ import (
 //	@Accept			json
 //	@Produce		json
 //	@Param			jobId path string true "ID of the job."
-//	@Success		200	{object}	model.JobExecution		"Successfully got the job status."
+//	@Success		200	{object}	jobmodel.ExecutionResponse	"Successfully got the job status."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get the job status."
 //	@Router			/job/status/{jobId} [get]
@@ -31,7 +33,7 @@ func GetJobStatus(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the jobId.")
 	}
 
-	job, err := dao.JobExecutionGet(jobID)
+	job, err := dao.GetExecution(jobID)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
@@ -48,8 +50,7 @@ func GetJobStatus(c echo.Context) error {
 			}
 		}
 	}
-
-	return c.JSONPretty(http.StatusOK, job, " ")
+	return c.JSONPretty(http.StatusOK, toJobExecutionResponse(job), " ")
 }
 
 // GetJobLog godoc
@@ -61,7 +62,7 @@ func GetJobStatus(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			jobId path string true "ID of the job."
-//	@Success		200	{object}	model.JobLogRes			"Successfully got the job log."
+//	@Success		200	{object}	jobmodel.LogResponse	"Successfully got the job log."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to get the job log."
 //	@Router			/job/log/{jobId} [get]
@@ -71,12 +72,12 @@ func GetJobLog(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the jobId.")
 	}
 
-	job, err := dao.JobExecutionGet(jobID)
+	job, err := dao.GetExecution(jobID)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	res := model.JobLogRes{
+	res := jobmodel.LogResponse{
 		JobID:   job.JobID,
 		Status:  job.Status,
 		Message: job.Message,
@@ -105,7 +106,7 @@ func GetJobLog(c echo.Context) error {
 //	@Produce		json
 //	@Param			page query int false "Page number."
 //	@Param			row query int false "Rows per page."
-//	@Success		200	{array}		model.JobExecution		"Successfully listed jobs."
+//	@Success		200	{array}		jobmodel.ExecutionResponse	"Successfully listed jobs."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
 //	@Failure		500	{object}	common.ErrorResponse	"Failed to list jobs."
 //	@Router			/job/status [get]
@@ -115,10 +116,61 @@ func ListJobStatus(c echo.Context) error {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	jobList, err := dao.JobExecutionGetList(page, row)
+	jobList, err := dao.ListExecutions(page, row)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
+	res := make([]jobmodel.ExecutionResponse, 0, len(*jobList))
+	for i := range *jobList {
+		res = append(res, toJobExecutionResponse(&(*jobList)[i]))
+	}
 
-	return c.JSONPretty(http.StatusOK, jobList, " ")
+	return c.JSONPretty(http.StatusOK, res, " ")
+}
+
+func deriveCurrentStage(message string) string {
+	normalized := strings.ToLower(strings.TrimSpace(message))
+	switch {
+	case normalized == "":
+		return ""
+	case strings.Contains(normalized, "precheck"):
+		return "precheck"
+	case strings.Contains(normalized, "source backup") || strings.Contains(normalized, "waiting for backup"):
+		return "backup"
+	case strings.Contains(normalized, "sync into target cluster") || strings.Contains(normalized, "available on target cluster"):
+		return "backup_sync"
+	case strings.Contains(normalized, "target restore") || strings.Contains(normalized, "waiting for restore"):
+		return "restore"
+	case strings.Contains(normalized, "migration completed"):
+		return "completed"
+	default:
+		return "processing"
+	}
+}
+
+func toJobExecutionResponse(job *model.JobExecution) jobmodel.ExecutionResponse {
+	if job == nil {
+		return jobmodel.ExecutionResponse{}
+	}
+
+	return jobmodel.ExecutionResponse{
+		JobID:             job.JobID,
+		JobType:           job.JobType,
+		ResourceType:      job.ResourceType,
+		ResourceName:      job.ResourceName,
+		SourceClusterName: job.SourceClusterName,
+		TargetClusterName: job.TargetClusterName,
+		SourceNamespace:   job.SourceNamespace,
+		TargetNamespace:   job.TargetNamespace,
+		Status:            job.Status,
+		Progress:          job.Progress,
+		Message:           job.Message,
+		CurrentStage:      deriveCurrentStage(job.Message),
+		Metadata:          job.Metadata,
+		LogPath:           job.LogPath,
+		ErrorMessage:      job.ErrorMessage,
+		StartedAt:         job.StartedAt,
+		UpdatedAt:         job.UpdatedAt,
+		FinishedAt:        job.FinishedAt,
+	}
 }

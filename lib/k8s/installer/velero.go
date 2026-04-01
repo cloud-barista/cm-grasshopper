@@ -12,7 +12,8 @@ import (
 
 	k8sclient "github.com/cloud-barista/cm-grasshopper/lib/k8s/client"
 	k8scommon "github.com/cloud-barista/cm-grasshopper/lib/k8s/common"
-	restmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
+	veleromodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/velero"
 	velerov1 "github.com/vmware-tanzu/velero/pkg/apis/velero/v1"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -46,12 +47,12 @@ func NewVeleroInstaller() *VeleroInstaller {
 	return &VeleroInstaller{}
 }
 
-func (v *VeleroInstaller) Install(ctx context.Context, cluster *restmodel.ClusterAccess, minioAccess *restmodel.MinIOAccess, force bool, volumeBackupMode string) (*InstallResult, error) {
+func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) (*InstallResult, error) {
 	start := time.Now()
 	namespace := k8scommon.DefaultNamespace(cluster, DefaultVeleroNamespace)
 	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, DefaultVeleroBucket)
 	if volumeBackupMode == "" {
-		volumeBackupMode = restmodel.VeleroVolumeBackupModeFilesystem
+		volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
 	}
 
 	clientset, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
@@ -76,7 +77,7 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *restmodel.Cluste
 		return nil, err
 	}
 
-	actionConfig, err := k8sclient.NewHelmActionConfig(&restmodel.ClusterAccess{
+	actionConfig, err := k8sclient.NewHelmActionConfig(&commonmodel.ClusterAccess{
 		Kubeconfig: cluster.Kubeconfig,
 		Namespace:  namespace,
 	})
@@ -121,7 +122,7 @@ func (v *VeleroInstaller) ensureNamespace(ctx context.Context, clientset *kubern
 	return err
 }
 
-func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, minioAccess *restmodel.MinIOAccess, force bool) error {
+func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, minioAccess *commonmodel.MinIOAccess, force bool) error {
 	secretName := "cloud-credentials"
 
 	if force {
@@ -154,7 +155,7 @@ region=minio
 	return err
 }
 
-func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configuration, namespace string, minioAccess *restmodel.MinIOAccess, force bool, volumeBackupMode string) error {
+func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configuration, namespace string, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) error {
 	chartRef, err := downloadChart(veleroChartURL)
 	if err != nil {
 		return err
@@ -197,7 +198,7 @@ func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configurati
 	return err
 }
 
-func buildVeleroValues(minioAccess *restmodel.MinIOAccess, volumeBackupMode string) map[string]interface{} {
+func buildVeleroValues(minioAccess *commonmodel.MinIOAccess, volumeBackupMode string) map[string]interface{} {
 	s3URL, err := k8scommon.BuildMinIOS3URL(minioAccess)
 	if err != nil {
 		// Validation runs before installer execution, so this fallback is defensive only.
@@ -205,7 +206,7 @@ func buildVeleroValues(minioAccess *restmodel.MinIOAccess, volumeBackupMode stri
 	}
 	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, DefaultVeleroBucket)
 	if volumeBackupMode == "" {
-		volumeBackupMode = restmodel.VeleroVolumeBackupModeFilesystem
+		volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
 	}
 
 	snapshotsEnabled := false
@@ -213,7 +214,7 @@ func buildVeleroValues(minioAccess *restmodel.MinIOAccess, volumeBackupMode stri
 	defaultVolumesToFsBackup := true
 	features := ""
 
-	if volumeBackupMode == restmodel.VeleroVolumeBackupModeSnapshot {
+	if volumeBackupMode == veleromodel.VolumeBackupModeSnapshot {
 		snapshotsEnabled = true
 		deployNodeAgent = false
 		defaultVolumesToFsBackup = false
@@ -314,7 +315,7 @@ func (v *VeleroInstaller) waitForDeploymentReady(ctx context.Context, clientset 
 	return fmt.Errorf("timed out waiting for velero deployment readiness")
 }
 
-func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, controllerClient ctrlclient.Client, namespace string, minioAccess *restmodel.MinIOAccess, force bool) error {
+func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, controllerClient ctrlclient.Client, namespace string, minioAccess *commonmodel.MinIOAccess, force bool) error {
 	s3URL, err := k8scommon.BuildMinIOS3URL(minioAccess)
 	if err != nil {
 		return err

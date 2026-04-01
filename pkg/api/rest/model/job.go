@@ -21,10 +21,3 @@ type JobExecution struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 	FinishedAt        time.Time `json:"finished_at"`
 }
-
-type JobLogRes struct {
-	JobID   string `json:"job_id"`
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Log     string `json:"log"`
-}
