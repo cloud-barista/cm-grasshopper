@@ -12,6 +12,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
+	grasshopperjob "github.com/cloud-barista/cm-grasshopper/lib/job"
 	"github.com/cloud-barista/cm-grasshopper/lib/rsautil"
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/controller"
@@ -21,6 +22,37 @@ import (
 	"github.com/jollaman999/utils/logger"
 )
 
+func initSoftwareMigrationDependencies() error {
+	_, err := cmd.RunCMD("ansible-playbook -h")
+	if err != nil {
+		return errors.New("'ansible-playbook' command not found please install Ansible")
+	}
+
+	err = software.CheckAnsibleVersion()
+	if err != nil {
+		return err
+	}
+
+	privateKeyPath := common.RootPath + "/" + common.HoneybeePrivateKeyFileName
+	if !fileutil.IsExist(privateKeyPath) {
+		return errors.New("Honeybee's private key not found (" + privateKeyPath + ")")
+	}
+
+	common.HoneybeePrivateKey, err = rsautil.ReadPrivateKey(privateKeyPath)
+	if err != nil {
+		return errors.New("error occurred while reading Honeybee's private key")
+	}
+
+	return nil
+}
+
+func initK8sMigrationDependencies() error {
+	return grasshopperjob.InitDefaultManager(
+		config.CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount,
+		config.CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder,
+	)
+}
+
 func init() {
 	err := config.PrepareConfigs()
 	if err != nil {
@@ -28,17 +60,6 @@ func init() {
 	}
 
 	err = logger.InitLogFile(common.RootPath+"/log", strings.ToLower(common.ModuleName))
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	_, err = cmd.RunCMD("ansible-playbook -h")
-	if err != nil {
-		logger.Panicln(logger.ERROR, false,
-			"'ansible-playbook' command not found please install Ansible!")
-	}
-
-	err = software.CheckAnsibleVersion()
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -60,15 +81,20 @@ func init() {
 		logger.Panicln(logger.ERROR, true, err.Error())
 	}
 
-	controller.OkMessage.Message = "Honeybee's RSA private key is not ready"
-	privateKeyPath := common.RootPath + "/" + common.HoneybeePrivateKeyFileName
-	if !fileutil.IsExist(privateKeyPath) {
-		logger.Panicln(logger.ERROR, true, errors.New("Honeybee's private key not found ("+privateKeyPath+")"))
+	if config.IsSoftwareMigrationEnabled() {
+		controller.OkMessage.Message = "Software migration dependencies are not ready"
+		err = initSoftwareMigrationDependencies()
+		if err != nil {
+			logger.Panicln(logger.ERROR, true, err.Error())
+		}
 	}
 
-	common.HoneybeePrivateKey, err = rsautil.ReadPrivateKey(privateKeyPath)
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, "error occurred while reading Honeybee's private key")
+	if config.IsK8sMigrationEnabled() {
+		controller.OkMessage.Message = "K8s migration dependencies are not ready"
+		err = initK8sMigrationDependencies()
+		if err != nil {
+			logger.Panicln(logger.ERROR, true, err.Error())
+		}
 	}
 
 	controller.OkMessage.Message = "CM-Grasshopper API server is ready"

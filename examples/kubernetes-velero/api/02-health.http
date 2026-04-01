@@ -1,0 +1,23 @@
+### Source health
+POST {{baseUrl}}/velero/source/health
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  }
+}
+
+### Target health
+POST {{baseUrl}}/velero/target/health
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  }
+}

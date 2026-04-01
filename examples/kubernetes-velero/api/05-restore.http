@@ -1,0 +1,67 @@
+### Target restore create
+POST {{baseUrl}}/velero/target/restores
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  },
+  "restore": {
+    "name": "restore-demo-fsb",
+    "backupName": "backup-demo-fsb",
+    "sourceNamespace": "demo",
+    "targetNamespace": "demo-restored",
+    "existingResourcePolicy": "update",
+    "restorePVs": true
+  }
+}
+
+### Target restore list
+POST {{baseUrl}}/velero/target/restores/list
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  }
+}
+
+### Target restore get
+POST {{baseUrl}}/velero/target/restores/restore-demo-fsb
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  }
+}
+
+### Target restore validate
+POST {{baseUrl}}/velero/target/restores/restore-demo-fsb/validate
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  }
+}
+
+### Target restore delete
+POST {{baseUrl}}/velero/target/restores/restore-demo-fsb/delete
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  }
+}

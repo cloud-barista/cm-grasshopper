@@ -1,0 +1,62 @@
+### Migration precheck - compact
+POST {{baseUrl}}/velero/migration/precheck?verbose=false
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  },
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  },
+  "storage": {
+    "minio": {
+      "endpoint": "{{minio_url}}",
+      "accessKey": "{{minio_accesskey}}",
+      "secretKey": "{{minio_secretkey}}",
+      "bucket": "{{minio_bucket}}",
+      "useSSL": true
+    }
+  },
+  "precheck": {
+    "sourceNamespace": "demo",
+    "targetNamespace": "demo-restored",
+    "storageClassMappings": {
+      "nfs-client": "nfs-client"
+    }
+  }
+}
+
+### Migration precheck - verbose
+POST {{baseUrl}}/velero/migration/precheck?verbose=true
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  },
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  },
+  "storage": {
+    "minio": {
+      "endpoint": "{{minio_url}}",
+      "accessKey": "{{minio_accesskey}}",
+      "secretKey": "{{minio_secretkey}}",
+      "bucket": "{{minio_bucket}}",
+      "useSSL": true
+    }
+  },
+  "precheck": {
+    "sourceNamespace": "demo",
+    "targetNamespace": "demo-restored"
+  }
+}

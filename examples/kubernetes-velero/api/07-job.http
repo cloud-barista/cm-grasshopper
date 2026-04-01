@@ -1,0 +1,8 @@
+### Job status
+GET {{baseUrl}}/job/status/{{job_id}}
+
+### Job log
+GET {{baseUrl}}/job/log/{{job_id}}
+
+### Job list
+GET {{baseUrl}}/job/status

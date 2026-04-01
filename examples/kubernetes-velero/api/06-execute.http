@@ -1,0 +1,43 @@
+### End-to-end migration execute
+POST {{baseUrl}}/velero/migration/execute
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  },
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  },
+  "storage": {
+    "minio": {
+      "endpoint": "{{minio_url}}",
+      "accessKey": "{{minio_accesskey}}",
+      "secretKey": "{{minio_secretkey}}",
+      "bucket": "{{minio_bucket}}",
+      "useSSL": true
+    }
+  },
+  "migration": {
+    "backupName": "backup-demo-fsb",
+    "restoreName": "restore-demo-fsb",
+    "sourceNamespace": "demo",
+    "targetNamespace": "demo-restored",
+    "volumeBackupMode": "filesystem",
+    "includedResources": [
+      "deployments",
+      "services",
+      "configmaps",
+      "secrets",
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ],
+    "existingResourcePolicy": "update",
+    "restorePVs": true
+  }
+}
