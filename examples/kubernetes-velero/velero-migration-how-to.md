@@ -16,19 +16,19 @@
 
 관련 예제 파일
 
-- [README.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/README.md)
-- [source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml)
-- [velero-migration-api.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/velero-migration-api.md)
-- [http-client.env.json](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/http-client.env.json)
-- [01-install.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/01-install.http)
-- [02-health.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/02-health.http)
-- [03-precheck.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/03-precheck.http)
-- [04-backup.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/04-backup.http)
-- [05-restore.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/05-restore.http)
-- [06-execute.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/06-execute.http)
-- [07-job.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/07-job.http)
-- [write-test-data.sh](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/write-test-data.sh)
-- [verify-restored-data.sh](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/verify-restored-data.sh)
+- [README.md](README.md)
+- [source-demo-app.yaml](shared/source-demo-app.yaml)
+- [velero-migration-api.md](velero-migration-api.md)
+- [http-client.env.json](api/http-client.env.json)
+- [01-install.http](api/01-install.http)
+- [02-health.http](api/02-health.http)
+- [03-precheck.http](api/03-precheck.http)
+- [04-backup.http](api/04-backup.http)
+- [05-restore.http](api/05-restore.http)
+- [06-execute.http](api/06-execute.http)
+- [07-job.http](api/07-job.http)
+- [write-test-data.sh](shared/write-test-data.sh)
+- [verify-restored-data.sh](shared/verify-restored-data.sh)
 
 
 
@@ -89,7 +89,7 @@ base64 -i ~/.kube/target-config | tr -d '\n'
 
 사용 파일
 
-- [source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml)
+- [source-demo-app.yaml](shared/source-demo-app.yaml)
 
 
 
@@ -121,7 +121,7 @@ storageClassName: nfs-client
 ### 3-2. 배포
 
 ```bash
-kubectl apply -f /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml
+kubectl apply -f examples/kubernetes-velero/shared/source-demo-app.yaml
 ```
 
 
@@ -150,14 +150,14 @@ FSB 복구가 실제로 되는지 확인하려면 PVC 안에 파일을 하나 �
 
 사용 스크립트
 
-- [write-test-data.sh](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/write-test-data.sh)
+- [write-test-data.sh](shared/write-test-data.sh)
 
 
 
 실행
 
 ```bash
-bash /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/write-test-data.sh
+bash examples/kubernetes-velero/shared/write-test-data.sh
 ```
 
 
@@ -184,7 +184,7 @@ kubectl -n demo exec deploy/app -- sh -c 'cat /usr/share/nginx/html/data/check.t
 테스트는 두 가지 방식 중 하나로 진행하면 됩니다.
 
 1. `curl` 사용
-   - [velero-migration-api.md](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/velero-migration-api.md)
+   - [velero-migration-api.md](velero-migration-api.md)
 2. REST Client 사용
    - flow files: `01-` ~ `07-` `.http`
    - environment file: `api/http-client.env.json`
@@ -490,14 +490,14 @@ kubectl -n demo-restored get pvc -o wide
 
 사용 스크립트
 
-- [verify-restored-data.sh](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/verify-restored-data.sh)
+- [verify-restored-data.sh](shared/verify-restored-data.sh)
 
 
 
 실행
 
 ```bash
-bash /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/verify-restored-data.sh
+bash examples/kubernetes-velero/shared/verify-restored-data.sh
 ```
 
 
@@ -721,7 +721,7 @@ kubectl --kubeconfig /tmp/target-kubeconfig get sc
 
 ### 18-4. source demo app YAML 수정
 
-[source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml) 에서
+[source-demo-app.yaml](shared/source-demo-app.yaml) 에서
 
 ```yaml
 storageClassName: old-sc
@@ -740,7 +740,7 @@ storageClassName: standard
 ### 18-5. source cluster에 sample app 배포
 
 ```bash
-kubectl --kubeconfig /tmp/source-kubeconfig apply -f /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml
+kubectl --kubeconfig /tmp/source-kubeconfig apply -f examples/kubernetes-velero/shared/source-demo-app.yaml
 ```
 
 확인
@@ -758,7 +758,7 @@ kubectl --kubeconfig /tmp/source-kubeconfig -n demo get pvc
 
 ```bash
 kubectl config use-context kind-source-cluster
-bash /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/write-test-data.sh
+bash examples/kubernetes-velero/shared/write-test-data.sh
 ```
 
 또는 직접

@@ -322,12 +322,12 @@ kubectl --kubeconfig /tmp/target-kubeconfig get sc
 
 기존 예제 파일을 사용합니다.
 
-- [source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml)
+- [source-demo-app.yaml](../../shared/source-demo-app.yaml)
 
 배포 전에 `storageClassName`을 `nfs-client`로 바꿉니다.
 
 ```bash
-kubectl --kubeconfig /tmp/source-kubeconfig apply -f /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml
+kubectl --kubeconfig /tmp/source-kubeconfig apply -f examples/kubernetes-velero/shared/source-demo-app.yaml
 ```
 
 확인
@@ -345,7 +345,7 @@ PVC는 `Bound`, Pod는 `Running`이어야 합니다.
 
 기존 스크립트를 활용합니다.
 
-- [write-test-data.sh](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/write-test-data.sh)
+- [write-test-data.sh](../../shared/write-test-data.sh)
 
 필요하면 스크립트 안의 kubeconfig/context 사용 부분을 source kind 기준으로 맞춘 뒤 실행합니다.
 
@@ -378,11 +378,11 @@ make run
 
 예제 파일
 
-- [01-install.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/01-install.http)
-- [02-health.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/02-health.http)
-- [03-precheck.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/03-precheck.http)
-- [04-backup.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/04-backup.http)
-- [05-restore.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/05-restore.http)
+- [01-install.http](../../api/01-install.http)
+- [02-health.http](../../api/02-health.http)
+- [03-precheck.http](../../api/03-precheck.http)
+- [04-backup.http](../../api/04-backup.http)
+- [05-restore.http](../../api/05-restore.http)
 
 채워야 할 값
 

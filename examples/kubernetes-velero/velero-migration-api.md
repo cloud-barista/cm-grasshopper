@@ -10,14 +10,14 @@ http://localhost:8084/grasshopper
 
 ## HTTP files
 
-- httpYac environment: [http-client.env.json](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/http-client.env.json)
-- [01-install.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/01-install.http)
-- [02-health.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/02-health.http)
-- [03-precheck.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/03-precheck.http)
-- [04-backup.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/04-backup.http)
-- [05-restore.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/05-restore.http)
-- [06-execute.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/06-execute.http)
-- [07-job.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/07-job.http)
+- httpYac environment: [http-client.env.json](api/http-client.env.json)
+- [01-install.http](api/01-install.http)
+- [02-health.http](api/02-health.http)
+- [03-precheck.http](api/03-precheck.http)
+- [04-backup.http](api/04-backup.http)
+- [05-restore.http](api/05-restore.http)
+- [06-execute.http](api/06-execute.http)
+- [07-job.http](api/07-job.http)
 
 
 

@@ -187,12 +187,12 @@ kubectl --kubeconfig /tmp/target-kubeconfig get volumesnapshotclass csi-hostpath
 
 기존 예제 파일을 사용합니다.
 
-- [source-demo-app.yaml](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml)
+- [source-demo-app.yaml](../../shared/source-demo-app.yaml)
 
 배포 전에 `storageClassName`을 CSI hostpath용 StorageClass 이름으로 바꿉니다.
 
 ```bash
-kubectl --kubeconfig /tmp/source-kubeconfig apply -f /Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/shared/source-demo-app.yaml
+kubectl --kubeconfig /tmp/source-kubeconfig apply -f examples/kubernetes-velero/shared/source-demo-app.yaml
 ```
 
 확인
@@ -244,11 +244,11 @@ make run
 
 예제 파일
 
-- [01-install.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/01-install.http)
-- [02-health.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/02-health.http)
-- [03-precheck.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/03-precheck.http)
-- [04-backup.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/04-backup.http)
-- [05-restore.http](/Users/taking/Documents/innogrid/projects/cm-grasshopper/examples/kubernetes-velero/api/05-restore.http)
+- [01-install.http](../../api/01-install.http)
+- [02-health.http](../../api/02-health.http)
+- [03-precheck.http](../../api/03-precheck.http)
+- [04-backup.http](../../api/04-backup.http)
+- [05-restore.http](../../api/05-restore.http)
 
 주의
 
