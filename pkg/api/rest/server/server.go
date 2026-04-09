@@ -52,7 +52,10 @@ func getLocalIP() string {
 
 // @BasePath /grasshopper
 
-func Init() {
+// New builds the echo server with all routes registered. The caller is
+// responsible for starting and gracefully shutting it down so the lifecycle
+// can be coordinated with the rest of the process.
+func New() *echo.Echo {
 	e := echo.New()
 
 	e.Use(middlewares.CustomLogger())
@@ -66,7 +69,13 @@ func Init() {
 	route.RegisterSwagger(e)
 	route.RegisterUtility(e)
 
-	// Display API Docs Dashboard when server starts
+	return e
+}
+
+// PrintBanner prints the CM-Grasshopper repository link and the API docs URL.
+// Called by the caller right before starting the server so the user sees the
+// dashboard URL on stdout.
+func PrintBanner() {
 	endpoint := getLocalIP() + ":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port
 	apiDocsDashboard := " http://" + endpoint + "/" + strings.ToLower(common.ShortModuleName) + "/api/index.html"
 
@@ -77,7 +86,4 @@ func Init() {
 	fmt.Println(" API Docs Dashboard:")
 	fmt.Printf(noticeColor, apiDocsDashboard)
 	fmt.Println("\n ")
-
-	err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
-	logger.Panicln(logger.ERROR, true, err)
 }

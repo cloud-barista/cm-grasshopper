@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/cloud-barista/cm-grasshopper/db"
@@ -21,6 +23,8 @@ import (
 	"github.com/jollaman999/utils/fileutil"
 	"github.com/jollaman999/utils/logger"
 )
+
+const shutdownTimeout = 30 * time.Second
 
 func initSoftwareMigrationDependencies() error {
 	_, err := cmd.RunCMD("ansible-playbook -h")
@@ -63,56 +67,62 @@ func init() {
 	if err != nil {
 		log.Panicln(err)
 	}
-
-	controller.OkMessage.Message = "API server is not ready"
-
-	controller.OkMessage.Message = "Package Migration Config Database is not ready"
-	err = db.Open()
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
-	}
-
-	controller.OkMessage.Message = "Software migration dependencies are not ready"
-	err = initSoftwareMigrationDependencies()
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
-	}
-
-	controller.OkMessage.Message = "K8s migration dependencies are not ready"
-	err = initK8sMigrationDependencies()
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
-	}
-
-	controller.OkMessage.Message = "CM-Grasshopper API server is ready"
-	controller.IsReady = true
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer func() {
-			wg.Done()
-		}()
-		server.Init()
-	}()
-
-	wg.Wait()
-}
-
-func end() {
-	db.Close()
-
-	logger.CloseLogFile()
 }
 
 func main() {
-	// Catch the exit signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	controller.SetOkMessage("API server is not ready")
+
+	controller.SetOkMessage("Package Migration Config Database is not ready")
+	if err := db.Open(); err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.SetOkMessage("Software migration dependencies are not ready")
+	if err := initSoftwareMigrationDependencies(); err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.SetOkMessage("K8s migration dependencies are not ready")
+	if err := initK8sMigrationDependencies(); err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.SetOkMessage("CM-Grasshopper API server is ready")
+	controller.SetReady(true)
+
+	e := server.New()
+	server.PrintBanner()
+
+	serverErr := make(chan error, 1)
 	go func() {
-		<-sigChan
-		logger.Println(logger.INFO, false, "Exiting "+common.ModuleName+" module...")
-		end()
-		os.Exit(0)
+		err := e.Start(":" + config.CMGrasshopperConfig.CMGrasshopper.Listen.Port)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
 	}()
+
+	select {
+	case sig := <-sigChan:
+		logger.Println(logger.INFO, false, "Received signal "+sig.String()+", exiting "+common.ModuleName+" module...")
+	case err := <-serverErr:
+		logger.Println(logger.ERROR, true, "API server error: "+err.Error())
+	}
+
+	controller.SetReady(false)
+	controller.SetOkMessage("CM-Grasshopper API server is shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		logger.Println(logger.ERROR, false, "echo shutdown error: "+err.Error())
+	}
+
+	grasshopperjob.StopDefaultManager(shutdownCtx)
+
+	db.Close()
+	logger.CloseLogFile()
 }

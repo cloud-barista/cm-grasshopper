@@ -1,10 +1,12 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -18,6 +20,9 @@ type Manager struct {
 	jobs       map[string]*Info
 	workerPool chan func()
 	logRoot    string
+	workers    sync.WaitGroup
+	stopped    atomic.Bool
+	stopOnce   sync.Once
 }
 
 var DefaultManager *Manager
@@ -76,7 +81,9 @@ func NewManager(workerCount int, logRoot string) (*Manager, error) {
 	}
 
 	for i := 0; i < workerCount; i++ {
+		manager.workers.Add(1)
 		go func() {
+			defer manager.workers.Done()
 			for task := range manager.workerPool {
 				if task != nil {
 					task()
@@ -86,6 +93,36 @@ func NewManager(workerCount int, logRoot string) (*Manager, error) {
 	}
 
 	return manager, nil
+}
+
+// Stop drains the worker pool and waits for in-flight jobs to finish.
+// After Stop returns (or ctx is cancelled), Submit becomes a no-op fallback
+// that runs the task in a one-off goroutine so callers never hang on a
+// closed channel.
+func (m *Manager) Stop(ctx context.Context) {
+	m.stopOnce.Do(func() {
+		m.stopped.Store(true)
+		close(m.workerPool)
+	})
+
+	done := make(chan struct{})
+	go func() {
+		m.workers.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
+
+// StopDefaultManager is a nil-safe convenience for shutdown sequences.
+func StopDefaultManager(ctx context.Context) {
+	if DefaultManager == nil {
+		return
+	}
+	DefaultManager.Stop(ctx)
 }
 
 func NewJobID(prefix string) string {
@@ -233,6 +270,10 @@ func (m *Manager) CompleteJob(jobID string, message string) error {
 }
 
 func (m *Manager) Submit(task func()) {
+	if m.stopped.Load() {
+		go task()
+		return
+	}
 	select {
 	case m.workerPool <- task:
 	default:
