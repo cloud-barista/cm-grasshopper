@@ -1,6 +1,9 @@
 cm-grasshopper:
     listen:
         port: 8084
+    features:
+        software_migration: false
+        k8s_migration: true
     software:
         temp_folder: ./software_temp
         log_folder: ./software_log
@@ -14,3 +17,9 @@ cm-grasshopper:
         server_port: 1323
         username: default
         password: default
+    k8s:
+        job_worker_count: 3
+        job_log_folder: ./k8s_job_log
+        install_timeout_minute: 30
+        backup_timeout_minute: 30
+        restore_timeout_minute: 30

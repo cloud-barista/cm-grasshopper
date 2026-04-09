@@ -61,6 +61,8 @@ func Init() {
 	e.HideBanner = true
 
 	route.Software(e)
+	route.Job(e)
+	route.Velero(e)
 	route.RegisterSwagger(e)
 	route.RegisterUtility(e)
 

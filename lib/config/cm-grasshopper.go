@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/common"
 	"github.com/jollaman999/utils/fileutil"
@@ -18,6 +19,10 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
+		Features struct {
+			SoftwareMigration bool `yaml:"software_migration"`
+			K8sMigration      bool `yaml:"k8s_migration"`
+		} `yaml:"features"`
 		Software struct {
 			TempFolder string `yaml:"temp_folder"`
 			LogFolder  string `yaml:"log_folder"`
@@ -35,6 +40,13 @@ type cmGrasshopperConfig struct {
 			Username      string `yaml:"username"`
 			Password      string `yaml:"password"`
 		} `yaml:"tumblebug"`
+		K8s struct {
+			JobWorkerCount    int    `yaml:"job_worker_count"`
+			JobLogFolder      string `yaml:"job_log_folder"`
+			InstallTimeoutMin int    `yaml:"install_timeout_minute"`
+			BackupTimeoutMin  int    `yaml:"backup_timeout_minute"`
+			RestoreTimeoutMin int    `yaml:"restore_timeout_minute"`
+		} `yaml:"k8s"`
 	} `yaml:"cm-grasshopper"`
 }
 
@@ -50,44 +62,63 @@ func checkCMGrasshopperConfigFile() error {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
 	}
 
-	if CMGrasshopperConfig.CMGrasshopper.Software.TempFolder == "" {
-		return errors.New("config error: cm-grasshopper.software.temp_folder is empty")
-	}
-	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.TempFolder) {
-		return errors.New("config error: cm-grasshopper.software.temp_folder (" +
-			CMGrasshopperConfig.CMGrasshopper.Software.TempFolder + ") is not exist")
+	if !IsSoftwareMigrationEnabled() && !IsK8sMigrationEnabled() {
+		return errors.New("config error: at least one feature must be enabled")
 	}
 
-	if CMGrasshopperConfig.CMGrasshopper.Software.LogFolder == "" {
-		return errors.New("config error: cm-grasshopper.software.log_folder is empty")
-	}
-	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.LogFolder) {
-		return errors.New("config error: cm-grasshopper.software.log_folder(" +
-			CMGrasshopperConfig.CMGrasshopper.Software.LogFolder + ") is not exist")
+	if IsSoftwareMigrationEnabled() {
+		if CMGrasshopperConfig.CMGrasshopper.Software.TempFolder == "" {
+			return errors.New("config error: cm-grasshopper.software.temp_folder is empty")
+		}
+		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.TempFolder) {
+			return errors.New("config error: cm-grasshopper.software.temp_folder (" +
+				CMGrasshopperConfig.CMGrasshopper.Software.TempFolder + ") is not exist")
+		}
+
+		if CMGrasshopperConfig.CMGrasshopper.Software.LogFolder == "" {
+			return errors.New("config error: cm-grasshopper.software.log_folder is empty")
+		}
+		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Software.LogFolder) {
+			return errors.New("config error: cm-grasshopper.software.log_folder(" +
+				CMGrasshopperConfig.CMGrasshopper.Software.LogFolder + ") is not exist")
+		}
+
+		if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath == "" {
+			return errors.New("config error: cm-grasshopper.ansible.playbook_root_path is empty")
+		}
+		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath) {
+			return errors.New("config error: cm-grasshopper.ansible.playbook_root_path (" +
+				CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath + ") is not exist")
+		}
+
+		if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {
+			return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
+		}
+		port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
+		if err != nil || port < 1 || port > 65535 {
+			return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
+		}
+
+		if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
+			return errors.New("config error: cm-grasshopper.tumblebug.ServerPort is empty")
+		}
+		port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort)
+		if err != nil || port < 1 || port > 65535 {
+			return errors.New("config error: cm-grasshopper.tumblebug.ServerPort has invalid value")
+		}
 	}
 
-	if CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath == "" {
-		return errors.New("config error: cm-grasshopper.ansible.playbook_root_path is empty")
-	}
-	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath) {
-		return errors.New("config error: cm-grasshopper.ansible.playbook_root_path (" +
-			CMGrasshopperConfig.CMGrasshopper.Ansible.PlaybookRootPath + ") is not exist")
-	}
-
-	if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {
-		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
-	}
-	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
-	if err != nil || port < 1 || port > 65535 {
-		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
-	}
-
-	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
-		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
-	}
-	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort)
-	if err != nil || port < 1 || port > 65535 {
-		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
+	if IsK8sMigrationEnabled() {
+		if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
+			return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
+		}
+		if CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder == "" {
+			return errors.New("config error: cm-grasshopper.k8s.job_log_folder is empty")
+		}
+		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder) {
+			return errors.New("config error: cm-grasshopper.k8s.job_log_folder (" +
+				CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder + ") is not exist")
+		}
 	}
 
 	return nil
@@ -148,4 +179,36 @@ func prepareCMGrasshopperConfig() error {
 	}
 
 	return nil
+}
+
+func IsSoftwareMigrationEnabled() bool {
+	return CMGrasshopperConfig.CMGrasshopper.Features.SoftwareMigration
+}
+
+func IsK8sMigrationEnabled() bool {
+	return CMGrasshopperConfig.CMGrasshopper.Features.K8sMigration
+}
+
+func GetK8sInstallTimeout() time.Duration {
+	minutes := CMGrasshopperConfig.CMGrasshopper.K8s.InstallTimeoutMin
+	if minutes < 1 {
+		minutes = 30
+	}
+	return time.Duration(minutes) * time.Minute
+}
+
+func GetK8sBackupTimeout() time.Duration {
+	minutes := CMGrasshopperConfig.CMGrasshopper.K8s.BackupTimeoutMin
+	if minutes < 1 {
+		minutes = 30
+	}
+	return time.Duration(minutes) * time.Minute
+}
+
+func GetK8sRestoreTimeout() time.Duration {
+	minutes := CMGrasshopperConfig.CMGrasshopper.K8s.RestoreTimeoutMin
+	if minutes < 1 {
+		minutes = 30
+	}
+	return time.Duration(minutes) * time.Minute
 }

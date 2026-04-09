@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-grasshopper-change-storage-class
+  namespace: velero
+  labels:
+    velero.io/plugin-config: ""
+    velero.io/change-storage-class: RestoreItemAction
+    app.kubernetes.io/managed-by: cm-grasshopper
+data:
+  old-sc: new-sc

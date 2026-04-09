@@ -19,6 +19,149 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/job/log/{jobId}": {
+            "get": {
+                "description": "Get k8s migration job log by job ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] K8s migration job APIs"
+                ],
+                "summary": "Get Job Log",
+                "operationId": "get-job-log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the job.",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully got the job log.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get the job log.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/job/status": {
+            "get": {
+                "description": "List k8s migration jobs.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] K8s migration job APIs"
+                ],
+                "summary": "List Job Status",
+                "operationId": "list-job-status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number.",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Rows per page.",
+                        "name": "row",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully listed jobs.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list jobs.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/job/status/{jobId}": {
+            "get": {
+                "description": "Get k8s migration job status by job ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] K8s migration job APIs"
+                ],
+                "summary": "Get Job Status",
+                "operationId": "get-job-status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the job.",
+                        "name": "jobId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully got the job status.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get the job status.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/readyz": {
             "get": {
                 "description": "Check Grasshopper is ready",
@@ -285,6 +428,726 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/velero/migration/execute": {
+            "post": {
+                "description": "Run source backup and target restore as a single asynchronous Velero migration job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Execute Migration",
+                "operationId": "velero-migration-execute",
+                "parameters": [
+                    {
+                        "description": "Velero migration execute request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully started migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to start migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/migration/precheck": {
+            "post": {
+                "description": "Check source cluster, target cluster, and MinIO before executing Velero migration.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Precheck Migration",
+                "operationId": "velero-migration-precheck",
+                "parameters": [
+                    {
+                        "description": "Velero migration precheck request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully completed precheck.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to run migration precheck.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/source/backups": {
+            "post": {
+                "description": "Create Velero backup on source cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Create Backup",
+                "operationId": "create-velero-backup",
+                "parameters": [
+                    {
+                        "description": "Velero backup request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully created backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/source/backups/list": {
+            "post": {
+                "description": "List Velero backups on source cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "List Backups",
+                "operationId": "list-velero-backups",
+                "parameters": [
+                    {
+                        "description": "Source cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully listed backups.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list backups.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/source/backups/{name}": {
+            "post": {
+                "description": "Get Velero backup detail on source cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Get Backup",
+                "operationId": "get-velero-backup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Backup name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Source cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully got backup detail.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get backup detail.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/source/backups/{name}/delete": {
+            "post": {
+                "description": "Delete Velero backup on source cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Delete Backup",
+                "operationId": "delete-velero-backup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Backup name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Source cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully deleted backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/source/backups/{name}/validate": {
+            "post": {
+                "description": "Validate Velero backup status on source cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Validate Backup",
+                "operationId": "validate-velero-backup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Backup name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Source cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully validated backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to validate backup.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/target/restores": {
+            "post": {
+                "description": "Create Velero restore on target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Create Restore",
+                "operationId": "create-velero-restore",
+                "parameters": [
+                    {
+                        "description": "Velero restore request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully created restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to create restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/target/restores/list": {
+            "post": {
+                "description": "List Velero restores on target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "List Restores",
+                "operationId": "list-velero-restores",
+                "parameters": [
+                    {
+                        "description": "Target cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully listed restores.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list restores.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/target/restores/{name}": {
+            "post": {
+                "description": "Get Velero restore detail on target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Get Restore",
+                "operationId": "get-velero-restore",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Restore name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully got restore detail.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get restore detail.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/target/restores/{name}/delete": {
+            "post": {
+                "description": "Delete Velero restore on target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Delete Restore",
+                "operationId": "delete-velero-restore",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Restore name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully deleted restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.SimpleMsg"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/target/restores/{name}/validate": {
+            "post": {
+                "description": "Validate Velero restore status on target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Validate Restore",
+                "operationId": "validate-velero-restore",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Restore name.",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully validated restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to validate restore.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/{role}/health": {
+            "post": {
+                "description": "Check Velero availability on source or target cluster.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Check Velero Health",
+                "operationId": "velero-health",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster role. Use source or target.",
+                        "name": "role",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Cluster access request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully checked Velero health.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to check Velero health.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/velero/{role}/install": {
+            "post": {
+                "description": "Install or upgrade Velero on source or target cluster using MinIO.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Velero migration APIs"
+                ],
+                "summary": "Install Velero",
+                "operationId": "velero-install",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cluster role. Use source or target.",
+                        "name": "role",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Velero install request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully started Velero installation.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to install Velero.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -368,15 +1231,966 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string"
+                },
+                "kubeconfig": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess": {
+            "type": "object",
+            "properties": {
+                "accessKey": {
+                    "type": "string"
+                },
+                "bucket": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "secretKey": {
+                    "type": "string"
+                },
+                "useSSL": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope": {
+            "type": "object",
+            "properties": {
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess": {
+            "type": "object",
+            "properties": {
+                "minio": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse": {
+            "type": "object",
+            "properties": {
+                "current_stage": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "job_type": {
+                    "type": "string"
+                },
+                "log_path": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "resource_name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "source_cluster_name": {
+                    "type": "string"
+                },
+                "source_namespace": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target_cluster_name": {
+                    "type": "string"
+                },
+                "target_namespace": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.LogResponse": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string"
+                },
+                "log": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "type": "string"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "job_type": {
+                    "type": "string"
+                },
+                "log_path": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "resource_name": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupRequest": {
+            "type": "object",
+            "properties": {
+                "backup": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupResponse": {
+            "type": "object",
+            "properties": {
+                "backupMode": {
+                    "type": "string"
+                },
+                "compatibilityErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "compatibilityWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "completed": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "defaultVolumesToFsBackup": {
+                    "type": "boolean"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nameAdjusted": {
+                    "type": "boolean"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "requestedName": {
+                    "type": "string"
+                },
+                "snapshotVolumes": {
+                    "type": "boolean"
+                },
+                "started": {
+                    "type": "string"
+                },
+                "storage": {
+                    "type": "string"
+                },
+                "ttl": {
+                    "type": "string"
+                },
+                "volumeBackupCompatibility": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility"
+                },
+                "warnings": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupSpec": {
+            "type": "object",
+            "properties": {
+                "defaultVolumesToFsBackup": {
+                    "type": "boolean"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nameConflictPolicy": {
+                    "type": "string"
+                },
+                "snapshotVolumes": {
+                    "type": "boolean"
+                },
+                "sourceNamespace": {
+                    "type": "string"
+                },
+                "volumeBackupMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth": {
+            "type": "object",
+            "properties": {
+                "lastValidationTime": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "backupStorageLocation": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth"
+                },
+                "cluster": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallRequest": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec": {
+            "type": "object",
+            "properties": {
+                "force": {
+                    "type": "boolean"
+                },
+                "volumeBackupMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest": {
+            "type": "object",
+            "properties": {
+                "migration": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec": {
+            "type": "object",
+            "properties": {
+                "backupName": {
+                    "type": "string"
+                },
+                "defaultVolumesToFsBackup": {
+                    "type": "boolean"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "existingResourcePolicy": {
+                    "type": "string"
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "nameConflictPolicy": {
+                    "type": "string"
+                },
+                "namespaceMapping": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "restoreName": {
+                    "type": "string"
+                },
+                "restorePVs": {
+                    "type": "boolean"
+                },
+                "snapshotVolumes": {
+                    "type": "boolean"
+                },
+                "sourceNamespace": {
+                    "type": "string"
+                },
+                "storageClassMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "targetNamespace": {
+                    "type": "string"
+                },
+                "volumeBackupMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckRequest": {
+            "type": "object",
+            "properties": {
+                "precheck": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationPrecheckSpec": {
+            "type": "object",
+            "properties": {
+                "backupName": {
+                    "type": "string"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "namespaceMapping": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "restoreName": {
+                    "type": "string"
+                },
+                "sourceNamespace": {
+                    "type": "string"
+                },
+                "storageClassMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "targetNamespace": {
+                    "type": "string"
+                },
+                "volumeBackupMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary": {
+            "type": "object",
+            "properties": {
+                "backupStorageLocation": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.BackupStorageLocationHealth"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "namespaceStatus": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "sourceNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "storageClassRecommendation": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation"
+                },
+                "storageClasses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "volumeBackupCompatibility": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "source": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary"
+                },
+                "target": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckClusterSummary"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.PrecheckStorageSummary": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreRequest": {
+            "type": "object",
+            "properties": {
+                "restore": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreResponse": {
+            "type": "object",
+            "properties": {
+                "backupName": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "integer"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "existingResourcePolicy": {
+                    "type": "string"
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "namespaceMapping": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "restorePVs": {
+                    "type": "boolean"
+                },
+                "started": {
+                    "type": "string"
+                },
+                "validationErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "warnings": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.RestoreSpec": {
+            "type": "object",
+            "properties": {
+                "backupName": {
+                    "type": "string"
+                },
+                "excludedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "existingResourcePolicy": {
+                    "type": "string"
+                },
+                "includeClusterResources": {
+                    "type": "boolean"
+                },
+                "includedNamespaces": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "includedResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespaceMapping": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "restorePVs": {
+                    "type": "boolean"
+                },
+                "sourceNamespace": {
+                    "type": "string"
+                },
+                "storageClassMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "targetNamespace": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport": {
+            "type": "object",
+            "properties": {
+                "snapshotReady": {
+                    "type": "boolean"
+                },
+                "sourceProvisioners": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sourceSnapshotDrivers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetProvisioners": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetSnapshotDrivers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.StorageClassRecommendation": {
+            "type": "object",
+            "properties": {
+                "mappingRequired": {
+                    "type": "boolean"
+                },
+                "missingMappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "suggestedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "unusedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "usedMappings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume": {
+            "type": "object",
+            "properties": {
+                "namespace": {
+                    "type": "string"
+                },
+                "pod": {
+                    "type": "string"
+                },
+                "provisioner": {
+                    "type": "string"
+                },
+                "pv": {
+                    "type": "string"
+                },
+                "pvc": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.VolumeBackupCompatibility": {
+            "type": "object",
+            "properties": {
+                "filesystemBackupReady": {
+                    "type": "boolean"
+                },
+                "podWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "recommendedAction": {
+                    "type": "string"
+                },
+                "recommendedVolumeBackupMode": {
+                    "type": "string"
+                },
+                "snapshotSupport": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.SnapshotSupport"
+                },
+                "storageWarnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "supportedVolumeBackupModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "unsupportedVolumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.UnsupportedVolume"
+                    }
+                },
+                "volumeBackupMode": {
+                    "type": "string"
+                }
+            }
+        },
         "softwaremodel.Binary": {
             "type": "object",
             "required": [
+                "envs",
+                "gids",
                 "name",
+                "uids",
                 "version"
             ],
             "properties": {
                 "binary_path": {
                     "type": "string"
+                },
+                "cmdline_slice": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "custom_configs": {
                     "type": "array",
@@ -389,6 +2203,21 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "is_wine": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -399,6 +2228,12 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "uids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
                 "version": {
                     "type": "string"
                 }
@@ -407,12 +2242,21 @@ const docTemplate = `{
         "softwaremodel.BinaryMigrationInfo": {
             "type": "object",
             "required": [
+                "envs",
+                "gids",
                 "name",
+                "uids",
                 "version"
             ],
             "properties": {
                 "binary_path": {
                     "type": "string"
+                },
+                "cmdline_slice": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "custom_configs": {
                     "type": "array",
@@ -425,6 +2269,21 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "is_wine": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -437,6 +2296,12 @@ const docTemplate = `{
                 },
                 "order": {
                     "type": "integer"
+                },
+                "uids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "version": {
                     "type": "string"
@@ -923,6 +2788,10 @@ const docTemplate = `{
                 "SoftwarePackageTypeDEB": "Debian based package type",
                 "SoftwarePackageTypeRPM": "RHEL based package type"
             },
+            "x-enum-descriptions": [
+                "Debian based package type",
+                "RHEL based package type"
+            ],
             "x-enum-varnames": [
                 "SoftwarePackageTypeDEB",
                 "SoftwarePackageTypeRPM"

@@ -26,8 +26,8 @@ import (
 //	@Produce		json
 //	@Param			sourceSoftwareModel body softwaremodel.SourceSoftwareModel true "Refined software list."
 //	@Success		200	{object}	softwaremodel.SourceSoftwareModel	"Successfully get software migration list."
-//	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse		"Failed to get software migration list."
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to get software migration list."
 //	@Router			/software/migration_list [post]
 func GetSoftwareMigrationList(c echo.Context) error {
 	sourceSoftwareModel := new(softwaremodel.SourceSoftwareModel)
@@ -56,8 +56,8 @@ func GetSoftwareMigrationList(c echo.Context) error {
 //	@Param			mciId query string true "ID of target MCI."
 //	@Param			targetSoftwareModel body softwaremodel.TargetSoftwareModel true "Software migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
-//	@Failure		400	{object}	common.ErrorResponse		"Sent bad request."
-//	@Failure		500	{object}	common.ErrorResponse		"Failed to migrate pieces of software."
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to migrate pieces of software."
 //	@Router			/software/migrate [post]
 func MigrateSoftware(c echo.Context) error {
 	targetSoftwareModel := new(softwaremodel.TargetSoftwareModel)

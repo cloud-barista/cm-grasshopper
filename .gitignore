@@ -12,7 +12,10 @@ honeybee.key
 
 CM-GRASSHOPPER.db
 
+.DS_Store
+.cache/
 software_temp/
 software_log/
+k8s_job_log/
 
 minio_data/

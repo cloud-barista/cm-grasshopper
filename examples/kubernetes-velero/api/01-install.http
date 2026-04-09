@@ -1,0 +1,49 @@
+### Source install
+POST {{baseUrl}}/velero/source/install
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  },
+  "storage": {
+    "minio": {
+      "endpoint": "{{minio_url}}",
+      "accessKey": "{{minio_accesskey}}",
+      "secretKey": "{{minio_secretkey}}",
+      "bucket": "{{minio_bucket}}",
+      "useSSL": true
+    }
+  },
+  "install": {
+    "force": false,
+    "volumeBackupMode": "filesystem"
+  }
+}
+
+### Target install
+POST {{baseUrl}}/velero/target/install
+Content-Type: application/json
+
+{
+  "targetCluster": {
+    "name": "target-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_target_kubeconfig}}"
+  },
+  "storage": {
+    "minio": {
+      "endpoint": "{{minio_url}}",
+      "accessKey": "{{minio_accesskey}}",
+      "secretKey": "{{minio_secretkey}}",
+      "bucket": "{{minio_bucket}}",
+      "useSSL": true
+    }
+  },
+  "install": {
+    "force": false,
+    "volumeBackupMode": "filesystem"
+  }
+}

@@ -3,13 +3,14 @@ package controller
 import (
 	"net/http"
 
-	_ "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common" // Need for swag
+	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/labstack/echo/v4"
 )
 
 var OkMessage = model.SimpleMsg{}
 var IsReady = false
+var _ = common.ErrorResponse{}
 
 // CheckReady func is for checking Grasshopper server health.
 //

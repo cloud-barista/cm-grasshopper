@@ -26,10 +26,11 @@ lint: dependency ## Lint the files
 	    cygdrive_prefix=`mount -p | tail -n1 | awk '{print $$1}'`; \
 	    go_path=`echo $$cygdrive_prefix/$$drive/$$path | sed 's@\/\/@\/@g'`; \
 	  fi; \
-	  if [ ! -f "$$go_path/bin/golangci-lint" ]; then \
-	    ${GO_COMMAND} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@main; \
+	  if [ ! -f "$$go_path/bin/golangci-lint" ] || ! "$$go_path/bin/golangci-lint" version 2>/dev/null | grep -Eq "version v?2|version 2"; then \
+	    ${GO_COMMAND} install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
 	  fi; \
-	  $$go_path/bin/golangci-lint run
+	  mkdir -p .cache/golangci-lint && \
+	  GOLANGCI_LINT_CACHE=$(CURDIR)/.cache/golangci-lint $$go_path/bin/golangci-lint run
 
 test: dependency ## Run unittests
 	@echo "Running tests..."
@@ -61,6 +62,7 @@ update: ## Update all of module dependencies
 swag swagger: ## Generate Swagger Documentation
 	@echo "Running swag..."
 	@go_path=${GOPATH}; \
+	  go_version=`go env GOVERSION`; \
 	  kernel_name=`uname -s` && \
 	  if [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
 	    drive=`go env GOPATH | cut -f1 -d':' | tr '[:upper:]' '[:lower:]'`; \
@@ -68,7 +70,7 @@ swag swagger: ## Generate Swagger Documentation
 	    cygdrive_prefix=`mount -p | tail -n1 | awk '{print $$1}'`; \
 	    go_path=`echo $$cygdrive_prefix/$$drive/$$path | sed 's@\/\/@\/@g'`; \
 	  fi; \
-	  if [ ! -f "$$go_path/bin/swag" ]; then \
+	  if [ ! -f "$$go_path/bin/swag" ] || ! go version -m "$$go_path/bin/swag" 2>/dev/null | grep -q "$$go_version"; then \
 	    ${GO_COMMAND} install github.com/swaggo/swag/cmd/swag@latest; \
 	  fi; \
 	  $$go_path/bin/swag init -g ./pkg/api/rest/server/server.go --pd -o ./pkg/api/rest/docs/ > /dev/null
@@ -76,7 +78,7 @@ swag swagger: ## Generate Swagger Documentation
 build: lint swag ## Build the binary file
 	@echo Building...
 	@kernel_name=`uname -s` && \
-	  if [[ $$kernel_name == "Linux" ]]; then \
+	  if [[ $$kernel_name == "Linux" ]] || [[ $$kernel_name == "Darwin" ]]; then \
 	    cd cmd/${MODULE_NAME} && CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go; \
 	  elif [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
 	    cd cmd/${MODULE_NAME} && GOOS=windows CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME}.exe main.go; \
@@ -91,7 +93,7 @@ build: lint swag ## Build the binary file
 build-only: ## Build the binary file without running linter
 	@echo Building...
 	@kernel_name=`uname -s` && \
-	  if [[ $$kernel_name == "Linux" ]]; then \
+	  if [[ $$kernel_name == "Linux" ]] || [[ $$kernel_name == "Darwin" ]]; then \
 	    cd cmd/${MODULE_NAME} && CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME} main.go; \
 	  elif [[ $$kernel_name == "CYGWIN"* ]] || [[ $$kernel_name == "MINGW"* ]]; then \
 	    cd cmd/${MODULE_NAME} && GOOS=windows CGO_ENABLED=0 ${GO_COMMAND} build -o ${MODULE_NAME}.exe main.go; \

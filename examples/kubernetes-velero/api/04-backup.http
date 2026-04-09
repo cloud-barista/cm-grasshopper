@@ -1,0 +1,73 @@
+### Source backup create with FSB
+POST {{baseUrl}}/velero/source/backups
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  },
+  "backup": {
+    "name": "backup-demo-fsb",
+    "sourceNamespace": "demo",
+    "volumeBackupMode": "filesystem",
+    "includedResources": [
+      "deployments",
+      "services",
+      "configmaps",
+      "secrets",
+      "persistentvolumes",
+      "persistentvolumeclaims",
+      "pods"
+    ]
+  }
+}
+
+### Source backup list
+POST {{baseUrl}}/velero/source/backups/list
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  }
+}
+
+### Source backup get
+POST {{baseUrl}}/velero/source/backups/backup-demo-fsb
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  }
+}
+
+### Source backup validate
+POST {{baseUrl}}/velero/source/backups/backup-demo-fsb/validate
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  }
+}
+
+### Source backup delete
+POST {{baseUrl}}/velero/source/backups/backup-demo-fsb/delete
+Content-Type: application/json
+
+{
+  "sourceCluster": {
+    "name": "source-cluster",
+    "namespace": "velero",
+    "kubeconfig": "{{base64_source_kubeconfig}}"
+  }
+}
