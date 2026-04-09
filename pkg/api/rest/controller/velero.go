@@ -62,7 +62,7 @@ func VeleroHealth(c echo.Context) error {
 //
 //	@ID				velero-install
 //	@Summary		Install Velero
-//	@Description	Install or upgrade Velero on source or target cluster using MinIO.
+//	@Description	Install or upgrade Velero on source or target cluster using an S3-compatible object store.
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
@@ -83,14 +83,14 @@ func VeleroInstall(c echo.Context) error {
 	if err := k8scommon.ValidateClusterAccess(cluster); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
-	if req.Storage == nil || req.Storage.MinIO == nil {
-		return common.ReturnErrorMsg(c, "minio access is required")
+	if req.Storage == nil || req.Storage.S3 == nil {
+		return common.ReturnErrorMsg(c, "s3 access is required")
 	}
-	if err := k8scommon.ValidateMinIOAccess(req.Storage.MinIO); err != nil {
+	if err := k8scommon.ValidateS3Access(req.Storage.S3); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	job, err := veleroService.InstallAsync(role, cluster, req.Storage.MinIO, req.Install.Force, req.Install.VolumeBackupMode)
+	job, err := veleroService.InstallAsync(role, cluster, req.Storage.S3, req.Install.Force, req.Install.VolumeBackupMode)
 	if err != nil {
 		return common.ReturnInternalError(c, err, "velero install failed")
 	}
@@ -402,7 +402,7 @@ func ValidateRestore(c echo.Context) error {
 //
 //	@ID				velero-migration-precheck
 //	@Summary		Precheck Migration
-//	@Description	Check source cluster, target cluster, and MinIO before executing Velero migration.
+//	@Description	Check source cluster, target cluster, and the S3 object store before executing Velero migration.
 //	@Tags			[Migration] Velero migration APIs
 //	@Accept			json
 //	@Produce		json
@@ -422,14 +422,14 @@ func VeleroMigrationPrecheck(c echo.Context) error {
 	if err := k8scommon.ValidateClusterAccess(req.TargetCluster); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
-	if req.Storage == nil || req.Storage.MinIO == nil {
-		return common.ReturnErrorMsg(c, "minio access is required")
+	if req.Storage == nil || req.Storage.S3 == nil {
+		return common.ReturnErrorMsg(c, "s3 access is required")
 	}
-	if err := k8scommon.ValidateMinIOAccess(req.Storage.MinIO); err != nil {
+	if err := k8scommon.ValidateS3Access(req.Storage.S3); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	result, err := veleroService.Precheck(c.Request().Context(), req.SourceCluster, req.TargetCluster, req.Storage.MinIO, req.Precheck)
+	result, err := veleroService.Precheck(c.Request().Context(), req.SourceCluster, req.TargetCluster, req.Storage.S3, req.Precheck)
 	if err != nil {
 		return common.ReturnInternalError(c, err, "velero migration precheck failed")
 	}
@@ -463,14 +463,14 @@ func VeleroMigrationExecute(c echo.Context) error {
 	if err := k8scommon.ValidateClusterAccess(req.TargetCluster); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
-	if req.Storage == nil || req.Storage.MinIO == nil {
-		return common.ReturnErrorMsg(c, "minio access is required")
+	if req.Storage == nil || req.Storage.S3 == nil {
+		return common.ReturnErrorMsg(c, "s3 access is required")
 	}
-	if err := k8scommon.ValidateMinIOAccess(req.Storage.MinIO); err != nil {
+	if err := k8scommon.ValidateS3Access(req.Storage.S3); err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
 
-	job, err := veleroService.ExecuteMigrationAsync(req.SourceCluster, req.TargetCluster, req.Storage.MinIO, req.Migration)
+	job, err := veleroService.ExecuteMigrationAsync(req.SourceCluster, req.TargetCluster, req.Storage.S3, req.Migration)
 	if err != nil {
 		return common.ReturnInternalError(c, err, "velero migration execute failed")
 	}

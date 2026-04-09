@@ -39,21 +39,21 @@ func ValidateClusterAccess(cluster *commonmodel.ClusterAccess) error {
 	return nil
 }
 
-func ValidateMinIOAccess(minio *commonmodel.MinIOAccess) error {
-	if minio == nil {
-		return errors.New("minio access is required")
+func ValidateS3Access(s3 *commonmodel.S3Access) error {
+	if s3 == nil {
+		return errors.New("s3 access is required")
 	}
-	if strings.TrimSpace(minio.Endpoint) == "" {
-		return errors.New("minio endpoint is required")
+	if strings.TrimSpace(s3.Endpoint) == "" {
+		return errors.New("s3 endpoint is required")
 	}
-	if strings.TrimSpace(minio.AccessKey) == "" {
-		return errors.New("minio accessKey is required")
+	if strings.TrimSpace(s3.AccessKey) == "" {
+		return errors.New("s3 accessKey is required")
 	}
-	if strings.TrimSpace(minio.SecretKey) == "" {
-		return errors.New("minio secretKey is required")
+	if strings.TrimSpace(s3.SecretKey) == "" {
+		return errors.New("s3 secretKey is required")
 	}
 
-	_, _, err := NormalizeMinIOEndpoint(minio)
+	_, _, err := NormalizeS3Endpoint(s3)
 	if err != nil {
 		return err
 	}
@@ -61,34 +61,34 @@ func ValidateMinIOAccess(minio *commonmodel.MinIOAccess) error {
 	return nil
 }
 
-func NormalizeMinIOEndpoint(minio *commonmodel.MinIOAccess) (string, bool, error) {
-	if minio == nil {
-		return "", false, errors.New("minio access is required")
+func NormalizeS3Endpoint(s3 *commonmodel.S3Access) (string, bool, error) {
+	if s3 == nil {
+		return "", false, errors.New("s3 access is required")
 	}
 
-	rawEndpoint := strings.TrimSpace(minio.Endpoint)
+	rawEndpoint := strings.TrimSpace(s3.Endpoint)
 	if rawEndpoint == "" {
-		return "", false, errors.New("minio endpoint is required")
+		return "", false, errors.New("s3 endpoint is required")
 	}
 
 	if strings.Contains(rawEndpoint, "://") {
-		return "", false, errors.New("minio endpoint must not include scheme; use host[:port] only and set useSSL separately")
+		return "", false, errors.New("s3 endpoint must not include scheme; use host[:port] only and set useSSL separately")
 	}
 
 	if strings.ContainsAny(rawEndpoint, "/?#") {
-		return "", false, errors.New("minio endpoint must not include path, query string, or fragment")
+		return "", false, errors.New("s3 endpoint must not include path, query string, or fragment")
 	}
 
 	normalized := strings.TrimSuffix(rawEndpoint, "/")
 	if normalized == "" {
-		return "", false, errors.New("minio endpoint is required")
+		return "", false, errors.New("s3 endpoint is required")
 	}
 
-	return normalized, minio.UseSSL, nil
+	return normalized, s3.UseSSL, nil
 }
 
-func BuildMinIOS3URL(minio *commonmodel.MinIOAccess) (string, error) {
-	endpoint, useSSL, err := NormalizeMinIOEndpoint(minio)
+func BuildS3URL(s3 *commonmodel.S3Access) (string, error) {
+	endpoint, useSSL, err := NormalizeS3Endpoint(s3)
 	if err != nil {
 		return "", err
 	}
@@ -101,10 +101,10 @@ func BuildMinIOS3URL(minio *commonmodel.MinIOAccess) (string, error) {
 	return fmt.Sprintf("%s://%s", scheme, endpoint), nil
 }
 
-func DefaultMinIOBucket(minio *commonmodel.MinIOAccess, fallback string) string {
-	if minio == nil || strings.TrimSpace(minio.Bucket) == "" {
+func DefaultS3Bucket(s3 *commonmodel.S3Access, fallback string) string {
+	if s3 == nil || strings.TrimSpace(s3.Bucket) == "" {
 		return fallback
 	}
 
-	return strings.TrimSpace(minio.Bucket)
+	return strings.TrimSpace(s3.Bucket)
 }

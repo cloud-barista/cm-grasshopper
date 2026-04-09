@@ -55,10 +55,10 @@ httpYac 기준으로는 각 `.http` 파일 맨 위에 변수를 반복 선언하
     "baseUrl": "http://localhost:8084/grasshopper",
     "base64_source_kubeconfig": "CHANGE_ME",
     "base64_target_kubeconfig": "CHANGE_ME",
-    "minio_url": "minio.example.com",
-    "minio_accesskey": "CHANGE_ME",
-    "minio_secretkey": "CHANGE_ME",
-    "minio_bucket": "velero",
+    "s3_endpoint": "rustfs.example.com:9000",
+    "s3_accesskey": "CHANGE_ME",
+    "s3_secretkey": "CHANGE_ME",
+    "s3_bucket": "velero",
     "job_id": "CHANGE_ME"
   }
 }
@@ -111,11 +111,11 @@ curl -X POST http://localhost:8084/grasshopper/velero/source/install \
       "kubeconfig": "{{base64_source_kubeconfig}}"
     },
     "storage": {
-      "minio": {
-        "endpoint": "{{minio_url}}",
-        "accessKey": "{{minio_accesskey}}",
-        "secretKey": "{{minio_secretkey}}",
-        "bucket": "{{minio_bucket}}",
+      "s3": {
+        "endpoint": "{{s3_endpoint}}",
+        "accessKey": "{{s3_accesskey}}",
+        "secretKey": "{{s3_secretkey}}",
+        "bucket": "{{s3_bucket}}",
         "useSSL": true
       }
     },
@@ -138,11 +138,11 @@ curl -X POST http://localhost:8084/grasshopper/velero/target/install \
       "kubeconfig": "{{base64_target_kubeconfig}}"
     },
     "storage": {
-      "minio": {
-        "endpoint": "{{minio_url}}",
-        "accessKey": "{{minio_accesskey}}",
-        "secretKey": "{{minio_secretkey}}",
-        "bucket": "{{minio_bucket}}",
+      "s3": {
+        "endpoint": "{{s3_endpoint}}",
+        "accessKey": "{{s3_accesskey}}",
+        "secretKey": "{{s3_secretkey}}",
+        "bucket": "{{s3_bucket}}",
         "useSSL": true
       }
     },
@@ -206,11 +206,11 @@ curl -X POST 'http://localhost:8084/grasshopper/velero/migration/precheck?verbos
       "kubeconfig": "{{base64_target_kubeconfig}}"
     },
     "storage": {
-      "minio": {
-        "endpoint": "{{minio_url}}",
-        "accessKey": "{{minio_accesskey}}",
-        "secretKey": "{{minio_secretkey}}",
-        "bucket": "{{minio_bucket}}",
+      "s3": {
+        "endpoint": "{{s3_endpoint}}",
+        "accessKey": "{{s3_accesskey}}",
+        "secretKey": "{{s3_secretkey}}",
+        "bucket": "{{s3_bucket}}",
         "useSSL": true
       }
     },
@@ -341,11 +341,11 @@ curl -X POST http://localhost:8084/grasshopper/velero/migration/execute \
       "kubeconfig": "{{base64_target_kubeconfig}}"
     },
     "storage": {
-      "minio": {
-        "endpoint": "{{minio_url}}",
-        "accessKey": "{{minio_accesskey}}",
-        "secretKey": "{{minio_secretkey}}",
-        "bucket": "{{minio_bucket}}",
+      "s3": {
+        "endpoint": "{{s3_endpoint}}",
+        "accessKey": "{{s3_accesskey}}",
+        "secretKey": "{{s3_secretkey}}",
+        "bucket": "{{s3_bucket}}",
         "useSSL": true
       }
     },

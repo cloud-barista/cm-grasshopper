@@ -389,10 +389,10 @@ make run
 - `baseUrl`
 - `base64_source_kubeconfig`
 - `base64_target_kubeconfig`
-- `minio_url`
-- `minio_accesskey`
-- `minio_secretkey`
-- `minio_bucket`
+- `s3_endpoint`
+- `s3_accesskey`
+- `s3_secretkey`
+- `s3_bucket`
 
 먼저 아래 순서로 호출합니다.
 

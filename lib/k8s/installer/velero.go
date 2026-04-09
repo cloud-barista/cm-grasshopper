@@ -47,10 +47,10 @@ func NewVeleroInstaller() *VeleroInstaller {
 	return &VeleroInstaller{}
 }
 
-func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) (*InstallResult, error) {
+func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, force bool, volumeBackupMode string) (*InstallResult, error) {
 	start := time.Now()
 	namespace := k8scommon.DefaultNamespace(cluster, DefaultVeleroNamespace)
-	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, DefaultVeleroBucket)
+	bucketName := k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket)
 	if volumeBackupMode == "" {
 		volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
 	}
@@ -64,16 +64,16 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.Clus
 		return nil, err
 	}
 
-	minioClient, err := k8sclient.NewMinIOClient(minioAccess)
+	s3Client, err := k8sclient.NewS3Client(s3Access)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := k8sclient.EnsureMinIOBucket(ctx, minioClient, bucketName); err != nil {
-		return nil, fmt.Errorf("failed to ensure minio bucket %q: %w", bucketName, err)
+	if err := k8sclient.EnsureS3Bucket(ctx, s3Client, bucketName); err != nil {
+		return nil, fmt.Errorf("failed to ensure s3 bucket %q: %w", bucketName, err)
 	}
 
-	if err := v.ensureSecret(ctx, clientset, namespace, minioAccess, force); err != nil {
+	if err := v.ensureSecret(ctx, clientset, namespace, s3Access, force); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.Clus
 		return nil, err
 	}
 
-	if err := v.installOrUpgradeChart(actionConfig, namespace, minioAccess, force, volumeBackupMode); err != nil {
+	if err := v.installOrUpgradeChart(actionConfig, namespace, s3Access, force, volumeBackupMode); err != nil {
 		return nil, err
 	}
 
@@ -93,7 +93,7 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.Clus
 		return nil, err
 	}
 
-	if err := v.ensureBackupStorageLocation(ctx, controllerClient, namespace, minioAccess, force); err != nil {
+	if err := v.ensureBackupStorageLocation(ctx, controllerClient, namespace, s3Access, force); err != nil {
 		return nil, err
 	}
 
@@ -122,7 +122,7 @@ func (v *VeleroInstaller) ensureNamespace(ctx context.Context, clientset *kubern
 	return err
 }
 
-func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, minioAccess *commonmodel.MinIOAccess, force bool) error {
+func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, s3Access *commonmodel.S3Access, force bool) error {
 	secretName := "cloud-credentials"
 
 	if force {
@@ -146,8 +146,8 @@ func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernete
 			"cloud": fmt.Sprintf(`[default]
 aws_access_key_id=%s
 aws_secret_access_key=%s
-region=minio
-`, minioAccess.AccessKey, minioAccess.SecretKey),
+region=default
+`, s3Access.AccessKey, s3Access.SecretKey),
 		},
 	}
 
@@ -155,7 +155,7 @@ region=minio
 	return err
 }
 
-func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configuration, namespace string, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) error {
+func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configuration, namespace string, s3Access *commonmodel.S3Access, force bool, volumeBackupMode string) error {
 	chartRef, err := downloadChart(veleroChartURL)
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configurati
 		return fmt.Errorf("failed to load chart: %w", err)
 	}
 
-	values := buildVeleroValues(minioAccess, volumeBackupMode)
+	values := buildVeleroValues(s3Access, volumeBackupMode)
 
 	get := action.NewGet(actionConfig)
 	_, err = get.Run("velero")
@@ -198,13 +198,13 @@ func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configurati
 	return err
 }
 
-func buildVeleroValues(minioAccess *commonmodel.MinIOAccess, volumeBackupMode string) map[string]interface{} {
-	s3URL, err := k8scommon.BuildMinIOS3URL(minioAccess)
+func buildVeleroValues(s3Access *commonmodel.S3Access, volumeBackupMode string) map[string]interface{} {
+	s3URL, err := k8scommon.BuildS3URL(s3Access)
 	if err != nil {
 		// Validation runs before installer execution, so this fallback is defensive only.
-		s3URL = fmt.Sprintf("http://%s", strings.TrimSuffix(minioAccess.Endpoint, "/"))
+		s3URL = fmt.Sprintf("http://%s", strings.TrimSuffix(s3Access.Endpoint, "/"))
 	}
-	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, DefaultVeleroBucket)
+	bucketName := k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket)
 	if volumeBackupMode == "" {
 		volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
 	}
@@ -237,11 +237,11 @@ func buildVeleroValues(minioAccess *commonmodel.MinIOAccess, volumeBackupMode st
 			"features": features,
 			"backupStorageLocation": []interface{}{
 				map[string]interface{}{
-					"name":     "minio",
+					"name":     "default",
 					"provider": "aws",
 					"bucket":   bucketName,
 					"config": map[string]interface{}{
-						"region":           "minio",
+						"region":           "default",
 						"s3Url":            s3URL,
 						"s3ForcePathStyle": "true",
 					},
@@ -315,14 +315,14 @@ func (v *VeleroInstaller) waitForDeploymentReady(ctx context.Context, clientset 
 	return fmt.Errorf("timed out waiting for velero deployment readiness")
 }
 
-func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, controllerClient ctrlclient.Client, namespace string, minioAccess *commonmodel.MinIOAccess, force bool) error {
-	s3URL, err := k8scommon.BuildMinIOS3URL(minioAccess)
+func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, controllerClient ctrlclient.Client, namespace string, s3Access *commonmodel.S3Access, force bool) error {
+	s3URL, err := k8scommon.BuildS3URL(s3Access)
 	if err != nil {
 		return err
 	}
-	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, DefaultVeleroBucket)
+	bucketName := k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket)
 
-	key := ctrlclient.ObjectKey{Namespace: namespace, Name: "minio"}
+	key := ctrlclient.ObjectKey{Namespace: namespace, Name: "default"}
 	existing := &velerov1.BackupStorageLocation{}
 	err = controllerClient.Get(ctx, key, existing)
 	if err == nil && !force {
@@ -339,7 +339,7 @@ func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, contr
 
 	bsl := &velerov1.BackupStorageLocation{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "minio",
+			Name:      "default",
 			Namespace: namespace,
 		},
 		Spec: velerov1.BackupStorageLocationSpec{
@@ -351,7 +351,7 @@ func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, contr
 				},
 			},
 			Config: map[string]string{
-				"region":           "minio",
+				"region":           "default",
 				"s3Url":            s3URL,
 				"s3ForcePathStyle": "true",
 			},

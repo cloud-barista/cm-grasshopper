@@ -97,30 +97,33 @@ func NewHelmActionConfig(cluster *commonmodel.ClusterAccess) (*action.Configurat
 	return actionConfig, nil
 }
 
-func NewMinIOClient(minioAccess *commonmodel.MinIOAccess) (*minio.Client, error) {
-	if err := k8scommon.ValidateMinIOAccess(minioAccess); err != nil {
+// NewS3Client creates a minio-go client against any S3-compatible endpoint.
+// We keep using minio-go because it is the de-facto Go S3 SDK; the type name
+// reflects "S3-compatible" not the MinIO server specifically.
+func NewS3Client(s3Access *commonmodel.S3Access) (*minio.Client, error) {
+	if err := k8scommon.ValidateS3Access(s3Access); err != nil {
 		return nil, err
 	}
 
-	endpoint, useSSL, err := k8scommon.NormalizeMinIOEndpoint(minioAccess)
+	endpoint, useSSL, err := k8scommon.NormalizeS3Endpoint(s3Access)
 	if err != nil {
 		return nil, err
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:        credentials.NewStaticV4(minioAccess.AccessKey, minioAccess.SecretKey, ""),
+		Creds:        credentials.NewStaticV4(s3Access.AccessKey, s3Access.SecretKey, ""),
 		Secure:       useSSL,
 		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create minio client: %w", err)
+		return nil, fmt.Errorf("failed to create s3 client: %w", err)
 	}
 
 	return client, nil
 }
 
-func EnsureMinIOBucket(ctx context.Context, minioClient *minio.Client, bucketName string) error {
-	exists, err := minioClient.BucketExists(ctx, bucketName)
+func EnsureS3Bucket(ctx context.Context, s3Client *minio.Client, bucketName string) error {
+	exists, err := s3Client.BucketExists(ctx, bucketName)
 	if err != nil {
 		errorResponse := minio.ToErrorResponse(err)
 		switch errorResponse.Code {
@@ -139,7 +142,7 @@ func EnsureMinIOBucket(ctx context.Context, minioClient *minio.Client, bucketNam
 	if exists {
 		return nil
 	}
-	err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+	err = s3Client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 	if err != nil {
 		errorResponse := minio.ToErrorResponse(err)
 		switch errorResponse.Code {

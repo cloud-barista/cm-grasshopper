@@ -40,7 +40,7 @@
 2. target Kubernetes cluster
 3. source kubeconfig
 4. target kubeconfig
-5. MinIO endpoint, accessKey, secretKey
+5. S3 호환 오브젝트 스토리지 (RustFS, MinIO 등) endpoint, accessKey, secretKey
 6. source cluster에서 사용할 StorageClass 이름
 7. target cluster에서 사용할 StorageClass 이름
 8. 실행 중인 `cm-grasshopper`
@@ -189,7 +189,7 @@ kubectl -n demo exec deploy/app -- sh -c 'cat /usr/share/nginx/html/data/check.t
    - flow files: `01-` ~ `07-` `.http`
    - environment file: `api/http-client.env.json`
 
-처음엔 `.http` 파일로 하는 것을 권장합니다. source/target kubeconfig와 MinIO 값만 바꾸면 순서대로 테스트하기 편합니다.
+처음엔 `.http` 파일로 하는 것을 권장합니다. source/target kubeconfig와 S3 endpoint/key 값만 바꾸면 순서대로 테스트하기 편합니다.
 
 
 
@@ -269,7 +269,7 @@ API
 
 ## 8. migration precheck 실행
 
-백업/복구 전에 source, target, MinIO가 모두 접근 가능한지 확인합니다.
+백업/복구 전에 source, target, S3 오브젝트 스토리지가 모두 접근 가능한지 확인합니다.
 
 
 
@@ -645,7 +645,7 @@ kubectl -n demo-restored describe pod -l app=app
 
 - Docker 실행 중
 - `kind`, `kubectl` 설치 완료
-- MinIO는 별도로 준비되어 있거나 로컬에서 접근 가능해야 함
+- S3 호환 오브젝트 스토리지(예: RustFS)가 별도로 준비되어 있거나 로컬에서 접근 가능해야 함 (`docker compose up cm-grasshopper-rustfs`로 손쉽게 띄울 수 있음)
 
 
 
@@ -776,9 +776,9 @@ kubectl --kubeconfig /tmp/source-kubeconfig -n demo exec deploy/app -- sh -c 'ca
 
 1. `base64_source_kubeconfig`
 2. `base64_target_kubeconfig`
-3. `minio_url`
-4. `minio_accesskey`
-5. `minio_secretkey`
+3. `s3_endpoint`
+4. `s3_accesskey`
+5. `s3_secretkey`
 
 그리고 restore 요청에서 storage class mapping은 우선 동일 값으로 두는 것이 안전합니다.
 
@@ -837,7 +837,7 @@ hello-velero
 
 ### 18-11. kind 테스트에서 자주 보는 문제
 
-1. MinIO endpoint 접근 실패
+1. S3 endpoint 접근 실패
 - kind cluster 내부/외부 네트워크 경로 차이 때문일 수 있음
 - `cm-grasshopper`와 kind node가 같은 endpoint를 볼 수 있는지 확인 필요
 

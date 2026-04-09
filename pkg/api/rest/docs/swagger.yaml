@@ -63,7 +63,16 @@ definitions:
       namespace:
         type: string
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess:
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope:
+    properties:
+      sourceCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+      storage:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
+      targetCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.S3Access:
     properties:
       accessKey:
         type: string
@@ -76,19 +85,10 @@ definitions:
       useSSL:
         type: boolean
     type: object
-  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope:
-    properties:
-      sourceCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
-      storage:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
-      targetCluster:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
-    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess:
     properties:
-      minio:
-        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess'
+      s3:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.S3Access'
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.ExecutionResponse:
     properties:
@@ -1097,9 +1097,6 @@ definitions:
     x-enum-comments:
       SoftwarePackageTypeDEB: Debian based package type
       SoftwarePackageTypeRPM: RHEL based package type
-    x-enum-descriptions:
-    - Debian based package type
-    - RHEL based package type
     x-enum-varnames:
     - SoftwarePackageTypeDEB
     - SoftwarePackageTypeRPM
@@ -1466,7 +1463,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Install or upgrade Velero on source or target cluster using MinIO.
+      description: Install or upgrade Velero on source or target cluster using an
+        S3-compatible object store.
       operationId: velero-install
       parameters:
       - description: Cluster role. Use source or target.
@@ -1534,8 +1532,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Check source cluster, target cluster, and MinIO before executing
-        Velero migration.
+      description: Check source cluster, target cluster, and the S3 object store before
+        executing Velero migration.
       operationId: velero-migration-precheck
       parameters:
       - description: Velero migration precheck request.

@@ -81,7 +81,7 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *commonmodel.ClusterA
 	}
 
 	bsl := &velerov1.BackupStorageLocation{}
-	if err := controllerClient.Get(ctx, ctrlclient.ObjectKey{Namespace: namespace, Name: "minio"}, bsl); err == nil {
+	if err := controllerClient.Get(ctx, ctrlclient.ObjectKey{Namespace: namespace, Name: "default"}, bsl); err == nil {
 		summary := &veleromodel.BackupStorageLocationHealth{
 			Name:  bsl.Name,
 			Phase: string(bsl.Status.Phase),
@@ -101,7 +101,7 @@ func (s *Service) HealthCheck(ctx context.Context, cluster *commonmodel.ClusterA
 	return response, nil
 }
 
-func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, force bool, volumeBackupMode string) (*joblib.Info, error) {
+func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, force bool, volumeBackupMode string) (*joblib.Info, error) {
 	if joblib.DefaultManager == nil {
 		return nil, fmt.Errorf("job manager is not initialized")
 	}
@@ -116,10 +116,10 @@ func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterA
 			"namespace":             k8scommon.DefaultNamespace(cluster, k8sinstaller.DefaultVeleroNamespace),
 			"kubeconfigFingerprint": joblib.KubeconfigFingerprint(cluster.Kubeconfig),
 		},
-		"minio": map[string]interface{}{
-			"endpoint":        minioAccess.Endpoint,
-			"bucket":          k8scommon.DefaultMinIOBucket(minioAccess, k8sinstaller.DefaultVeleroBucket),
-			"accessKeyMasked": joblib.MaskSecret(minioAccess.AccessKey),
+		"s3": map[string]interface{}{
+			"endpoint":        s3Access.Endpoint,
+			"bucket":          k8scommon.DefaultS3Bucket(s3Access, k8sinstaller.DefaultVeleroBucket),
+			"accessKeyMasked": joblib.MaskSecret(s3Access.AccessKey),
 		},
 		"force":            force,
 		"volumeBackupMode": volumeBackupMode,
@@ -137,7 +137,7 @@ func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterA
 		ctx, cancel := context.WithTimeout(context.Background(), config.GetK8sInstallTimeout())
 		defer cancel()
 
-		result, installErr := s.installer.Install(ctx, cluster, minioAccess, force, volumeBackupMode)
+		result, installErr := s.installer.Install(ctx, cluster, s3Access, force, volumeBackupMode)
 		if installErr != nil {
 			_ = joblib.DefaultManager.FailJob(job.JobID, installErr)
 			return
@@ -150,7 +150,7 @@ func (s *Service) InstallAsync(clusterRole string, cluster *commonmodel.ClusterA
 	return job, nil
 }
 
-func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, spec veleromodel.MigrationPrecheckSpec) (*veleromodel.PrecheckResponse, error) {
+func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, spec veleromodel.MigrationPrecheckSpec) (*veleromodel.PrecheckResponse, error) {
 	sourceHealth, err := s.HealthCheck(ctx, sourceCluster)
 	if err != nil {
 		return nil, fmt.Errorf("source cluster velero health check failed: %w", err)
@@ -169,14 +169,14 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *co
 		return nil, err
 	}
 
-	minioClient, err := k8sclient.NewMinIOClient(minioAccess)
+	s3Client, err := k8sclient.NewS3Client(s3Access)
 	if err != nil {
 		return nil, err
 	}
-	bucketName := k8scommon.DefaultMinIOBucket(minioAccess, k8sinstaller.DefaultVeleroBucket)
+	bucketName := k8scommon.DefaultS3Bucket(s3Access, k8sinstaller.DefaultVeleroBucket)
 
-	if err := k8sclient.EnsureMinIOBucket(ctx, minioClient, bucketName); err != nil {
-		return nil, fmt.Errorf("failed to ensure minio bucket %q: %w", bucketName, err)
+	if err := k8sclient.EnsureS3Bucket(ctx, s3Client, bucketName); err != nil {
+		return nil, fmt.Errorf("failed to ensure s3 bucket %q: %w", bucketName, err)
 	}
 
 	result := &veleromodel.PrecheckResponse{
@@ -190,7 +190,7 @@ func (s *Service) Precheck(ctx context.Context, sourceCluster, targetCluster *co
 			Namespace: k8scommon.DefaultNamespace(targetCluster, k8sinstaller.DefaultVeleroNamespace),
 		},
 		Storage: veleromodel.PrecheckStorageSummary{
-			Endpoint: minioAccess.Endpoint,
+			Endpoint: s3Access.Endpoint,
 			Bucket:   bucketName,
 		},
 		Warnings: []string{},
@@ -440,7 +440,7 @@ func isSnapshotOnlyPrecheckWarning(warning string) bool {
 		strings.Contains(lower, "snapshot backup check skipped")
 }
 
-func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmodel.ClusterAccess, minioAccess *commonmodel.MinIOAccess, spec veleromodel.MigrationExecuteSpec) (*joblib.Info, error) {
+func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, spec veleromodel.MigrationExecuteSpec) (*joblib.Info, error) {
 	if joblib.DefaultManager == nil {
 		return nil, fmt.Errorf("job manager is not initialized")
 	}
@@ -465,10 +465,10 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmode
 			"namespace":             k8scommon.DefaultNamespace(targetCluster, k8sinstaller.DefaultVeleroNamespace),
 			"kubeconfigFingerprint": joblib.KubeconfigFingerprint(targetCluster.Kubeconfig),
 		},
-		"minio": map[string]interface{}{
-			"endpoint":        minioAccess.Endpoint,
-			"bucket":          k8scommon.DefaultMinIOBucket(minioAccess, k8sinstaller.DefaultVeleroBucket),
-			"accessKeyMasked": joblib.MaskSecret(minioAccess.AccessKey),
+		"s3": map[string]interface{}{
+			"endpoint":        s3Access.Endpoint,
+			"bucket":          k8scommon.DefaultS3Bucket(s3Access, k8sinstaller.DefaultVeleroBucket),
+			"accessKeyMasked": joblib.MaskSecret(s3Access.AccessKey),
 		},
 		"backupName":      backupName,
 		"restoreName":     restoreName,
@@ -501,7 +501,7 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmode
 			IncludeClusterResources: spec.IncludeClusterResources,
 			VolumeBackupMode:        spec.VolumeBackupMode,
 		}
-		precheckResult, precheckErr := s.Precheck(ctx, sourceCluster, targetCluster, minioAccess, precheckSpec)
+		precheckResult, precheckErr := s.Precheck(ctx, sourceCluster, targetCluster, s3Access, precheckSpec)
 		if precheckErr != nil {
 			_ = joblib.DefaultManager.FailJob(job.JobID, precheckErr)
 			return
@@ -669,7 +669,7 @@ func (s *Service) CreateBackup(ctx context.Context, cluster *commonmodel.Cluster
 				ExcludedResources:        spec.ExcludedResources,
 				IncludeClusterResources:  spec.IncludeClusterResources,
 				SnapshotVolumes:          &spec.SnapshotVolumes,
-				StorageLocation:          "minio",
+				StorageLocation:          "default",
 				DefaultVolumesToFsBackup: &spec.DefaultVolumesToFsBackup,
 			},
 		}

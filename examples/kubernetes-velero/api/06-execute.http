@@ -14,12 +14,12 @@ Content-Type: application/json
     "kubeconfig": "{{base64_target_kubeconfig}}"
   },
   "storage": {
-    "minio": {
-      "endpoint": "{{minio_url}}",
-      "accessKey": "{{minio_accesskey}}",
-      "secretKey": "{{minio_secretkey}}",
-      "bucket": "{{minio_bucket}}",
-      "useSSL": true
+    "s3": {
+      "endpoint": "{{s3_endpoint}}",
+      "accessKey": "{{s3_accesskey}}",
+      "secretKey": "{{s3_secretkey}}",
+      "bucket": "{{s3_bucket}}",
+      "useSSL": false
     }
   },
   "migration": {

@@ -478,7 +478,7 @@ const docTemplate = `{
         },
         "/velero/migration/precheck": {
             "post": {
-                "description": "Check source cluster, target cluster, and MinIO before executing Velero migration.",
+                "description": "Check source cluster, target cluster, and the S3 object store before executing Velero migration.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1097,7 +1097,7 @@ const docTemplate = `{
         },
         "/velero/{role}/install": {
             "post": {
-                "description": "Install or upgrade Velero on source or target cluster using MinIO.",
+                "description": "Install or upgrade Velero on source or target cluster using an S3-compatible object store.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1248,7 +1248,21 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess": {
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope": {
+            "type": "object",
+            "properties": {
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.S3Access": {
             "type": "object",
             "properties": {
                 "accessKey": {
@@ -1268,25 +1282,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope": {
-            "type": "object",
-            "properties": {
-                "sourceCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
-                },
-                "storage": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
-                },
-                "targetCluster": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
-                }
-            }
-        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess": {
             "type": "object",
             "properties": {
-                "minio": {
-                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MinIOAccess"
+                "s3": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.S3Access"
                 }
             }
         },
@@ -2788,10 +2788,6 @@ const docTemplate = `{
                 "SoftwarePackageTypeDEB": "Debian based package type",
                 "SoftwarePackageTypeRPM": "RHEL based package type"
             },
-            "x-enum-descriptions": [
-                "Debian based package type",
-                "RHEL based package type"
-            ],
             "x-enum-varnames": [
                 "SoftwarePackageTypeDEB",
                 "SoftwarePackageTypeRPM"

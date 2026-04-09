@@ -7,7 +7,9 @@ type ClusterAccess struct {
 	Name       string `json:"name,omitempty"`
 }
 
-type MinIOAccess struct {
+// S3Access describes credentials for any S3-compatible object store
+// (RustFS, MinIO, Garage, Ceph RGW, AWS S3, ...).
+type S3Access struct {
 	Endpoint  string `json:"endpoint"`
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
@@ -16,7 +18,7 @@ type MinIOAccess struct {
 }
 
 type StorageAccess struct {
-	MinIO *MinIOAccess `json:"minio,omitempty"`
+	S3 *S3Access `json:"s3,omitempty"`
 }
 
 type MultiClusterEnvelope struct {
