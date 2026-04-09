@@ -66,6 +66,27 @@ func init() {
 
 	controller.OkMessage.Message = "API server is not ready"
 
+	controller.OkMessage.Message = "Package Migration Config Database is not ready"
+	err = db.Open()
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.OkMessage.Message = "Software migration dependencies are not ready"
+	err = initSoftwareMigrationDependencies()
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.OkMessage.Message = "K8s migration dependencies are not ready"
+	err = initK8sMigrationDependencies()
+	if err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
+	}
+
+	controller.OkMessage.Message = "CM-Grasshopper API server is ready"
+	controller.IsReady = true
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -74,31 +95,6 @@ func init() {
 		}()
 		server.Init()
 	}()
-
-	controller.OkMessage.Message = "Package Migration Config Database is not ready"
-	err = db.Open()
-	if err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
-	}
-
-	if config.IsSoftwareMigrationEnabled() {
-		controller.OkMessage.Message = "Software migration dependencies are not ready"
-		err = initSoftwareMigrationDependencies()
-		if err != nil {
-			logger.Panicln(logger.ERROR, true, err.Error())
-		}
-	}
-
-	if config.IsK8sMigrationEnabled() {
-		controller.OkMessage.Message = "K8s migration dependencies are not ready"
-		err = initK8sMigrationDependencies()
-		if err != nil {
-			logger.Panicln(logger.ERROR, true, err.Error())
-		}
-	}
-
-	controller.OkMessage.Message = "CM-Grasshopper API server is ready"
-	controller.IsReady = true
 
 	wg.Wait()
 }

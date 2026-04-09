@@ -1,9 +1,6 @@
 cm-grasshopper:
     listen:
         port: 8084
-    features:
-        software_migration: false
-        k8s_migration: true
     software:
         temp_folder: ./software_temp
         log_folder: ./software_log

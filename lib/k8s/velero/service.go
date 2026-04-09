@@ -507,7 +507,7 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmode
 			return
 		}
 		for _, warning := range precheckResult.Warnings {
-			_ = joblib.DefaultManager.AddJobLog(job.JobID, "Precheck warning: "+warning)
+			_ = joblib.DefaultManager.AddJobLogWithLevel(job.JobID, joblib.LogLevelWarn, "Precheck warning: "+warning)
 		}
 		if precheckResult.Status == "not_ready" {
 			if len(precheckResult.Errors) > 0 {

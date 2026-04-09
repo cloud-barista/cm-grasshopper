@@ -22,13 +22,31 @@ type Manager struct {
 
 var DefaultManager *Manager
 
-// AddJobLogSafe appends a line to the job log file when DefaultManager is initialized.
+// Log levels used in job log files. Kept in sync with lib/software/logger.go
+// so that software migration and k8s migration logs share a single format.
+const (
+	LogLevelInfo     = "INFO"
+	LogLevelDebug    = "DEBUG"
+	LogLevelWarn     = "WARN"
+	LogLevelError    = "ERROR"
+	LogLevelCritical = "CRITICAL"
+)
+
+// AddJobLogSafe appends an INFO line to the job log file when DefaultManager is initialized.
 // It is a no-op if the job manager was not started (e.g. K8s migration disabled).
 func AddJobLogSafe(jobID, message string) {
 	if DefaultManager == nil {
 		return
 	}
 	_ = DefaultManager.AddJobLog(jobID, message)
+}
+
+// AddJobLogSafeWithLevel is the level-aware variant of AddJobLogSafe.
+func AddJobLogSafeWithLevel(jobID, level, message string) {
+	if DefaultManager == nil {
+		return
+	}
+	_ = DefaultManager.AddJobLogWithLevel(jobID, level, message)
 }
 
 func InitDefaultManager(workerCount int, logRoot string) error {
@@ -157,6 +175,12 @@ func (m *Manager) UpdateJobStatus(jobID string, status Status, progress int, mes
 }
 
 func (m *Manager) AddJobLog(jobID string, message string) error {
+	return m.AddJobLogWithLevel(jobID, LogLevelInfo, message)
+}
+
+// AddJobLogWithLevel writes a log line in the same format used by the software
+// migration logger: "YYYY/MM/DD HH:MM:SS [ LEVEL ] message".
+func (m *Manager) AddJobLogWithLevel(jobID, level, message string) error {
 	job, err := dao.GetExecution(jobID)
 	if err != nil {
 		return err
@@ -175,7 +199,16 @@ func (m *Manager) AddJobLog(jobID string, message string) error {
 		_ = fp.Close()
 	}()
 
-	_, err = fmt.Fprintf(fp, "%s %s\n", time.Now().Format(time.RFC3339), message)
+	if level == "" {
+		level = LogLevelInfo
+	}
+
+	now := time.Now()
+	timestamp := fmt.Sprintf("%04d/%02d/%02d %02d:%02d:%02d",
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second())
+
+	_, err = fmt.Fprintf(fp, "%s [ %s ] %s\n", timestamp, level, message)
 	return err
 }
 
@@ -190,7 +223,7 @@ func (m *Manager) FailJob(jobID string, err error) error {
 		_ = dao.UpdateExecution(job)
 	}
 
-	_ = m.AddJobLog(jobID, "Job failed: "+err.Error())
+	_ = m.AddJobLogWithLevel(jobID, LogLevelError, "Job failed: "+err.Error())
 	return updateErr
 }
 
