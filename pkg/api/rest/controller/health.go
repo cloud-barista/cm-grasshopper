@@ -2,15 +2,33 @@ package controller
 
 import (
 	"net/http"
+	"sync"
+	"sync/atomic"
 
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/labstack/echo/v4"
 )
 
-var OkMessage = model.SimpleMsg{}
-var IsReady = false
+var (
+	okMessageMu sync.RWMutex
+	okMessage   = model.SimpleMsg{}
+	isReady     atomic.Bool
+)
+
 var _ = common.ErrorResponse{}
+
+// SetOkMessage updates the readiness status message safely from any goroutine.
+func SetOkMessage(msg string) {
+	okMessageMu.Lock()
+	okMessage.Message = msg
+	okMessageMu.Unlock()
+}
+
+// SetReady marks the API server as ready (or not) for health probes.
+func SetReady(ready bool) {
+	isReady.Store(ready)
+}
 
 // CheckReady func is for checking Grasshopper server health.
 //
@@ -25,10 +43,13 @@ var _ = common.ErrorResponse{}
 //	@Router		/readyz [get]
 func CheckReady(c echo.Context) error {
 	status := http.StatusOK
-
-	if !IsReady {
+	if !isReady.Load() {
 		status = http.StatusServiceUnavailable
 	}
 
-	return c.JSONPretty(status, &OkMessage, " ")
+	okMessageMu.RLock()
+	snapshot := okMessage
+	okMessageMu.RUnlock()
+
+	return c.JSONPretty(status, &snapshot, " ")
 }

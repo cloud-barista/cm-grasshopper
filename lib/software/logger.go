@@ -43,27 +43,14 @@ const (
 	NONE = "NONE"
 )
 
-var date string
-var _time string
-
-func getDateAndTime() {
+func nowDateAndTime() (string, string) {
 	now := time.Now()
-
-	year := fmt.Sprintf("%04d", now.Year())
-	month := fmt.Sprintf("%02d", now.Month())
-	day := fmt.Sprintf("%02d", now.Day())
-
-	hour := fmt.Sprintf("%02d", now.Hour())
-	minute := fmt.Sprintf("%02d", now.Minute())
-	second := fmt.Sprintf("%02d", now.Second())
-
-	date = year + "/" + month + "/" + day
-	_time = hour + ":" + minute + ":" + second
+	date := fmt.Sprintf("%04d/%02d/%02d", now.Year(), now.Month(), now.Day())
+	t := fmt.Sprintf("%02d:%02d:%02d", now.Hour(), now.Minute(), now.Second())
+	return date, t
 }
 
 func (l *Logger) getPrefix(logLevel string) string {
-	getDateAndTime()
-
 	switch logLevel {
 	case INFO:
 		return "[ INFO ] "
@@ -91,8 +78,8 @@ func (l *Logger) Print(logLevel string, msg ...interface{}) {
 	if logLevel == NONE {
 		_, _ = fmt.Fprint(io.Writer(l.fpLog), l.getPrefix(logLevel)+fmt.Sprint(msg...))
 	} else {
-		getDateAndTime()
-		_, _ = fmt.Fprint(io.Writer(l.fpLog), date+" "+_time+" [ "+logLevel+" ] "+fmt.Sprint(msg...))
+		date, t := nowDateAndTime()
+		_, _ = fmt.Fprint(io.Writer(l.fpLog), date+" "+t+" [ "+logLevel+" ] "+fmt.Sprint(msg...))
 	}
 }
 
