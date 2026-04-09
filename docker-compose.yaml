@@ -4,7 +4,7 @@ services:
     restart: always
     image: cloudbaristaorg/cm-grasshopper:edge
     depends_on:
-      cm-grasshopper-minio:
+      cm-grasshopper-rustfs:
         condition: service_healthy
     volumes:
       #- ./cm-grasshopper.db:/root/.cm-grasshopper/cm-grasshopper.db:rw
@@ -12,27 +12,26 @@ services:
       #- ./playbook:/playbook/:rw
       - ./software_temp:/software_temp:rw
       - ./software_log:/software_log:rw
+      - ./k8s_job_log:/k8s_job_log:rw
     network_mode: "host"
 
-  cm-grasshopper-minio:
-    # image: cloudbaristaorg/cm-grasshopper-minio:edge
-    build:
-      context: .
-      dockerfile: Dockerfile.minio
-    image: cm-grasshopper-minio:latest
-    container_name: cm-grasshopper-minio
+  cm-grasshopper-rustfs:
+    image: rustfs/rustfs:latest
+    container_name: cm-grasshopper-rustfs
     restart: always
+    user: "0:0"
     ports:
       - "19000:9000"
-      - "19001:9001"
     environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=:9000
     volumes:
-      - ./minio_data:/minio/data
+      - ./rustfs_data:/data
     healthcheck:
-      start_period: 30s
-      test: 'curl -s http://127.0.0.1:9001/api/docs ; STATUS=`echo $$?` ; if [ $$STATUS != 0 ] && [ $$STATUS != 52 ]; then exit 1 ; fi'
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:9000/"]
+      start_period: 15s
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 30

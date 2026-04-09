@@ -18,4 +18,4 @@ software_temp/
 software_log/
 k8s_job_log/
 
-minio_data/
+rustfs_data/
