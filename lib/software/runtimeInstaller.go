@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 )
 
 func runtimeInstaller(client *ssh.Client, runtime softwaremodel.SoftwareContainerRuntimeType, migrationLogger *Logger) error {

@@ -15,7 +15,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
 	"github.com/cloud-barista/cm-honeybee/agent/pkg/api/rest/model/onprem/infra"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 	"github.com/jollaman999/utils/logger"
 )
 

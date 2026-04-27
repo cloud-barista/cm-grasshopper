@@ -11,7 +11,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/software"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )

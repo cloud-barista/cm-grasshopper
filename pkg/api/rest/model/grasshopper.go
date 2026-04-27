@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 )
 
 type Source struct {

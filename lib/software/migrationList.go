@@ -9,7 +9,7 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 )
 
 var libraryPackagePatterns = []string{

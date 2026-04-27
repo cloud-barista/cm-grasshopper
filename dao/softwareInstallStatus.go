@@ -5,7 +5,7 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/db"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
-	softwaremodel "github.com/cloud-barista/cm-model/sw"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 	"gorm.io/gorm"
 )
 

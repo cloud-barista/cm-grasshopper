@@ -3,9 +3,9 @@ module github.com/cloud-barista/cm-grasshopper
 go 1.25.0
 
 require (
+	github.com/cloud-barista/cm-grasshopper/smdl v0.0.0-00010101000000-000000000000
 	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20260322083419-b1c037e30d5e
 	github.com/cloud-barista/cm-honeybee/server v0.0.0-20260322083419-b1c037e30d5e
-	github.com/cloud-barista/cm-model v0.0.18
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
@@ -177,3 +177,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
+
+replace github.com/cloud-barista/cm-grasshopper/smdl => ./smdl
