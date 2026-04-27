@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y make bash git
 WORKDIR /go/src/github.com/cloud-barista/cm-grasshopper/
 
 COPY go.mod go.sum ./
+COPY smdl/ ./smdl/
 RUN go mod download && go mod verify
 
 COPY . .
