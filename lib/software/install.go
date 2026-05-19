@@ -13,9 +13,9 @@ import (
 	"github.com/cloud-barista/cm-grasshopper/lib/ssh"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 	"github.com/cloud-barista/cm-honeybee/agent/pkg/api/rest/model/onprem/infra"
 	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
-	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 	"github.com/jollaman999/utils/logger"
 )
 
@@ -473,12 +473,54 @@ func MigrateSoftware(execution *Execution) {
 				", InstallType=container, ContainerName="+container.Name)
 
 			// 1. image pull
+			//imageRef := fmt.Sprintf("%s:%s", container.ContainerImage.ImageName, container.ContainerImage.ImageVersion)
+			//pulCmd := fmt.Sprintf("docker pull %s", imageRef)
+			//pullCmd := sudoWrapper(pulCmd, execution.TargetClient.SSHTarget.Password)
+			//if _, err := execution.TargetClient.Run(pullCmd); err != nil {
+			//	updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
+			//	continue
+			//}
+
+			runtime := container.Runtime // "docker" or "podman"
 			imageRef := fmt.Sprintf("%s:%s", container.ContainerImage.ImageName, container.ContainerImage.ImageVersion)
-			pulCmd := fmt.Sprintf("docker pull %s", imageRef)
-			pullCmd := sudoWrapper(pulCmd, execution.TargetClient.SSHTarget.Password)
+
+			// 1. image pull (실패 시 save/load fallback)
+			pullCmd := sudoWrapper(fmt.Sprintf("%s pull %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
 			if _, err := execution.TargetClient.Run(pullCmd); err != nil {
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
+				migrationLogger.Printf(INFO, "pull failed, trying save/load fallback: %s\n", imageRef)
+
+				saveTempDir := fmt.Sprintf("/tmp/grasshopper_save_%s", execution.ExecutionID)
+				tarPath := fmt.Sprintf("%s/image.tar", saveTempDir)
+
+				// 소스에서 save
+				mkdirCmd := sudoWrapper(fmt.Sprintf("mkdir -p %s", saveTempDir), execution.SourceClient.SSHTarget.Password)
+				if _, serr := execution.SourceClient.Run(mkdirCmd); serr != nil {
+					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "mkdir failed: "+serr.Error(), false)
+					continue
+				}
+
+				saveCmd := sudoWrapper(fmt.Sprintf("%s save -o %s %s", runtime, tarPath, imageRef), execution.SourceClient.SSHTarget.Password)
+				if _, serr := execution.SourceClient.Run(saveCmd); serr != nil {
+					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "save failed: "+serr.Error(), false)
+					continue
+				}
+
+				// 디렉토리째 전송
+				if terr := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, saveTempDir, execution.ExecutionID, migrationLogger); terr != nil {
+					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "transfer failed: "+terr.Error(), false)
+					continue
+				}
+
+				// 타겟에서 load
+				loadCmd := sudoWrapper(fmt.Sprintf("%s load -i %s", runtime, tarPath), execution.TargetClient.SSHTarget.Password)
+				if _, lerr := execution.TargetClient.Run(loadCmd); lerr != nil {
+					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "load failed: "+lerr.Error(), false)
+					continue
+				}
+
+				// cleanup
+				_, _ = execution.SourceClient.Run(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.SourceClient.SSHTarget.Password))
+				_, _ = execution.TargetClient.Run(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.TargetClient.SSHTarget.Password))
 			}
 
 			// 2. port validation
@@ -513,13 +555,18 @@ func MigrateSoftware(execution *Execution) {
 
 				// 3-2 create compose network
 				if container.NetworkMode != "" && container.NetworkMode != "bridge" {
-					rmCmd := fmt.Sprintf("docker network rm %s || true", container.NetworkMode)
+					rmCmd := fmt.Sprintf("%s network rm %s || true", runtime, container.NetworkMode)
 					rmNetCmd := sudoWrapper(rmCmd, execution.TargetClient.SSHTarget.Password)
 					_, _ = execution.TargetClient.Run(rmNetCmd)
 				}
 
-				copCmd := fmt.Sprintf("cd %s && docker compose -f "+dockerComposeFile+" up -d", baseDir)
-				composeCmd := sudoWrapper(copCmd, execution.TargetClient.SSHTarget.Password)
+				var composeUpCmd string
+				if runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+					composeUpCmd = fmt.Sprintf("cd %s && podman-compose -f %s up -d", baseDir, dockerComposeFile)
+				} else {
+					composeUpCmd = fmt.Sprintf("cd %s && docker compose -f %s up -d", baseDir, dockerComposeFile)
+				}
+				composeCmd := sudoWrapper(composeUpCmd, execution.TargetClient.SSHTarget.Password)
 
 				if _, err := execution.TargetClient.Run(composeCmd); err != nil {
 					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
@@ -533,11 +580,11 @@ func MigrateSoftware(execution *Execution) {
 			// 4. generate network
 			if container.DockerComposePath == "" {
 				if container.NetworkMode != "" && container.NetworkMode != "bridge" {
-					checkCmd := fmt.Sprintf("docker network ls --format '{{.Name}}' | grep -w %s", container.NetworkMode)
+					checkCmd := fmt.Sprintf("%s network ls --format '{{.Name}}' | grep -w %s", runtime, container.NetworkMode)
 					checkNetCmd := sudoWrapper(checkCmd, execution.TargetClient.SSHTarget.Password)
 
 					if _, err := execution.TargetClient.Run(checkNetCmd); err != nil {
-						createCmd := fmt.Sprintf("docker network create %s", container.NetworkMode)
+						createCmd := fmt.Sprintf("%s network create %s", runtime, container.NetworkMode)
 						createNetCmd := sudoWrapper(createCmd, execution.TargetClient.SSHTarget.Password)
 
 						if _, cerr := execution.TargetClient.Run(createNetCmd); cerr != nil {
@@ -549,8 +596,7 @@ func MigrateSoftware(execution *Execution) {
 			}
 
 			// 5. docker run
-			dockerRunCmd := fmt.Sprintf("docker run -d --name %s", container.Name)
-			runCmd := sudoWrapper(dockerRunCmd, execution.TargetClient.SSHTarget.Password)
+			runCmd := sudoWrapper(fmt.Sprintf("%s run -d --name %s", runtime, container.Name), execution.TargetClient.SSHTarget.Password)
 
 			validatedPorts := make(map[int]bool)
 			for _, port := range container.ContainerPorts {
@@ -588,6 +634,7 @@ func MigrateSoftware(execution *Execution) {
 			}
 
 			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
+
 		case softwaremodel.SoftwareTypeKubernetes:
 			kubernetes := getKubernetes(execution, &ms)
 			if kubernetes == nil {
