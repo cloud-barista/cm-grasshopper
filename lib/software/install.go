@@ -501,8 +501,24 @@ func MigrateSoftware(execution *Execution) {
 
 				saveCmd := sudoWrapper(fmt.Sprintf("%s save -o %s %s", runtime, tarPath, imageRef), execution.SourceClient.SSHTarget.Password)
 				if _, serr := execution.SourceClient.Run(saveCmd); serr != nil {
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "save failed: "+serr.Error(), false)
-					continue
+					// save 실패 시 commit으로 스냅샷 후 재시도
+					migrationLogger.Printf(INFO, "save failed, trying commit fallback: %s\n", container.Name)
+
+					commitTag := fmt.Sprintf("grasshopper-snapshot-%s", container.Name)
+					commitCmd := sudoWrapper(fmt.Sprintf("%s commit %s %s", runtime, container.ContainerId, commitTag), execution.SourceClient.SSHTarget.Password)
+					if _, cerr := execution.SourceClient.Run(commitCmd); cerr != nil {
+						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "commit failed: "+cerr.Error(), false)
+						continue
+					}
+
+					saveCmd2 := sudoWrapper(fmt.Sprintf("%s save -o %s %s", runtime, tarPath, commitTag), execution.SourceClient.SSHTarget.Password)
+					if _, serr2 := execution.SourceClient.Run(saveCmd2); serr2 != nil {
+						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "save after commit failed: "+serr2.Error(), false)
+						continue
+					}
+
+					// commit 이미지 cleanup
+					_, _ = execution.SourceClient.Run(sudoWrapper(fmt.Sprintf("%s rmi %s", runtime, commitTag), execution.SourceClient.SSHTarget.Password))
 				}
 
 				// 디렉토리째 전송
