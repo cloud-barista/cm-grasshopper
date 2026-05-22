@@ -209,10 +209,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 			return nil, err
 		}
 
-		sshPort, err := strconv.Atoi(vmInfo.SSHPort)
-		if err != nil {
-			return nil, errors.New("invalid ssh port")
-		}
+		sshPort := vmInfo.SSHPort
 
 		data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
