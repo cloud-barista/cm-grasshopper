@@ -10,7 +10,7 @@ type TBVMInfo struct {
 }
 
 type TBMCIInfo struct {
-	VM []TBVMInfo `json:"vm"`
+	VM []TBVMInfo `json:"node"`
 }
 
 type TBSSHKeyInfo struct {

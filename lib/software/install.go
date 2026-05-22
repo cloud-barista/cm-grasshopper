@@ -61,7 +61,7 @@ func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 
 	data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+nsID+"/mci/"+mciID,
+		"/tumblebug/ns/"+nsID+"/infra/"+mciID,
 		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 	if err != nil {
 		return "", err
