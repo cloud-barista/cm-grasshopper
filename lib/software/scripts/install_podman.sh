@@ -41,14 +41,19 @@ fi
 echo "[INFO] Installing Podman..."
 
 if [[ "$ID" == "ubuntu" || "$ID" == "debian" ]]; then
-    # APT-based installation
     sudo apt-get update
     sudo apt-get install -y podman
-
 else
-    # DNF-based installation (RHEL, Rocky, Fedora, CentOS)
     sudo dnf install -y podman
 fi
+
+# Configure unqualified search registries
+echo "[INFO] Configuring container registries..."
+sudo bash -c 'cat >> /etc/containers/registries.conf << EOF
+
+[registries.search]
+registries = ["docker.io"]
+EOF'
 
 # Start and enable Podman socket
 echo "[INFO] Starting Podman socket service..."
