@@ -526,8 +526,11 @@ func MigrateSoftware(execution *Execution) {
 					outStr := string(out)
 					var loadedImage string
 					for _, line := range strings.Split(outStr, "\n") {
-						if strings.Contains(line, "Loaded image(s):") {
-							loadedImage = strings.TrimSpace(strings.TrimPrefix(line, "Loaded image(s):"))
+						if strings.Contains(line, "Loaded image:") || strings.Contains(line, "Loaded image(s):") {
+							loadedImage = strings.TrimSpace(line)
+							loadedImage = strings.TrimPrefix(loadedImage, "Loaded image(s):")
+							loadedImage = strings.TrimPrefix(loadedImage, "Loaded image:")
+							loadedImage = strings.TrimSpace(loadedImage)
 							break
 						}
 					}
