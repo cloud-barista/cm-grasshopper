@@ -490,7 +490,14 @@ func MigrateSoftware(execution *Execution) {
 					continue
 				}
 
-				saveCmd := sudoWrapper(fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, imageRef), execution.SourceClient.SSHTarget.Password)
+				var saveCmdStr string
+				if sourceRuntime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+					saveCmdStr = fmt.Sprintf("%s save --format oci-archive -o %s %s", sourceRuntime, tarPath, imageRef)
+				} else {
+					saveCmdStr = fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, imageRef)
+				}
+				saveCmd := sudoWrapper(saveCmdStr, execution.SourceClient.SSHTarget.Password)
+
 				if _, serr := execution.SourceClient.Run(saveCmd); serr != nil {
 					// save 실패 시 commit으로 스냅샷 후 재시도
 					migrationLogger.Printf(INFO, "save failed, trying commit fallback: %s\n", container.Name)
@@ -597,8 +604,10 @@ func MigrateSoftware(execution *Execution) {
 				composeCmd := sudoWrapper(composeUpCmd, execution.TargetClient.SSHTarget.Password)
 
 				if _, err := execution.TargetClient.Run(composeCmd); err != nil {
+					migrationLogger.Printf(INFO, "compose up failed: %s\n", err.Error()) // 추가
 					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
 				} else {
+					migrationLogger.Printf(INFO, "compose up success: %s\n", container.Name) // 추가
 					updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
 				}
 
