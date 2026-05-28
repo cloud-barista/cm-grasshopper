@@ -49,11 +49,13 @@ fi
 
 # Configure unqualified search registries
 echo "[INFO] Configuring container registries..."
-sudo bash -c 'cat >> /etc/containers/registries.conf << EOF
+if ! grep -q "registries.search" /etc/containers/registries.conf; then
+    sudo bash -c 'cat >> /etc/containers/registries.conf << EOF
 
 [registries.search]
 registries = ["docker.io"]
 EOF'
+fi
 
 # Start and enable Podman socket
 echo "[INFO] Starting Podman socket service..."
@@ -61,12 +63,18 @@ sudo systemctl enable --now podman.socket 2>/dev/null || true
 
 # Install podman-compose
 echo "[INFO] Installing podman-compose..."
-if command -v pip3 &>/dev/null; then
-    sudo pip3 install podman-compose 2>/dev/null || true
-elif command -v pip &>/dev/null; then
-    sudo pip install podman-compose 2>/dev/null || true
+if [[ "$ID" == "ubuntu" || "$ID" == "debian" ]]; then
+    if ! command -v pip3 &>/dev/null; then
+        sudo apt-get install -y python3-pip
+    fi
+    # Ubuntu 24.04 uses externally-managed-environment, requires --break-system-packages
+    if [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" ]]; then
+        sudo pip3 install podman-compose --break-system-packages 2>/dev/null || true
+    else
+        sudo pip3 install podman-compose 2>/dev/null || true
+    fi
 else
-    echo "[WARN] pip not found, skipping podman-compose installation."
+    sudo pip3 install podman-compose 2>/dev/null || true
 fi
 
 # Verify installation
