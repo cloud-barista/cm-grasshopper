@@ -197,7 +197,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 
 		data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-			"/tumblebug/ns/"+nsID+"/mci/"+mciID+"/vm/"+id,
+			"/tumblebug/ns/"+nsID+"/infra/"+mciID+"/node/"+id,
 			config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 		if err != nil {
 			return nil, err
@@ -209,10 +209,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 			return nil, err
 		}
 
-		sshPort, err := strconv.Atoi(vmInfo.SSHPort)
-		if err != nil {
-			return nil, errors.New("invalid ssh port")
-		}
+		sshPort := vmInfo.SSHPort
 
 		data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+

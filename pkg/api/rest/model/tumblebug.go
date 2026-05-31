@@ -4,13 +4,13 @@ type TBVMInfo struct {
 	Id         string            `json:"id"`
 	Label      map[string]string `json:"label"`
 	PublicIP   string            `json:"publicIP"`
-	SSHPort    string            `json:"sshPort"`
+	SSHPort    int               `json:"sshPort"`
 	SSHKeyID   string            `json:"sshKeyId"`
-	VMUserName string            `json:"vmUserName,omitempty"`
+	VMUserName string            `json:"nodeUserName,omitempty"`
 }
 
 type TBMCIInfo struct {
-	VM []TBVMInfo `json:"vm"`
+	VM []TBVMInfo `json:"node"`
 }
 
 type TBSSHKeyInfo struct {
