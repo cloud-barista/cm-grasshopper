@@ -91,11 +91,59 @@ func isUnderCopiedPath(copied map[string]bool, path string) bool {
 	return false
 }
 
+// remoteSymlinkTarget returns the raw link target of path and whether path is a
+// symlink on the remote host. The target is exactly what `readlink` reports (it
+// may be relative or absolute), so it can be recreated verbatim on the target.
+func remoteSymlinkTarget(client *ssh.Client, path string) (string, bool) {
+	out, _ := runSSHCommand(client, fmt.Sprintf("if [ -L '%s' ]; then readlink '%s'; else echo '__NOT_A_SYMLINK__'; fi", path, path))
+	out = strings.TrimSpace(out)
+	if out == "" || out == "__NOT_A_SYMLINK__" {
+		return "", false
+	}
+	return out, true
+}
+
+// remoteRealPath returns the fully resolved (symlink-free) path on the remote host.
+func remoteRealPath(client *ssh.Client, path string) string {
+	out, _ := runSSHCommand(client, fmt.Sprintf("readlink -f '%s'", path))
+	return strings.TrimSpace(out)
+}
+
 // copyPathWithChunks copies a file or directory from the source host to the same
-// absolute path on the target host using a chunked, tar-based transfer. It is
-// binary-safe and preserves numeric ownership and permissions, so it works for
-// both directories (e.g. /opt/tomcat, /opt/jdk) and individual files.
+// absolute path on the target host, preserving numeric ownership and permissions.
+//
+// If path is a symlink (e.g. catalina.home = /opt/tomcat/latest -> /opt/tomcat/
+// apache-tomcat-10.x), it copies the resolved real target first (so the data
+// exists on the target) and then recreates the symlink itself. A plain tar of a
+// symlink would otherwise archive only the dangling link.
 func copyPathWithChunks(sourceClient, targetClient *ssh.Client, path string, uuid string, migrationLogger *Logger) error {
+	if linkTarget, isLink := remoteSymlinkTarget(sourceClient, path); isLink {
+		realPath := remoteRealPath(sourceClient, path)
+		migrationLogger.Printf(INFO, "%s is a symlink -> %s (real: %s)\n", path, linkTarget, realPath)
+
+		if realPath != "" && realPath != path {
+			if err := copyResolvedPath(sourceClient, targetClient, realPath, uuid, migrationLogger); err != nil {
+				return err
+			}
+		}
+
+		// Recreate the symlink on the target (mkdir parent first in case it differs).
+		recreateCmd := fmt.Sprintf("mkdir -p \"$(dirname '%s')\" && ln -sfn '%s' '%s'", path, linkTarget, path)
+		if out, err := runSSHCommand(targetClient, recreateCmd); err != nil {
+			return fmt.Errorf("failed to recreate symlink %s -> %s: %s", path, linkTarget, out)
+		}
+		migrationLogger.Printf(INFO, "Recreated symlink %s -> %s on target\n", path, linkTarget)
+		return nil
+	}
+
+	return copyResolvedPath(sourceClient, targetClient, path, uuid, migrationLogger)
+}
+
+// copyResolvedPath copies a real (non-symlink) file or directory from the source
+// host to the same absolute path on the target host using a chunked, tar-based
+// transfer. It is binary-safe and preserves numeric ownership and permissions, so
+// it works for both directories (e.g. /opt/tomcat, /opt/jdk) and individual files.
+func copyResolvedPath(sourceClient, targetClient *ssh.Client, path string, uuid string, migrationLogger *Logger) error {
 	parent := filepath.Dir(path)
 	base := filepath.Base(path)
 
