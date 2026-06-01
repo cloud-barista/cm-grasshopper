@@ -91,6 +91,12 @@ type Binary struct {
 	CustomDataPaths []string `json:"custom_data_paths"`
 	CustomConfigs   []string `json:"custom_configs"`
 	IsWine          bool     `json:"is_wine"`
+	// Launch provenance: how the software was started on the source host.
+	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
+	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`
+	SystemdUnitPath  string `json:"systemd_unit_path,omitempty"` // source unit file path (to copy)
+	SystemdEnabled   bool   `json:"systemd_enabled"`
+	WorkingDirectory string `json:"working_directory,omitempty"` // used to synthesize a unit
 }
 
 type Package struct {
@@ -160,6 +166,12 @@ type BinaryMigrationInfo struct {
 	CustomDataPaths []string `json:"custom_data_paths"`
 	CustomConfigs   []string `json:"custom_configs"`
 	IsWine          bool     `json:"is_wine"`
+	// Launch provenance: how the software was started on the source host.
+	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
+	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`
+	SystemdUnitPath  string `json:"systemd_unit_path,omitempty"`
+	SystemdEnabled   bool   `json:"systemd_enabled"`
+	WorkingDirectory string `json:"working_directory,omitempty"`
 }
 
 type PackageMigrationInfo struct {

@@ -119,6 +119,32 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			return nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
 		}
 
+		for _, execution := range server.MigrationList.Binaries {
+			softwareMigrationStatus := model.SoftwareMigrationStatus{
+				ExecutionID:            executionID,
+				SourceConnectionInfoID: server.SourceConnectionInfoID,
+				NamespaceID:            nsId,
+				MCIID:                  mciId,
+				VMID:                   vmId,
+				Order:                  execution.Order,
+				SoftwareName:           execution.Name,
+				SoftwareVersion:        execution.Version,
+				SoftwareInstallType:    softwaremodel.SoftwareTypeBinary,
+				Status:                 "ready",
+				StartedAt:              time.Time{},
+				UpdatedAt:              time.Time{},
+				ErrorMessage:           "",
+			}
+			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
+			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "Failed to create software migration status ("+
+					"SoftwareName: "+softwareMigrationStatus.SoftwareName+", "+
+					"SoftwareVersion: "+softwareMigrationStatus.SoftwareVersion+", "+
+					"SoftwareInstallType: "+string(softwareMigrationStatus.SoftwareInstallType)+")")
+			}
+		}
+
 		for _, execution := range server.MigrationList.Packages {
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
@@ -418,7 +444,19 @@ func MigrateSoftware(execution *Execution) {
 				continue
 			}
 
-			// TODO - Legacy Migration
+			updateSoftwareInstallStatus(execution, &exStatus, &ms, "installing", "", true)
+
+			err = binaryMigrator(execution.SourceClient, execution.TargetClient, binary, execution.ExecutionID, migrationLogger)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+					", InstallType=binary, Error="+err.Error())
+				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
+				continue
+			}
+
+			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
 		case softwaremodel.SoftwareTypePackage:
 			pkg := getPackage(execution, &ms)
 			if pkg == nil {

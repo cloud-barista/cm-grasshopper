@@ -8,8 +8,8 @@ import (
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
-	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
+	honeybee "github.com/cloud-barista/cm-honeybee/server/pkg/api/rest/model"
 )
 
 var libraryPackagePatterns = []string{
@@ -114,6 +114,39 @@ func isPackageManagerPackage(packageName string) bool {
 //
 //	return &infraInfo, nil
 //}
+
+func processSoftwareBinaries(prevOrder *int, binaries []softwaremodel.Binary) ([]softwaremodel.BinaryMigrationInfo, []string) {
+	migrationBinaries := make([]softwaremodel.BinaryMigrationInfo, 0)
+	errMsgs := make([]string, 0)
+
+	for _, b := range binaries {
+		*prevOrder++
+
+		newBinary := softwaremodel.BinaryMigrationInfo{
+			Order:            *prevOrder,
+			Name:             b.Name,
+			Version:          b.Version,
+			UIDs:             b.UIDs,
+			GIDs:             b.GIDs,
+			CmdlineSlice:     b.CmdlineSlice,
+			Envs:             b.Envs,
+			NeededLibraries:  b.NeededLibraries,
+			BinaryPath:       b.BinaryPath,
+			CustomDataPaths:  b.CustomDataPaths,
+			CustomConfigs:    b.CustomConfigs,
+			IsWine:           b.IsWine,
+			LaunchType:       b.LaunchType,
+			SystemdUnitName:  b.SystemdUnitName,
+			SystemdUnitPath:  b.SystemdUnitPath,
+			SystemdEnabled:   b.SystemdEnabled,
+			WorkingDirectory: b.WorkingDirectory,
+		}
+
+		migrationBinaries = append(migrationBinaries, newBinary)
+	}
+
+	return migrationBinaries, errMsgs
+}
 
 func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) ([]softwaremodel.PackageMigrationInfo, []string) {
 	migrationPackages := make([]softwaremodel.PackageMigrationInfo, 0)
@@ -223,6 +256,7 @@ func MakeMigrationListRes(sourceSoftwareModel *softwaremodel.SourceSoftwareModel
 
 		var prevOrder int
 
+		server.MigrationList.Binaries, server.Errors = processSoftwareBinaries(&prevOrder, source.Softwares.Binaries)
 		server.MigrationList.Packages, server.Errors = processSoftwarePackages(&prevOrder, source.Softwares.Packages)
 		server.MigrationList.Containers, server.Errors = processSoftwareContainers(&prevOrder, source.Softwares.Containers)
 		server.SourceConnectionInfoID = source.ConnectionId
