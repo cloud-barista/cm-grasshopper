@@ -135,6 +135,7 @@ func processSoftwareBinaries(prevOrder *int, binaries []softwaremodel.Binary) ([
 			CustomDataPaths:  b.CustomDataPaths,
 			CustomConfigs:    b.CustomConfigs,
 			IsWine:           b.IsWine,
+			WinePrefix:       b.WinePrefix,
 			LaunchType:       b.LaunchType,
 			SystemdUnitName:  b.SystemdUnitName,
 			SystemdUnitPath:  b.SystemdUnitPath,

@@ -91,6 +91,7 @@ type Binary struct {
 	CustomDataPaths []string `json:"custom_data_paths"`
 	CustomConfigs   []string `json:"custom_configs"`
 	IsWine          bool     `json:"is_wine"`
+	WinePrefix      string   `json:"wine_prefix,omitempty"` // WINEPREFIX bottle dir (Wine apps)
 	// Launch provenance: how the software was started on the source host.
 	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
 	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`
@@ -166,6 +167,7 @@ type BinaryMigrationInfo struct {
 	CustomDataPaths []string `json:"custom_data_paths"`
 	CustomConfigs   []string `json:"custom_configs"`
 	IsWine          bool     `json:"is_wine"`
+	WinePrefix      string   `json:"wine_prefix,omitempty"`
 	// Launch provenance: how the software was started on the source host.
 	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
 	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`

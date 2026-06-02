@@ -71,6 +71,19 @@ func runSSHCommand(client *ssh.Client, cmd string) (string, error) {
 	return string(output), err
 }
 
+// wineInstaller installs the Wine runtime on the target host. It is idempotent
+// (the script no-ops when Wine is already present).
+func wineInstaller(client *ssh.Client, migrationLogger *Logger) error {
+	migrationLogger.Printf(INFO, "Installing Wine runtime...\n")
+	output, err := executeScript(client, migrationLogger, "install_wine.sh")
+	if err != nil && len(output) == 0 {
+		migrationLogger.Printf(ERROR, "Failed to execute Wine installation script: %v\n", err)
+		return fmt.Errorf("wine installation failed: %v", err)
+	}
+	migrationLogger.Println(DEBUG, string(output))
+	return nil
+}
+
 // remotePathType reports whether the given path is a "dir", "file" or "none"
 // (does not exist) on the remote host.
 func remotePathType(client *ssh.Client, path string) string {
@@ -542,8 +555,15 @@ func startBinaryService(sourceClient, targetClient *ssh.Client, binary *software
 func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremodel.BinaryMigrationInfo, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting binary migration for %s (version: %s)\n", binary.Name, binary.Version)
 
+	// Wine applications need the Wine runtime on the target. The WINEPREFIX bottle
+	// (set as BinaryPath during refinement) is copied like any other path, the
+	// WINEPREFIX env is carried through, and the captured `wine ...` command line is
+	// reproduced as the service start command.
 	if binary.IsWine {
-		return fmt.Errorf("wine binary migration is not supported yet (binary: %s)", binary.Name)
+		migrationLogger.Printf(INFO, "%s is a Wine application; installing the Wine runtime on the target\n", binary.Name)
+		if err := wineInstaller(targetClient, migrationLogger); err != nil {
+			return fmt.Errorf("failed to install Wine runtime: %v", err)
+		}
 	}
 
 	// Tracks paths already transferred to avoid re-copying nested configs/data.
