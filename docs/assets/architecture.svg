@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowLight" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="960" height="560" fill="#ffffff"/>
+
+  <!-- cicada -->
+  <rect x="360" y="18" width="240" height="66" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="480" y="44" text-anchor="middle" font-size="15" font-weight="700" fill="#5b21b6">cm-cicada</text>
+  <text x="480" y="64" text-anchor="middle" font-size="12" fill="#6d28d9">워크플로우 오케스트레이션 (Airflow)</text>
+
+  <!-- honeybee -->
+  <rect x="40" y="150" width="250" height="86" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="165" y="178" text-anchor="middle" font-size="15" font-weight="700" fill="#92400e">cm-honeybee</text>
+  <text x="165" y="198" text-anchor="middle" font-size="12" fill="#92400e">소스 SW 인벤토리 수집 · 정제</text>
+  <text x="165" y="216" text-anchor="middle" font-size="12" fill="#b45309">→ SoftwareList (smdl)</text>
+
+  <!-- tumblebug -->
+  <rect x="670" y="150" width="250" height="86" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="795" y="178" text-anchor="middle" font-size="15" font-weight="700" fill="#1e40af">cb-tumblebug</text>
+  <text x="795" y="198" text-anchor="middle" font-size="12" fill="#1e40af">타깃 멀티클라우드 인프라(Infra/Node)</text>
+  <text x="795" y="216" text-anchor="middle" font-size="12" fill="#1d4ed8">프로비저닝 · Node 접속정보 제공</text>
+
+  <!-- grasshopper -->
+  <rect x="350" y="300" width="260" height="86" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+  <text x="480" y="332" text-anchor="middle" font-size="16" font-weight="700" fill="#065f46">cm-grasshopper</text>
+  <text x="480" y="353" text-anchor="middle" font-size="12.5" fill="#047857">SW 마이그레이션 실행 엔진</text>
+  <text x="480" y="371" text-anchor="middle" font-size="11.5" fill="#059669">타입별 마이그레이션 분기 수행</text>
+
+  <!-- source / target hosts -->
+  <rect x="40" y="470" width="250" height="62" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="165" y="497" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">Source 서버</text>
+  <text x="165" y="516" text-anchor="middle" font-size="12" fill="#475569">기존 운영 서버 (온프레미스 등)</text>
+
+  <rect x="670" y="470" width="250" height="62" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="795" y="497" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">Target Node</text>
+  <text x="795" y="516" text-anchor="middle" font-size="12" fill="#475569">타깃 클라우드 인스턴스</text>
+
+  <!-- cicada triggers (dashed) -->
+  <path d="M390,84 L230,148" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowLight)"/>
+  <path d="M570,84 L730,148" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowLight)"/>
+  <path d="M480,84 L480,298" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowLight)"/>
+  <text x="492" y="150" font-size="11" fill="#7c3aed">마이그레이션 트리거</text>
+  <text x="300" y="120" font-size="11" fill="#8b8fa3">수집 요청</text>
+  <text x="612" y="120" font-size="11" fill="#8b8fa3" text-anchor="end">인프라 생성 요청</text>
+
+  <!-- data flows (solid) -->
+  <path d="M250,236 L368,300" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="262" y="278" font-size="11.5" fill="#334155">SoftwareList</text>
+
+  <path d="M710,236 L592,300" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="700" y="278" font-size="11.5" fill="#334155" text-anchor="end">Target 접속정보</text>
+
+  <!-- SSH to hosts -->
+  <path d="M420,388 L200,468" fill="none" stroke="#059669" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="300" y="432" font-size="11.5" fill="#047857">SSH</text>
+  <path d="M540,388 L760,468" fill="none" stroke="#059669" stroke-width="1.8" marker-end="url(#arrow)"/>
+  <text x="660" y="432" font-size="11.5" fill="#047857" text-anchor="end">SSH</text>
+
+  <!-- agent collection from source -->
+  <path d="M95,470 L95,238" fill="none" stroke="#d97706" stroke-width="1.4" stroke-dasharray="3,4" marker-end="url(#arrowLight)"/>
+  <text transform="rotate(-90 86 360)" x="86" y="360" text-anchor="middle" font-size="10.5" fill="#b45309">honeybee-agent 수집</text>
+</svg>

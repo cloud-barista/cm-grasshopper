@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 520" font-family="'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="pk" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#0d9488"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="740" height="520" fill="#ffffff"/>
+
+  <!-- pre-step -->
+  <rect x="110" y="22" width="520" height="56" rx="9" fill="#fff7ed" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="370" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#9a3412">사전 단계 (패키지 대상 존재 시 1회)</text>
+  <text x="370" y="65" text-anchor="middle" font-size="11.5" fill="#9a3412">소스 저장소·GPG 키 수집 → 타깃 배포 → apt-get update / dnf makecache</text>
+
+  <path d="M370,78 L370,98" stroke="#0d9488" stroke-width="1.5" marker-end="url(#pk)"/>
+
+  <!-- steps -->
+  <rect x="110" y="100" width="520" height="46" rx="9" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="370" y="128" text-anchor="middle" font-size="12.5" fill="#134e4a">① Ansible 플레이북으로 타깃에 재설치 (apt / dnf)</text>
+
+  <rect x="110" y="158" width="520" height="46" rx="9" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="370" y="186" text-anchor="middle" font-size="12.5" fill="#134e4a">② 설정 파일 탐색·복사 (참조 인증서/키 경로 포함)</text>
+
+  <rect x="110" y="216" width="520" height="46" rx="9" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="370" y="244" text-anchor="middle" font-size="12.5" fill="#134e4a">③ 데이터 디렉토리 복사 (웹서버 docroot 등, ≤ 10GB)</text>
+
+  <rect x="110" y="274" width="520" height="66" rx="9" fill="#ccfbf1" stroke="#0f766e" stroke-width="1.8"/>
+  <text x="370" y="299" text-anchor="middle" font-size="12.5" font-weight="700" fill="#134e4a">④ systemd 서비스 이전</text>
+  <text x="370" y="320" text-anchor="middle" font-size="11.5" fill="#134e4a">stop → enable/disable 일치 → start(역순) → is-active · 포트 검증</text>
+
+  <rect x="110" y="368" width="520" height="42" rx="9" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4"/>
+  <text x="370" y="394" text-anchor="middle" font-size="12" fill="#334155">상태: finished</text>
+
+  <path d="M370,146 L370,158" stroke="#0d9488" stroke-width="1.5" marker-end="url(#pk)"/>
+  <path d="M370,204 L370,216" stroke="#0d9488" stroke-width="1.5" marker-end="url(#pk)"/>
+  <path d="M370,262 L370,274" stroke="#0d9488" stroke-width="1.5" marker-end="url(#pk)"/>
+  <path d="M370,340 L370,368" stroke="#0d9488" stroke-width="1.5" marker-end="url(#pk)"/>
+
+  <text x="370" y="448" text-anchor="middle" font-size="11.5" fill="#64748b">핵심: 바이너리를 옮기지 않고 타깃에서 정식 재설치 후 설정·서비스 상태를 일치시킴</text>
+</svg>

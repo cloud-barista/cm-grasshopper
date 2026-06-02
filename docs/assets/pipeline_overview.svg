@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="980" height="620" fill="#ffffff"/>
+
+  <text x="490" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">공통 단계 (타입 무관)</text>
+
+  <!-- common steps -->
+  <g>
+    <rect x="290" y="34" width="400" height="40" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="490" y="59" text-anchor="middle" font-size="12.5" fill="#334155">① 대상 VM 해석 · Source/Target SSH 연결</text>
+
+    <rect x="290" y="86" width="400" height="40" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="490" y="111" text-anchor="middle" font-size="12.5" fill="#334155">② OS 호환성 검증 (os-release 계열 일치)</text>
+
+    <rect x="290" y="138" width="400" height="40" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="490" y="163" text-anchor="middle" font-size="12.5" fill="#334155">③ 컨테이너 런타임 선행 설치 (컨테이너 대상 시)</text>
+
+    <rect x="290" y="190" width="400" height="40" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="490" y="215" text-anchor="middle" font-size="12.5" fill="#334155">④ 패키지 저장소 · GPG 키 이전 (패키지 대상 시)</text>
+
+    <rect x="290" y="242" width="400" height="40" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.7"/>
+    <text x="490" y="267" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3730a3">⑤ MigrationStatusList 순서대로 타입 분기</text>
+
+    <path d="M490,74 L490,86" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+    <path d="M490,126 L490,138" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+    <path d="M490,178 L490,190" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+    <path d="M490,230 L490,242" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+  </g>
+
+  <!-- fan-out arrows -->
+  <path d="M490,282 L130,336" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M490,282 L365,336" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M490,282 L600,336" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M490,282 L835,336" fill="none" stroke="#64748b" stroke-width="1.4" marker-end="url(#a)"/>
+
+  <!-- Package -->
+  <rect x="20" y="338" width="220" height="250" rx="10" fill="#ffffff" stroke="#0d9488" stroke-width="1.5"/>
+  <rect x="20" y="338" width="220" height="32" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.5"/>
+  <text x="130" y="359" text-anchor="middle" font-size="14" font-weight="700" fill="#0f766e">Package</text>
+  <text x="36" y="398" font-size="12" fill="#134e4a">· Ansible 설치 (apt/dnf)</text>
+  <text x="36" y="424" font-size="12" fill="#134e4a">· 설정 파일 복사</text>
+  <text x="36" y="450" font-size="12" fill="#134e4a">· systemd 서비스 이전</text>
+  <text x="36" y="476" font-size="12" fill="#134e4a">  (active/enabled 보존)</text>
+
+  <!-- Container -->
+  <rect x="255" y="338" width="220" height="250" rx="10" fill="#ffffff" stroke="#0891b2" stroke-width="1.5"/>
+  <rect x="255" y="338" width="220" height="32" rx="10" fill="#cffafe" stroke="#0891b2" stroke-width="1.5"/>
+  <text x="365" y="359" text-anchor="middle" font-size="14" font-weight="700" fill="#0e7490">Container</text>
+  <text x="271" y="398" font-size="12" fill="#0c4a6e">· 이미지 pull</text>
+  <text x="271" y="424" font-size="12" fill="#0c4a6e">  (실패 시 save/load·commit)</text>
+  <text x="271" y="450" font-size="12" fill="#0c4a6e">· compose · 볼륨 복사</text>
+  <text x="271" y="476" font-size="12" fill="#0c4a6e">· 네트워크 · run / up</text>
+  <text x="271" y="502" font-size="12" fill="#0c4a6e">· 리스닝 포트 검증</text>
+
+  <!-- Kubernetes -->
+  <rect x="490" y="338" width="220" height="250" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="1.5"/>
+  <rect x="490" y="338" width="220" height="32" rx="10" fill="#e0e7ff" stroke="#4f46e5" stroke-width="1.5"/>
+  <text x="600" y="359" text-anchor="middle" font-size="14" font-weight="700" fill="#4338ca">Kubernetes</text>
+  <text x="506" y="398" font-size="12" fill="#312e81">· 설계 단계</text>
+  <text x="506" y="424" font-size="12" fill="#312e81">· Velero 기반</text>
+  <text x="506" y="450" font-size="12" fill="#312e81">  백업 / 복원</text>
+
+  <!-- Binary -->
+  <rect x="725" y="338" width="220" height="250" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="1.7"/>
+  <rect x="725" y="338" width="220" height="32" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="1.7"/>
+  <text x="835" y="359" text-anchor="middle" font-size="14" font-weight="700" fill="#15803d">Binary (Legacy)</text>
+  <text x="741" y="398" font-size="12" fill="#14532d">· 의존성·바이너리 복사</text>
+  <text x="741" y="424" font-size="12" fill="#14532d">  (심링크 안전)</text>
+  <text x="741" y="450" font-size="12" fill="#14532d">· 사용자·그룹 재생성</text>
+  <text x="741" y="476" font-size="12" fill="#14532d">· 환경변수 적용</text>
+  <text x="741" y="502" font-size="12" fill="#14532d">· 기동 재현 (systemd unit</text>
+  <text x="741" y="522" font-size="12" fill="#14532d">  복사 / 합성)</text>
+</svg>
