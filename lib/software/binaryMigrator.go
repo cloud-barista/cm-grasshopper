@@ -451,6 +451,38 @@ func copyAndStartUnit(sourceClient, targetClient *ssh.Client, unitPath, unitName
 // Known limitation: assumes the captured process is the long-running foreground
 // daemon (true for most servers, e.g. java). A forking wrapper would need
 // Type=forking with a PIDFile, which we cannot infer generically.
+// binaryBaseName returns a lower-cased identifier for the software, used to match
+// app-specific rules.
+func binaryBaseName(binary *softwaremodel.BinaryMigrationInfo) string {
+	switch {
+	case binary.Name != "":
+		return strings.ToLower(filepath.Base(binary.Name))
+	case binary.BinaryPath != "":
+		return strings.ToLower(filepath.Base(binary.BinaryPath))
+	case len(binary.CmdlineSlice) > 0:
+		return strings.ToLower(filepath.Base(binary.CmdlineSlice[0]))
+	default:
+		return ""
+	}
+}
+
+// foregroundExecStart returns an ExecStart that forces a known self-daemonizing
+// binary to stay in the foreground, so it can be supervised as Type=simple.
+// ok=false means no special handling is needed.
+func foregroundExecStart(binary *softwaremodel.BinaryMigrationInfo) (string, bool) {
+	switch binaryBaseName(binary) {
+	case "nginx":
+		// nginx daemonizes by default; "daemon off;" keeps it in the foreground.
+		bin := binary.BinaryPath
+		if bin == "" || !strings.HasPrefix(bin, "/") {
+			bin = "nginx"
+		}
+		return fmt.Sprintf("%s -g 'daemon off;'", bin), true
+	default:
+		return "", false
+	}
+}
+
 func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.BinaryMigrationInfo, info *binaryUserInfo, migrationLogger *Logger) error {
 	if len(binary.CmdlineSlice) == 0 {
 		return fmt.Errorf("cannot synthesize a systemd unit for %s: no command line captured", binary.Name)
@@ -471,6 +503,17 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 	serviceType := "simple"
 	if binary.ServiceType == "forking" {
 		serviceType = "forking"
+	}
+
+	execStart := strings.Join(binary.CmdlineSlice, " ")
+
+	// Self-daemonizing binaries are coerced to run in the foreground so systemd can
+	// supervise them directly as Type=simple. Their captured command line is also
+	// unreliable (they rewrite their process title), so we rebuild ExecStart.
+	if fixed, ok := foregroundExecStart(binary); ok {
+		migrationLogger.Printf(INFO, "Applying foreground start fix for %s: %s\n", binary.Name, fixed)
+		execStart = fixed
+		serviceType = "simple"
 	}
 
 	var unit strings.Builder
@@ -512,7 +555,7 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 	if binary.IsWine && binary.WinePrefix != "" && !emitted["WINEPREFIX"] {
 		unit.WriteString(fmt.Sprintf("Environment=\"WINEPREFIX=%s\"\n", binary.WinePrefix))
 	}
-	unit.WriteString(fmt.Sprintf("ExecStart=%s\n", strings.Join(binary.CmdlineSlice, " ")))
+	unit.WriteString(fmt.Sprintf("ExecStart=%s\n", execStart))
 	unit.WriteString("Restart=on-failure\n\n")
 	unit.WriteString("[Install]\n")
 	unit.WriteString("WantedBy=multi-user.target\n")
