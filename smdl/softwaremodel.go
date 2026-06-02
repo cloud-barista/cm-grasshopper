@@ -98,6 +98,8 @@ type Binary struct {
 	SystemdUnitPath  string `json:"systemd_unit_path,omitempty"` // source unit file path (to copy)
 	SystemdEnabled   bool   `json:"systemd_enabled"`
 	WorkingDirectory string `json:"working_directory,omitempty"` // used to synthesize a unit
+	ServiceType      string `json:"service_type,omitempty"`      // systemd Type= ("simple"|"forking"|...)
+	PIDFile          string `json:"pid_file,omitempty"`          // PIDFile= for forking services
 }
 
 type Package struct {
@@ -174,6 +176,8 @@ type BinaryMigrationInfo struct {
 	SystemdUnitPath  string `json:"systemd_unit_path,omitempty"`
 	SystemdEnabled   bool   `json:"systemd_enabled"`
 	WorkingDirectory string `json:"working_directory,omitempty"`
+	ServiceType      string `json:"service_type,omitempty"`
+	PIDFile          string `json:"pid_file,omitempty"`
 }
 
 type PackageMigrationInfo struct {

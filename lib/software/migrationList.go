@@ -141,6 +141,8 @@ func processSoftwareBinaries(prevOrder *int, binaries []softwaremodel.Binary) ([
 			SystemdUnitPath:  b.SystemdUnitPath,
 			SystemdEnabled:   b.SystemdEnabled,
 			WorkingDirectory: b.WorkingDirectory,
+			ServiceType:      b.ServiceType,
+			PIDFile:          b.PIDFile,
 		}
 
 		migrationBinaries = append(migrationBinaries, newBinary)

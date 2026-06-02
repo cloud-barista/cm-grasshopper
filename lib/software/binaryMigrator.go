@@ -465,12 +465,23 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 		groupName = info.gname
 	}
 
+	// Only "forking" is trusted from the source; everything else falls back to
+	// "simple". A wrong "forking" would make systemd wait forever for a foreground
+	// process (e.g. java) to exit, so we are conservative here.
+	serviceType := "simple"
+	if binary.ServiceType == "forking" {
+		serviceType = "forking"
+	}
+
 	var unit strings.Builder
 	unit.WriteString("[Unit]\n")
 	unit.WriteString(fmt.Sprintf("Description=%s (migrated by cm-grasshopper)\n", binary.Name))
 	unit.WriteString("After=network.target\n\n")
 	unit.WriteString("[Service]\n")
-	unit.WriteString("Type=simple\n")
+	unit.WriteString(fmt.Sprintf("Type=%s\n", serviceType))
+	if serviceType == "forking" && binary.PIDFile != "" {
+		unit.WriteString(fmt.Sprintf("PIDFile=%s\n", binary.PIDFile))
+	}
 	if userName != "" {
 		unit.WriteString(fmt.Sprintf("User=%s\n", userName))
 	}
