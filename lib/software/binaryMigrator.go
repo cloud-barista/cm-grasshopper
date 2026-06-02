@@ -480,6 +480,7 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 	if binary.WorkingDirectory != "" {
 		unit.WriteString(fmt.Sprintf("WorkingDirectory=%s\n", binary.WorkingDirectory))
 	}
+	emitted := make(map[string]bool)
 	for _, env := range binary.Envs {
 		env = strings.TrimSpace(env)
 		idx := strings.Index(env, "=")
@@ -493,6 +494,12 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 		}
 		escaped := strings.ReplaceAll(value, `"`, `\"`)
 		unit.WriteString(fmt.Sprintf("Environment=\"%s=%s\"\n", key, escaped))
+		emitted[key] = true
+	}
+	// Wine apps must point at their bottle. Use the dedicated WinePrefix field so the
+	// unit is correct even when WINEPREFIX was not captured in the process environment.
+	if binary.IsWine && binary.WinePrefix != "" && !emitted["WINEPREFIX"] {
+		unit.WriteString(fmt.Sprintf("Environment=\"WINEPREFIX=%s\"\n", binary.WinePrefix))
 	}
 	unit.WriteString(fmt.Sprintf("ExecStart=%s\n", strings.Join(binary.CmdlineSlice, " ")))
 	unit.WriteString("Restart=on-failure\n\n")
