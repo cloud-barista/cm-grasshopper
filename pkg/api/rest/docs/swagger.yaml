@@ -30,16 +30,16 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.Target:
     properties:
-      mci_id:
+      infra_id:
         type: string
       namespace_id:
         type: string
-      vm_id:
+      node_id:
         type: string
     required:
-    - mci_id
+    - infra_id
     - namespace_id
-    - vm_id
+    - node_id
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model.TargetMapping:
     properties:
@@ -671,7 +671,7 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
-  softwaremodel.Binary:
+  github_com_cloud-barista_cm-grasshopper_smdl.Binary:
     properties:
       binary_path:
         type: string
@@ -697,17 +697,40 @@ definitions:
         type: array
       is_wine:
         type: boolean
+      launch_type:
+        description: 'Launch provenance: how the software was started on the source
+          host.'
+        type: string
       name:
         type: string
       needed_libraries:
         items:
           type: string
         type: array
+      pid_file:
+        description: PIDFile= for forking services
+        type: string
+      service_type:
+        description: systemd Type= ("simple"|"forking"|...)
+        type: string
+      systemd_enabled:
+        type: boolean
+      systemd_unit_name:
+        type: string
+      systemd_unit_path:
+        description: source unit file path (to copy)
+        type: string
       uids:
         items:
           type: integer
         type: array
       version:
+        type: string
+      wine_prefix:
+        description: WINEPREFIX bottle dir (Wine apps)
+        type: string
+      working_directory:
+        description: used to synthesize a unit
         type: string
     required:
     - envs
@@ -716,7 +739,7 @@ definitions:
     - uids
     - version
     type: object
-  softwaremodel.BinaryMigrationInfo:
+  github_com_cloud-barista_cm-grasshopper_smdl.BinaryMigrationInfo:
     properties:
       binary_path:
         type: string
@@ -742,6 +765,10 @@ definitions:
         type: array
       is_wine:
         type: boolean
+      launch_type:
+        description: 'Launch provenance: how the software was started on the source
+          host.'
+        type: string
       name:
         type: string
       needed_libraries:
@@ -750,11 +777,25 @@ definitions:
         type: array
       order:
         type: integer
+      pid_file:
+        type: string
+      service_type:
+        type: string
+      systemd_enabled:
+        type: boolean
+      systemd_unit_name:
+        type: string
+      systemd_unit_path:
+        type: string
       uids:
         items:
           type: integer
         type: array
       version:
+        type: string
+      wine_prefix:
+        type: string
+      working_directory:
         type: string
     required:
     - envs
@@ -763,15 +804,15 @@ definitions:
     - uids
     - version
     type: object
-  softwaremodel.Container:
+  github_com_cloud-barista_cm-grasshopper_smdl.Container:
     properties:
       container_id:
         type: string
       container_image:
-        $ref: '#/definitions/softwaremodel.ContainerImage'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.ContainerImage'
       container_ports:
         items:
-          $ref: '#/definitions/softwaremodel.ContainerPort'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.ContainerPort'
         type: array
       container_status:
         type: string
@@ -779,7 +820,7 @@ definitions:
         type: string
       envs:
         items:
-          $ref: '#/definitions/softwaremodel.Env'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Env'
         type: array
       mount_paths:
         items:
@@ -793,7 +834,7 @@ definitions:
         type: string
       runtime:
         allOf:
-        - $ref: '#/definitions/softwaremodel.SoftwareContainerRuntimeType'
+        - $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwareContainerRuntimeType'
         description: Which runtime uses for the container (Docker, Podman)
     required:
     - container_id
@@ -804,10 +845,10 @@ definitions:
     - restart_policy
     - runtime
     type: object
-  softwaremodel.ContainerImage:
+  github_com_cloud-barista_cm-grasshopper_smdl.ContainerImage:
     properties:
       image_architecture:
-        $ref: '#/definitions/softwaremodel.SoftwareArchitecture'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwareArchitecture'
       image_hash:
         type: string
       image_name:
@@ -820,15 +861,15 @@ definitions:
     - image_name
     - image_version
     type: object
-  softwaremodel.ContainerMigrationInfo:
+  github_com_cloud-barista_cm-grasshopper_smdl.ContainerMigrationInfo:
     properties:
       container_id:
         type: string
       container_image:
-        $ref: '#/definitions/softwaremodel.ContainerImage'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.ContainerImage'
       container_ports:
         items:
-          $ref: '#/definitions/softwaremodel.ContainerPort'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.ContainerPort'
         type: array
       container_status:
         type: string
@@ -836,7 +877,7 @@ definitions:
         type: string
       envs:
         items:
-          $ref: '#/definitions/softwaremodel.Env'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Env'
         type: array
       mount_paths:
         items:
@@ -862,7 +903,7 @@ definitions:
     - restart_policy
     - runtime
     type: object
-  softwaremodel.ContainerPort:
+  github_com_cloud-barista_cm-grasshopper_smdl.ContainerPort:
     properties:
       container_port:
         description: NetworkSettings.Ports.{Port}/{Protocol} -> {Port}
@@ -882,7 +923,7 @@ definitions:
     - host_port
     - protocol
     type: object
-  softwaremodel.Env:
+  github_com_cloud-barista_cm-grasshopper_smdl.Env:
     properties:
       name:
         type: string
@@ -891,7 +932,7 @@ definitions:
     required:
     - name
     type: object
-  softwaremodel.Kubernetes:
+  github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes:
     properties:
       kube_config:
         type: string
@@ -906,7 +947,7 @@ definitions:
     - resources
     - version
     type: object
-  softwaremodel.KubernetesMigrationInfo:
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo:
     properties:
       kube_config:
         type: string
@@ -916,7 +957,7 @@ definitions:
         additionalProperties: true
         type: object
       velero:
-        $ref: '#/definitions/softwaremodel.KubernetesVelero'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero'
       version:
         description: Same as release
         type: string
@@ -926,7 +967,7 @@ definitions:
     - velero
     - version
     type: object
-  softwaremodel.KubernetesVelero:
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero:
     properties:
       backup_location_config:
         type: string
@@ -945,37 +986,37 @@ definitions:
     - bucket
     - provider
     type: object
-  softwaremodel.MigrationList:
+  github_com_cloud-barista_cm-grasshopper_smdl.MigrationList:
     properties:
       binaries:
         items:
-          $ref: '#/definitions/softwaremodel.BinaryMigrationInfo'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.BinaryMigrationInfo'
         type: array
       containers:
         items:
-          $ref: '#/definitions/softwaremodel.ContainerMigrationInfo'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.ContainerMigrationInfo'
         type: array
       kubernetes:
         items:
-          $ref: '#/definitions/softwaremodel.KubernetesMigrationInfo'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo'
         type: array
       packages:
         items:
-          $ref: '#/definitions/softwaremodel.PackageMigrationInfo'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.PackageMigrationInfo'
         type: array
     type: object
-  softwaremodel.MigrationServer:
+  github_com_cloud-barista_cm-grasshopper_smdl.MigrationServer:
     properties:
       errors:
         items:
           type: string
         type: array
       migration_list:
-        $ref: '#/definitions/softwaremodel.MigrationList'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.MigrationList'
       source_connection_info_id:
         type: string
     type: object
-  softwaremodel.Package:
+  github_com_cloud-barista_cm-grasshopper_smdl.Package:
     properties:
       custom_configs:
         items:
@@ -999,7 +1040,7 @@ definitions:
         default: false
         type: boolean
       type:
-        $ref: '#/definitions/softwaremodel.SoftwarePackageType'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType'
       version:
         type: string
     required:
@@ -1008,7 +1049,7 @@ definitions:
     - type
     - version
     type: object
-  softwaremodel.PackageMigrationInfo:
+  github_com_cloud-barista_cm-grasshopper_smdl.PackageMigrationInfo:
     properties:
       custom_configs:
         items:
@@ -1044,7 +1085,7 @@ definitions:
     - needed_packages
     - version
     type: object
-  softwaremodel.SoftwareArchitecture:
+  github_com_cloud-barista_cm-grasshopper_smdl.SoftwareArchitecture:
     enum:
     - common
     - x86_64
@@ -1062,7 +1103,7 @@ definitions:
     - SoftwareArchitectureARMv6
     - SoftwareArchitectureARMv7
     - SoftwareArchitectureARM64v8
-  softwaremodel.SoftwareContainerRuntimeType:
+  github_com_cloud-barista_cm-grasshopper_smdl.SoftwareContainerRuntimeType:
     enum:
     - docker
     - podman
@@ -1070,26 +1111,26 @@ definitions:
     x-enum-varnames:
     - SoftwareContainerRuntimeTypeDocker
     - SoftwareContainerRuntimeTypePodman
-  softwaremodel.SoftwareList:
+  github_com_cloud-barista_cm-grasshopper_smdl.SoftwareList:
     properties:
       binaries:
         items:
-          $ref: '#/definitions/softwaremodel.Binary'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Binary'
         type: array
       containers:
         items:
-          $ref: '#/definitions/softwaremodel.Container'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Container'
         type: array
       kubernetes:
         items:
-          $ref: '#/definitions/softwaremodel.Kubernetes'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes'
         type: array
       packages:
         items:
-          $ref: '#/definitions/softwaremodel.Package'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.Package'
         type: array
     type: object
-  softwaremodel.SoftwarePackageType:
+  github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType:
     enum:
     - deb
     - rpm
@@ -1100,44 +1141,44 @@ definitions:
     x-enum-varnames:
     - SoftwarePackageTypeDEB
     - SoftwarePackageTypeRPM
-  softwaremodel.SourceConnectionInfoSoftwareProperty:
+  github_com_cloud-barista_cm-grasshopper_smdl.SourceConnectionInfoSoftwareProperty:
     properties:
       connection_id:
         type: string
       softwares:
-        $ref: '#/definitions/softwaremodel.SoftwareList'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwareList'
     required:
     - connection_id
     type: object
-  softwaremodel.SourceGroupSoftwareProperty:
+  github_com_cloud-barista_cm-grasshopper_smdl.SourceGroupSoftwareProperty:
     properties:
       connection_info_list:
         items:
-          $ref: '#/definitions/softwaremodel.SourceConnectionInfoSoftwareProperty'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SourceConnectionInfoSoftwareProperty'
         type: array
       source_group_id:
         type: string
     required:
     - source_group_id
     type: object
-  softwaremodel.SourceSoftwareModel:
+  github_com_cloud-barista_cm-grasshopper_smdl.SourceSoftwareModel:
     properties:
       sourceSoftwareModel:
-        $ref: '#/definitions/softwaremodel.SourceGroupSoftwareProperty'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SourceGroupSoftwareProperty'
     required:
     - sourceSoftwareModel
     type: object
-  softwaremodel.TargetGroupSoftwareProperty:
+  github_com_cloud-barista_cm-grasshopper_smdl.TargetGroupSoftwareProperty:
     properties:
       servers:
         items:
-          $ref: '#/definitions/softwaremodel.MigrationServer'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.MigrationServer'
         type: array
     type: object
-  softwaremodel.TargetSoftwareModel:
+  github_com_cloud-barista_cm-grasshopper_smdl.TargetSoftwareModel:
     properties:
       targetSoftwareModel:
-        $ref: '#/definitions/softwaremodel.TargetGroupSoftwareProperty'
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.TargetGroupSoftwareProperty'
     required:
     - targetSoftwareModel
     type: object
@@ -1277,9 +1318,9 @@ paths:
         name: nsId
         required: true
         type: string
-      - description: ID of target MCI.
+      - description: ID of target infra.
         in: query
-        name: mciId
+        name: infraId
         required: true
         type: string
       - description: Software migrate request.
@@ -1287,7 +1328,7 @@ paths:
         name: targetSoftwareModel
         required: true
         schema:
-          $ref: '#/definitions/softwaremodel.TargetSoftwareModel'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.TargetSoftwareModel'
       produces:
       - application/json
       responses:
@@ -1404,14 +1445,14 @@ paths:
         name: sourceSoftwareModel
         required: true
         schema:
-          $ref: '#/definitions/softwaremodel.SourceSoftwareModel'
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SourceSoftwareModel'
       produces:
       - application/json
       responses:
         "200":
           description: Successfully get software migration list.
           schema:
-            $ref: '#/definitions/softwaremodel.SourceSoftwareModel'
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SourceSoftwareModel'
         "400":
           description: Sent bad request.
           schema:

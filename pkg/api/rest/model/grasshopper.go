@@ -15,8 +15,8 @@ type Source struct {
 
 type Target struct {
 	NamespaceID string `json:"namespace_id" validate:"required"`
-	MCIID       string `json:"mci_id" validate:"required"`
-	VMID        string `json:"vm_id" validate:"required"`
+	InfraID     string `json:"infra_id" validate:"required"`
+	NodeID      string `json:"node_id" validate:"required"`
 }
 
 type MigrationLogRes struct {
@@ -40,8 +40,8 @@ type SoftwareMigrationStatus struct {
 	ExecutionID            string                     `json:"execution_id" gorm:"primaryKey"`
 	SourceConnectionInfoID string                     `json:"source_connection_info_id" gorm:"primaryKey"`
 	NamespaceID            string                     `json:"namespace_id" validate:"required"`
-	MCIID                  string                     `json:"mci_id" validate:"required"`
-	VMID                   string                     `json:"vm_id" validate:"required"`
+	InfraID                string                     `json:"infra_id" validate:"required"`
+	NodeID                 string                     `json:"node_id" validate:"required"`
 	Order                  int                        `json:"order" gorm:"primaryKey"`
 	SoftwareName           string                     `json:"software_name"`
 	SoftwareVersion        string                     `json:"software_version"`

@@ -29,7 +29,7 @@ type Execution struct {
 	TargetClient           *ssh.Client
 }
 
-func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
+func getNodeId(sourceConnectionInfoID, nsID, infraID string) (string, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
 		"/honeybee/connection_info/"+sourceConnectionInfoID, "", "")
@@ -61,30 +61,30 @@ func getVMId(sourceConnectionInfoID, nsID, mciID string) (string, error) {
 
 	data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+nsID+"/infra/"+mciID,
+		"/tumblebug/ns/"+nsID+"/infra/"+infraID,
 		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 	if err != nil {
 		return "", err
 	}
 
-	var mciInfo model.TBMCIInfo
-	err = json.Unmarshal(data, &mciInfo)
+	var tbInfraInfo model.TBInfraInfo
+	err = json.Unmarshal(data, &tbInfraInfo)
 	if err != nil {
 		return "", err
 	}
 
-	for _, vm := range mciInfo.VM {
+	for _, node := range tbInfraInfo.Node {
 		// cm-beetle - v0.3.7
 		// https://github.com/cloud-barista/cm-beetle/commit/94e030cba5cf2dcdc055240ec5e46d24666da06d
-		if vm.Label["sourceMachineId"] == machineid {
-			return vm.Id, nil
+		if node.Label["sourceMachineId"] == machineid {
+			return node.Id, nil
 		}
 	}
 
-	return "", errors.New("can't find matched target vm")
+	return "", errors.New("can't find matched target node")
 }
 
-func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, mciId string) ([]Execution, []model.TargetMapping, error) {
+func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, infraId string) ([]Execution, []model.TargetMapping, error) {
 	var sourceClient *ssh.Client
 	var targetClient *ssh.Client
 	var target *model.Target
@@ -101,18 +101,18 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			return nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
 		}
 
-		vmId, err := getVMId(server.SourceConnectionInfoID, nsId, mciId)
+		nodeId, err := getNodeId(server.SourceConnectionInfoID, nsId, infraId)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get VM ID: %v", err)
+			return nil, nil, fmt.Errorf("failed to get node ID: %v", err)
 		}
 
 		target = &model.Target{
 			NamespaceID: nsId,
-			MCIID:       mciId,
-			VMID:        vmId,
+			InfraID:     infraId,
+			NodeID:      nodeId,
 		}
 
-		targetClient, err = ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.VMID, target.NamespaceID, target.MCIID)
+		targetClient, err = ssh.NewSSHClient(ssh.ConnectionTypeTarget, target.NodeID, target.NamespaceID, target.InfraID)
 		if err != nil {
 			_ = sourceClient.Close()
 
@@ -124,8 +124,8 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
 				NamespaceID:            nsId,
-				MCIID:                  mciId,
-				VMID:                   vmId,
+				InfraID:                infraId,
+				NodeID:                 nodeId,
 				Order:                  execution.Order,
 				SoftwareName:           execution.Name,
 				SoftwareVersion:        execution.Version,
@@ -150,8 +150,8 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
 				NamespaceID:            nsId,
-				MCIID:                  mciId,
-				VMID:                   vmId,
+				InfraID:                infraId,
+				NodeID:                 nodeId,
 				Order:                  execution.Order,
 				SoftwareName:           execution.Name,
 				SoftwareVersion:        execution.Version,
@@ -176,8 +176,8 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
 				NamespaceID:            nsId,
-				MCIID:                  mciId,
-				VMID:                   vmId,
+				InfraID:                infraId,
+				NodeID:                 nodeId,
 				Order:                  execution.Order,
 				SoftwareName:           execution.Name,
 				SoftwareVersion:        execution.ContainerImage.ImageVersion,
@@ -248,7 +248,7 @@ func updateSoftwareInstallStatus(execution *Execution, exStatus *string,
 	err := dao.SoftwareMigrationStatusUpdate(softwareMigrationStatus)
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error="+err.Error())
 	}
@@ -301,7 +301,7 @@ func MigrateSoftware(execution *Execution) {
 	executionStatus, err := dao.ExecutionStatusGet(execution.ExecutionID)
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error=failed to initialize executionStatus: "+err.Error())
 		return
@@ -309,8 +309,8 @@ func MigrateSoftware(execution *Execution) {
 
 	for i, target := range executionStatus.TargetMappings {
 		if target.Target.NamespaceID == execution.Target.NamespaceID &&
-			target.Target.MCIID == execution.Target.MCIID &&
-			target.Target.VMID == execution.Target.VMID &&
+			target.Target.InfraID == execution.Target.InfraID &&
+			target.Target.NodeID == execution.Target.NodeID &&
 			target.SourceConnectionInfoID == execution.SourceConnectionInfoID {
 			idx = i
 
@@ -319,9 +319,9 @@ func MigrateSoftware(execution *Execution) {
 			err := dao.ExecutionStatusUpdate(executionStatus)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", Error=failed to update execution status: "+err.Error())
 				return
@@ -339,7 +339,7 @@ func MigrateSoftware(execution *Execution) {
 		err := dao.ExecutionStatusUpdate(executionStatus)
 		if err != nil {
 			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				", Error=failed to update execution status: "+err.Error())
 		}
@@ -350,9 +350,9 @@ func MigrateSoftware(execution *Execution) {
 	migrationLogger, loggerErr := initLoggerWithUUID(execution.ExecutionID)
 	if loggerErr != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error=failed to initialize logger: "+loggerErr.Error())
 		exStatus = "failed"
@@ -363,7 +363,7 @@ func MigrateSoftware(execution *Execution) {
 	sourceSystemType, err = getSystemType(execution.SourceClient, migrationLogger)
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error=failed to detect source system type: "+err.Error())
 		exStatus = "failed"
@@ -373,7 +373,7 @@ func MigrateSoftware(execution *Execution) {
 	targetSystemType, err = getSystemType(execution.TargetClient, migrationLogger)
 	if err != nil {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error=failed to detect target system type: "+err.Error())
 		exStatus = "failed"
@@ -382,7 +382,7 @@ func MigrateSoftware(execution *Execution) {
 
 	if sourceSystemType != targetSystemType {
 		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			", Error=system type mismatch")
 		exStatus = "failed"
@@ -397,7 +397,7 @@ func MigrateSoftware(execution *Execution) {
 			err = runtimeInstaller(execution.TargetClient, softwaremodel.SoftwareContainerRuntimeTypeDocker, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=container, Error="+err.Error())
 			}
@@ -406,7 +406,7 @@ func MigrateSoftware(execution *Execution) {
 			err = runtimeInstaller(execution.TargetClient, softwaremodel.SoftwareContainerRuntimeTypePodman, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=container, Error="+err.Error())
 			}
@@ -416,20 +416,20 @@ func MigrateSoftware(execution *Execution) {
 
 	if len(execution.MigrationList.Packages) > 0 {
 		logger.Println(logger.INFO, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 			"migrateSoftware: Starting repository and GPG keys migration")
 
 		// Migrate repository configuration
 		if err := MigrateRepositoryConfiguration(execution.SourceClient, execution.TargetClient, execution.ExecutionID, migrationLogger); err != nil {
 			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				"migrateSoftware: Repository migration failed: "+err.Error())
 			// Continue with package migration even if repo migration fails
 		} else {
 			logger.Println(logger.INFO, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				"migrateSoftware: Repository migration completed successfully")
 		}
@@ -449,7 +449,7 @@ func MigrateSoftware(execution *Execution) {
 			err = binaryMigrator(execution.SourceClient, execution.TargetClient, binary, execution.ExecutionID, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=binary, Error="+err.Error())
 				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
@@ -468,7 +468,7 @@ func MigrateSoftware(execution *Execution) {
 			err = runPlaybook(execution.ExecutionID, "package", pkg.Name, execution.TargetClient.SSHTarget)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
@@ -478,7 +478,7 @@ func MigrateSoftware(execution *Execution) {
 			err = configCopier(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
@@ -488,7 +488,7 @@ func MigrateSoftware(execution *Execution) {
 			err = serviceMigrator(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger)
 			if err != nil {
 				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					", InstallType=package, Error="+err.Error())
 				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
@@ -505,7 +505,7 @@ func MigrateSoftware(execution *Execution) {
 			updateSoftwareInstallStatus(execution, &exStatus, &ms, "installing", "", true)
 
 			logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 				", InstallType=container, ContainerName="+container.Name)
 
@@ -608,7 +608,7 @@ func MigrateSoftware(execution *Execution) {
 				dockerComposeFile := filepath.Base(container.DockerComposePath)
 
 				logger.Println(logger.INFO, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", MCI_ID="+execution.Target.MCIID+", VM_ID="+execution.Target.VMID+
+					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
 					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
 					"ExecutionID="+execution.ExecutionID+", Info=Copying full directory: "+baseDir)
 

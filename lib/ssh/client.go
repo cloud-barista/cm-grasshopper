@@ -33,7 +33,7 @@ type Client struct {
 	connectionType ConnectionType
 	id             string
 	nsID           string
-	mciID          string
+	infraID        string
 	keepAliveStop  chan struct{}
 	keepAliveOnce  sync.Once
 }
@@ -57,7 +57,7 @@ func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
 			}
 
 			// Recreate connection
-			newClient, reconnectErr := NewSSHClient(c.connectionType, c.id, c.nsID, c.mciID)
+			newClient, reconnectErr := NewSSHClient(c.connectionType, c.id, c.nsID, c.infraID)
 			if reconnectErr != nil {
 				time.Sleep(time.Second * 2)
 				continue
@@ -116,7 +116,7 @@ func AddKnownHost(host string, remote net.Addr, key ssh.PublicKey) error {
 	return goph.AddKnownHost(host, remote, key, "")
 }
 
-func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID string) (*Client, error) {
+func NewSSHClient(connectionType ConnectionType, id string, nsID string, infraID string) (*Client, error) {
 	var client *goph.Client
 	var sshTarget *model.SSHTarget
 
@@ -191,29 +191,29 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 		if nsID == "" {
 			return nil, errors.New("nsId is required")
 		}
-		if mciID == "" {
-			return nil, errors.New("mciId is required")
+		if infraID == "" {
+			return nil, errors.New("infraId is required")
 		}
 
 		data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-			"/tumblebug/ns/"+nsID+"/infra/"+mciID+"/node/"+id,
+			"/tumblebug/ns/"+nsID+"/infra/"+infraID+"/node/"+id,
 			config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 		if err != nil {
 			return nil, err
 		}
 
-		var vmInfo model.TBVMInfo
-		err = json.Unmarshal(data, &vmInfo)
+		var nodeInfo model.TBNodeInfo
+		err = json.Unmarshal(data, &nodeInfo)
 		if err != nil {
 			return nil, err
 		}
 
-		sshPort := vmInfo.SSHPort
+		sshPort := nodeInfo.SSHPort
 
 		data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
 			":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-			"/tumblebug/ns/"+nsID+"/resources/sshKey/"+vmInfo.SSHKeyID,
+			"/tumblebug/ns/"+nsID+"/resources/sshKey/"+nodeInfo.SSHKeyID,
 			config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
 		if err != nil {
 			return nil, err
@@ -236,8 +236,8 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 		}
 
 		client, err = goph.NewConn(&goph.Config{
-			User:     vmInfo.VMUserName,
-			Addr:     vmInfo.PublicIP,
+			User:     nodeInfo.NodeUserName,
+			Addr:     nodeInfo.PublicIP,
 			Port:     uint(sshPort),
 			Auth:     auth,
 			Timeout:  goph.DefaultTimeout,
@@ -248,10 +248,10 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 		}
 
 		sshTarget = &model.SSHTarget{
-			IP:         vmInfo.PublicIP,
+			IP:         nodeInfo.PublicIP,
 			Port:       uint(sshPort),
 			UseKeypair: true,
-			Username:   vmInfo.VMUserName,
+			Username:   nodeInfo.NodeUserName,
 			Password:   "",
 			PrivateKey: sshKeyInfo.PrivateKey,
 		}
@@ -265,7 +265,7 @@ func NewSSHClient(connectionType ConnectionType, id string, nsID string, mciID s
 		connectionType: connectionType,
 		id:             id,
 		nsID:           nsID,
-		mciID:          mciID,
+		infraID:        infraID,
 	}
 
 	// Start SSH KeepAlive to prevent connection timeout

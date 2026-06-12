@@ -60,8 +60,8 @@ func SoftwareMigrationStatusGetList(executionID string, target model.Target, sou
 			return filtered
 		}
 		return filtered
-	}).Where("execution_id = ? AND source_connection_info_id = ? AND namespace_id = ? AND mci_id = ? AND vm_id = ?",
-		executionID, sourceConnectionInfoID, target.NamespaceID, target.MCIID, target.VMID).Find(softwareInstallStatusList)
+	}).Where("execution_id = ? AND source_connection_info_id = ? AND namespace_id = ? AND infra_id = ? AND node_id = ?",
+		executionID, sourceConnectionInfoID, target.NamespaceID, target.InfraID, target.NodeID).Find(softwareInstallStatusList)
 
 	err := result.Error
 	if err != nil {

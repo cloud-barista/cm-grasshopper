@@ -53,7 +53,7 @@ func GetSoftwareMigrationList(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			nsId query string true "ID of target namespace."
-//	@Param			mciId query string true "ID of target MCI."
+//	@Param			infraId query string true "ID of target infra."
 //	@Param			targetSoftwareModel body softwaremodel.TargetSoftwareModel true "Software migrate request."
 //	@Success		200	{object}	model.SoftwareMigrateRes	"Successfully migrated pieces of software."
 //	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
@@ -71,16 +71,16 @@ func MigrateSoftware(c echo.Context) error {
 		return common.ReturnErrorMsg(c, "Please provide the nsId.")
 	}
 
-	mciIdStr := c.QueryParam("mciId")
-	if mciIdStr == "" {
-		return common.ReturnErrorMsg(c, "Please provide the mciId.")
+	infraIdStr := c.QueryParam("infraId")
+	if infraIdStr == "" {
+		return common.ReturnErrorMsg(c, "Please provide the infraId.")
 	}
 
 	executionID := uuid.New().String()
 
 	exList, targetMappings, err :=
 		software.PrepareSoftwareMigration(executionID, targetSoftwareModel.TargetSoftwareModel.Servers,
-			nsIdStr, mciIdStr)
+			nsIdStr, infraIdStr)
 	if err != nil {
 		return common.ReturnErrorMsg(c, err.Error())
 	}
