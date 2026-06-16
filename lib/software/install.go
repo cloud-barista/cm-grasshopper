@@ -565,7 +565,6 @@ func MigrateSoftware(execution *Execution) {
 				if out, lerr := execution.TargetClient.Run(loadCmd); lerr != nil {
 					migrationLogger.Printf(INFO, "load failed: %s\n", lerr.Error())
 					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "load failed: "+lerr.Error(), false)
-					continue
 				} else {
 					migrationLogger.Printf(INFO, "load success: %s\n", out)
 					outStr := string(out)
@@ -588,6 +587,34 @@ func MigrateSoftware(execution *Execution) {
 						}
 					} else {
 						migrationLogger.Printf(INFO, "could not parse loaded image name\n")
+					}
+
+					// SHA-256 image ID verification
+					sourceImageID := ""
+					sourceInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", sourceRuntime, imageRef), execution.SourceClient.SSHTarget.Password)
+					if srcOut, serr := execution.SourceClient.Run(sourceInspectCmd); serr != nil {
+						// commit fallback 케이스 - 소스 이미지 없을 수 있음
+						migrationLogger.Printf(INFO, "source inspect failed (commit fallback case), skipping sha256 compare: %s\n", serr.Error())
+					} else {
+						sourceImageID = strings.TrimSpace(string(srcOut))
+					}
+
+					targetInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
+					if tgtOut, terr := execution.TargetClient.Run(targetInspectCmd); terr != nil {
+						migrationLogger.Printf(INFO, "target inspect failed, image may not exist: %s\n", terr.Error())
+						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "image not found on target after load: "+terr.Error(), false)
+					} else {
+						targetImageID := strings.TrimSpace(string(tgtOut))
+						if sourceImageID != "" {
+							if sourceImageID != targetImageID {
+								migrationLogger.Printf(INFO, "sha256 mismatch: source=%s, target=%s\n", sourceImageID, targetImageID)
+								updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "image sha256 mismatch: source="+sourceImageID+", target="+targetImageID, false)
+							} else {
+								migrationLogger.Printf(INFO, "sha256 verified: %s\n", targetImageID)
+							}
+						} else {
+							migrationLogger.Printf(INFO, "target image exists (sha256 skipped, commit fallback): %s\n", targetImageID)
+						}
 					}
 				}
 
