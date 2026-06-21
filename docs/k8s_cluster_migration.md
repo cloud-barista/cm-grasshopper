@@ -4,6 +4,8 @@
 
 > 핵심 요약: cm-grasshopper 는 velero 로 source→S3→target 백업/복원을 수행합니다. 이때 두 클러스터에 접근할 **kubeconfig** 가 필요한데, cb-tumblebug 가 주는 kubeconfig 는 CSP 마다 인증 방식이 달라서 그대로는 컨테이너 안에서 동작하지 않습니다. cm-grasshopper 는 cb-tumblebug 의 k8s 정보를 받아 **exec-plugin 형 kubeconfig 를 "토큰 브로커(broker-exec)" 형태로 재작성**하여 클라우드 CLI·자격증명 없이 동작하게 만듭니다.
 
+> ⚠️ **이 문서의 적용 범위**: 1장(cb-tumblebug 준비)·4장(CSP 인증 차이)·5장(broker-exec) 등 대부분의 내용은 **cb-tumblebug 가 배포·관리하는 관리형(managed) k8s 클러스터(AWS EKS / Azure AKS / GCP GKE / NCP NKS 등)** 를 대상으로 합니다. **온프레미스/self-managed(kubeadm) 클러스터** 는 cb-tumblebug 준비나 broker-exec 변환이 필요 없고, 사용자가 가진 kubeconfig 를 요청에 직접 넣는 **7.2 의 직접 전달 방식**으로 기존과 동일하게 동작합니다(완전 하위 호환). 즉 cb-tumblebug 연동은 "관리형 클러스터의 kubeconfig 를 대신 해석해 주는" 추가 경로이며, 기존 동작을 바꾸지 않습니다.
+
 ---
 
 ## 0. 한눈에 보기
@@ -312,13 +314,18 @@ client-go 가 kubeconfig 의 exec 명령(sh -c "curl … /token | jq …")을 �
 - EKS/GKE/NCP → 자동으로 broker-exec 로 변환
 - Azure AKS → 임베드 kubeconfig 그대로
 
-### 7.2 kubeconfig 직접 전달 방식 (기존, 하위 호환)
+### 7.2 kubeconfig 직접 전달 방식 (온프레미스/self-managed · 기존, 하위 호환)
+
+**온프레미스/self-managed(kubeadm) 클러스터는 이 방식을 사용합니다.** 사용자가 가진 kubeconfig(예: `admin.conf`)를 요청에 직접 넣으면 됩니다.
 
 ```json
 { "sourceCluster": { "kubeconfig": "<base64 또는 평문 kubeconfig>" } }
 ```
 
-두 방식 모두 동일한 해석 경로(`ResolveKubeconfig`)를 통과합니다. 둘 중 하나는 반드시 있어야 하며, 없으면 검증에서 거부됩니다.
+- 이 경로는 cb-tumblebug 를 호출하지 않고 **broker-exec 재작성도 하지 않습니다.** 전달된 kubeconfig 를 그대로(또는 base64 디코드 후) 사용합니다 — 변경 전과 동일한 동작.
+- self-managed 클러스터의 kubeconfig 는 보통 인증서가 임베드된 자체완결형이라 추가 처리가 필요 없습니다.
+
+두 방식(7.1 cb-tumblebug 참조 / 7.2 직접 전달)은 동일한 해석 관문(`ResolveKubeconfig`)을 통과합니다. `kubeconfig` 가 있으면 직접 전달 경로로, 비어 있고 `tumblebug` 참조가 있으면 cb-tumblebug 경로로 분기합니다. 둘 중 하나는 반드시 있어야 하며, 없으면 검증에서 거부됩니다.
 
 ---
 
