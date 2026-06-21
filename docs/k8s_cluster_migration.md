@@ -141,17 +141,83 @@ velero 마이그레이션 API (요약):
 
 ---
 
-## 3. cb-tumblebug 에서 가져오는 정보
+## 3. cb-tumblebug 가 주는 것 ↔ grasshopper 가 쓰는 것
 
-cb-tumblebug 가 배포·관리하는 k8s 클러스터(관리형 PMK: AKS/EKS/GKE/NKS 등)는 아래 엔드포인트로 접근 정보를 제공합니다 (basic auth).
+이 장은 "cb-tumblebug 가 kubeconfig 를 **어떻게 주고**, cm-grasshopper 가 그걸 **무엇으로 어떻게 쓰는지**" 를 데이터 흐름 중심으로 설명합니다. (인증 방식이 CSP 마다 다른 이유는 4장, 재작성 메커니즘은 5장 참고)
+
+cb-tumblebug 의 관련 엔드포인트 (basic auth):
 
 | 메서드 | 경로 | 반환 |
 |---|---|---|
-| GET | `/tumblebug/ns/{ns}/k8sCluster/{id}` | 클러스터 메타(`providerName`, `version`, `network`, `nodeGroup`, `status`, `accessInfo` …) |
-| GET | `/tumblebug/ns/{ns}/k8sCluster/{id}/kubeconfig` | **kubeconfig** (YAML 문자열) |
+| GET | `/tumblebug/ns/{ns}/k8sCluster/{id}` | 클러스터 메타(`providerName`, `version`, `status`, `accessInfo` …) |
+| GET | `/tumblebug/ns/{ns}/k8sCluster/{id}/kubeconfig` | **kubeconfig** (JSON 으로 감싼 YAML 문자열) |
 | GET | `/tumblebug/ns/{ns}/k8sCluster/{id}/token` | **ExecCredential 베어러 토큰** |
 
-cm-grasshopper 는 이 중 `/kubeconfig` 와 `/token` 을 사용합니다. 인증/주소는 기존 설정값 `cm-grasshopper.tumblebug.{server_address,server_port,username,password}` 를 그대로 재사용합니다.
+cm-grasshopper 는 `/kubeconfig` 와 `/token` 만 사용하며, 접속 주소·계정은 기존 설정값 `cm-grasshopper.tumblebug.{server_address,server_port,username,password}` 를 그대로 재사용합니다.
+
+### 3.1 cb-tumblebug 가 주는 것 — 실제 응답
+
+**(1) `/kubeconfig` 응답** — `kubeconfig` 키 하나에 YAML 전체가 문자열로 들어 있습니다.
+
+```jsonc
+// GET /tumblebug/ns/testns01/k8sCluster/<id>/kubeconfig
+{ "kubeconfig": "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: https://...\n    certificate-authority-data: <CA>\n  ..." }
+```
+
+그 안의 YAML 은 CSP 에 따라 `users[].user` 부분이 다릅니다.
+
+- **Azure AKS** — 인증서/토큰이 **임베드**된 자체완결형:
+  ```yaml
+  users:
+  - name: clusterAdmin_...
+    user:
+      client-certificate-data: <...>
+      client-key-data: <...>
+      token: <...>
+  ```
+- **AWS EKS / GCP GKE / NCP NKS** — 토큰이 없고 실행 시점에 외부 CLI 를 호출하는 **exec-plugin** 형:
+  ```yaml
+  users:
+  - name: aws-iam-user
+    user:
+      exec:
+        command: aws-iam-authenticator   # 컨테이너에 없음 → 그대로는 실패
+        args: [token, -i, <clusterName>]
+  ```
+
+**(2) `/token` 응답** — exec-plugin CSP 용으로 짧은 수명의 베어러 토큰을 줍니다. `execCredential` 로 한 번 감싸져 있습니다.
+
+```jsonc
+// GET /tumblebug/ns/testns01/k8sCluster/<id>/token
+{ "execCredential": { "apiVersion": "client.authentication.k8s.io/v1",
+                      "kind": "ExecCredential",
+                      "status": { "token": "k8s-aws-v1.aHR0cHM..." } } }
+```
+
+### 3.2 grasshopper 가 쓰는 것 — kubeconfig 종류별 처리
+
+cm-grasshopper 는 `(namespaceId, k8sClusterId)` 만 받으면, `/kubeconfig` 응답의 `kubeconfig` 문자열을 꺼내 파싱한 뒤 **`users[].user.exec` 스탠자 유무로** 처리를 가릅니다.
+
+**A. 임베드형(Azure) → 받은 kubeconfig 를 그대로 사용**
+
+`server` + 임베드된 인증서/토큰이 다 들어 있으므로 추가 처리 없이 `rest.Config` 로 변환해 바로 클러스터에 붙습니다.
+
+**B. exec-plugin형(EKS/GKE/NCP) → exec 명령만 "TB 토큰 호출"로 교체**
+
+원본 kubeconfig 에서 `server` + `certificate-authority-data` 는 그대로 두고, 쓸 수 없는 `user.exec`(외부 CLI 호출)만 cb-tumblebug `/token` 을 호출하는 명령으로 바꿉니다.
+
+```yaml
+# 원본 (cb-tumblebug 가 준 것)            →   # grasshopper 가 바꾼 것 (broker-exec)
+user:                                          user:
+  exec:                                          exec:
+    command: aws-iam-authenticator                 command: sh
+    args: [token, -i, <cluster>]                   args: ["-c", "curl -fsS -u <tbUser>:<tbPass> \
+                                                            'http://<TB>/.../token' | jq -ce .execCredential"]
+```
+
+이렇게 만든 kubeconfig 로 `rest.Config` 를 구성하면, **client-go 가 API 호출 직전에 그 `sh` 명령을 실행**해서 cb-tumblebug `/token` 으로부터 토큰을 받아 `Authorization` 헤더에 싣고, 토큰이 만료되면 **명령을 자동으로 다시 실행**해 갱신합니다. (`/token` 응답이 `execCredential` 로 감싸져 있어 `jq -ce .execCredential` 로 벗겨 client-go 가 기대하는 형태로 맞춰 줌)
+
+> 정리하면 — **cb-tumblebug 는 kubeconfig(서버주소·CA)와, exec-plugin CSP 의 경우 토큰 발급 API(`/token`)를 줍니다. grasshopper 는 임베드형이면 그대로 쓰고, exec형이면 "토큰을 cb-tumblebug 에서 받아오도록" exec 명령만 바꿔서 씁니다.** 그 결과 컨테이너에 클라우드 CLI·자격증명이 없어도 모든 CSP 가 동일하게 동작합니다.
 
 ---
 
