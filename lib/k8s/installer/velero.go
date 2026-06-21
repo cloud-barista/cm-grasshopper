@@ -80,6 +80,7 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.Clus
 	actionConfig, err := k8sclient.NewHelmActionConfig(&commonmodel.ClusterAccess{
 		Kubeconfig: cluster.Kubeconfig,
 		Namespace:  namespace,
+		Tumblebug:  cluster.Tumblebug,
 	})
 	if err != nil {
 		return nil, err

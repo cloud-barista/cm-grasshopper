@@ -22,11 +22,7 @@ import (
 )
 
 func NewRESTConfig(cluster *commonmodel.ClusterAccess) (*rest.Config, error) {
-	if err := k8scommon.ValidateClusterAccess(cluster); err != nil {
-		return nil, err
-	}
-
-	kubeconfig, err := k8scommon.DecodeKubeconfig(cluster.Kubeconfig)
+	kubeconfig, err := k8scommon.ResolveKubeconfig(cluster)
 	if err != nil {
 		return nil, err
 	}

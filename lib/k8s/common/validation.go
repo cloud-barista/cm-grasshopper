@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cloud-barista/cm-grasshopper/lib/k8s/tumblebug"
 	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
 )
 
@@ -33,10 +34,29 @@ func ValidateClusterAccess(cluster *commonmodel.ClusterAccess) error {
 	if cluster == nil {
 		return errors.New("cluster access is required")
 	}
-	if strings.TrimSpace(cluster.Kubeconfig) == "" {
-		return errors.New("kubeconfig is required")
+	if strings.TrimSpace(cluster.Kubeconfig) == "" && cluster.Tumblebug == nil {
+		return errors.New("either kubeconfig or tumblebug cluster reference is required")
+	}
+	if cluster.Tumblebug != nil {
+		if strings.TrimSpace(cluster.Tumblebug.NamespaceID) == "" ||
+			strings.TrimSpace(cluster.Tumblebug.K8sClusterID) == "" {
+			return errors.New("tumblebug namespaceId and k8sClusterId are required")
+		}
 	}
 	return nil
+}
+
+// ResolveKubeconfig returns the effective kubeconfig for a cluster: the directly supplied
+// kubeconfig when present, otherwise one resolved from cb-tumblebug (with exec-plugin CSPs
+// rewritten to a self-contained token-broker form).
+func ResolveKubeconfig(cluster *commonmodel.ClusterAccess) (string, error) {
+	if err := ValidateClusterAccess(cluster); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(cluster.Kubeconfig) != "" {
+		return DecodeKubeconfig(cluster.Kubeconfig)
+	}
+	return tumblebug.ResolveKubeconfig(cluster.Tumblebug.NamespaceID, cluster.Tumblebug.K8sClusterID)
 }
 
 func ValidateS3Access(s3 *commonmodel.S3Access) error {
