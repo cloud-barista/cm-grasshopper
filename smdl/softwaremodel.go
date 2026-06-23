@@ -84,14 +84,15 @@ type Binary struct {
 	Version         string   `gorm:"version" json:"version" validate:"required"`
 	UIDs            []int32  `json:"uids" validate:"required"`
 	GIDs            []int32  `json:"gids" validate:"required"`
-	CmdlineSlice    []string `json:"cmdline_slice"`
-	Envs            []string `json:"envs" validate:"required"`
-	NeededLibraries []string `json:"needed_libraries"`
-	BinaryPath      string   `json:"binary_path,omitempty"`
-	CustomDataPaths []string `json:"custom_data_paths"`
-	CustomConfigs   []string `json:"custom_configs"`
-	IsWine          bool     `json:"is_wine"`
-	WinePrefix      string   `json:"wine_prefix,omitempty"` // WINEPREFIX bottle dir (Wine apps)
+	CmdlineSlice     []string `json:"cmdline_slice"`
+	Envs             []string `json:"envs" validate:"required"`
+	NeededLibraries  []string `json:"needed_libraries"`
+	RequiredPackages []string `json:"required_packages"` // OS packages the target must install (package-provided linked libs)
+	BinaryPath       string   `json:"binary_path,omitempty"`
+	CustomDataPaths  []string `json:"custom_data_paths"`
+	CustomConfigs    []string `json:"custom_configs"`
+	IsWine           bool     `json:"is_wine"`
+	WinePrefix       string   `json:"wine_prefix,omitempty"` // WINEPREFIX bottle dir (Wine apps)
 	// Launch provenance: how the software was started on the source host.
 	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
 	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`
@@ -162,14 +163,15 @@ type BinaryMigrationInfo struct {
 	Version         string   `gorm:"version" json:"version" validate:"required"`
 	UIDs            []int32  `json:"uids" validate:"required"`
 	GIDs            []int32  `json:"gids" validate:"required"`
-	CmdlineSlice    []string `json:"cmdline_slice"`
-	Envs            []string `json:"envs" validate:"required"`
-	NeededLibraries []string `json:"needed_libraries"`
-	BinaryPath      string   `json:"binary_path,omitempty"`
-	CustomDataPaths []string `json:"custom_data_paths"`
-	CustomConfigs   []string `json:"custom_configs"`
-	IsWine          bool     `json:"is_wine"`
-	WinePrefix      string   `json:"wine_prefix,omitempty"`
+	CmdlineSlice     []string `json:"cmdline_slice"`
+	Envs             []string `json:"envs" validate:"required"`
+	NeededLibraries  []string `json:"needed_libraries"`
+	RequiredPackages []string `json:"required_packages"` // OS packages the target must install (package-provided linked libs)
+	BinaryPath       string   `json:"binary_path,omitempty"`
+	CustomDataPaths  []string `json:"custom_data_paths"`
+	CustomConfigs    []string `json:"custom_configs"`
+	IsWine           bool     `json:"is_wine"`
+	WinePrefix       string   `json:"wine_prefix,omitempty"`
 	// Launch provenance: how the software was started on the source host.
 	LaunchType       string `json:"launch_type"` // "systemd" | "command" | "unknown"
 	SystemdUnitName  string `json:"systemd_unit_name,omitempty"`
