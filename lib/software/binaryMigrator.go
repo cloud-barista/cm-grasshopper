@@ -344,8 +344,8 @@ func applyBinaryEnvironment(client *ssh.Client, binary *softwaremodel.BinaryMigr
 		}
 
 		escapedValue := strings.ReplaceAll(value, `"`, `\"`)
-		script.WriteString(fmt.Sprintf("sed -i '/^%s=/d' /etc/environment\n", key))
-		script.WriteString(fmt.Sprintf("echo '%s=\"%s\"' >> /etc/environment\n", key, escapedValue))
+		fmt.Fprintf(&script, "sed -i '/^%s=/d' /etc/environment\n", key)
+		fmt.Fprintf(&script, "echo '%s=\"%s\"' >> /etc/environment\n", key, escapedValue)
 		applied = append(applied, key)
 	}
 
@@ -518,21 +518,21 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 
 	var unit strings.Builder
 	unit.WriteString("[Unit]\n")
-	unit.WriteString(fmt.Sprintf("Description=%s (migrated by cm-grasshopper)\n", binary.Name))
+	fmt.Fprintf(&unit, "Description=%s (migrated by cm-grasshopper)\n", binary.Name)
 	unit.WriteString("After=network.target\n\n")
 	unit.WriteString("[Service]\n")
-	unit.WriteString(fmt.Sprintf("Type=%s\n", serviceType))
+	fmt.Fprintf(&unit, "Type=%s\n", serviceType)
 	if serviceType == "forking" && binary.PIDFile != "" {
-		unit.WriteString(fmt.Sprintf("PIDFile=%s\n", binary.PIDFile))
+		fmt.Fprintf(&unit, "PIDFile=%s\n", binary.PIDFile)
 	}
 	if userName != "" {
-		unit.WriteString(fmt.Sprintf("User=%s\n", userName))
+		fmt.Fprintf(&unit, "User=%s\n", userName)
 	}
 	if groupName != "" {
-		unit.WriteString(fmt.Sprintf("Group=%s\n", groupName))
+		fmt.Fprintf(&unit, "Group=%s\n", groupName)
 	}
 	if binary.WorkingDirectory != "" {
-		unit.WriteString(fmt.Sprintf("WorkingDirectory=%s\n", binary.WorkingDirectory))
+		fmt.Fprintf(&unit, "WorkingDirectory=%s\n", binary.WorkingDirectory)
 	}
 	emitted := make(map[string]bool)
 	for _, env := range binary.Envs {
@@ -547,15 +547,15 @@ func synthesizeAndStartUnit(targetClient *ssh.Client, binary *softwaremodel.Bina
 			continue
 		}
 		escaped := strings.ReplaceAll(value, `"`, `\"`)
-		unit.WriteString(fmt.Sprintf("Environment=\"%s=%s\"\n", key, escaped))
+		fmt.Fprintf(&unit, "Environment=\"%s=%s\"\n", key, escaped)
 		emitted[key] = true
 	}
 	// Wine apps must point at their bottle. Use the dedicated WinePrefix field so the
 	// unit is correct even when WINEPREFIX was not captured in the process environment.
 	if binary.IsWine && binary.WinePrefix != "" && !emitted["WINEPREFIX"] {
-		unit.WriteString(fmt.Sprintf("Environment=\"WINEPREFIX=%s\"\n", binary.WinePrefix))
+		fmt.Fprintf(&unit, "Environment=\"WINEPREFIX=%s\"\n", binary.WinePrefix)
 	}
-	unit.WriteString(fmt.Sprintf("ExecStart=%s\n", execStart))
+	fmt.Fprintf(&unit, "ExecStart=%s\n", execStart)
 	unit.WriteString("Restart=on-failure\n\n")
 	unit.WriteString("[Install]\n")
 	unit.WriteString("WantedBy=multi-user.target\n")
@@ -620,8 +620,11 @@ func validPackageName(n string) bool {
 		return false
 	}
 	for _, r := range n {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' ||
-			r == '-' || r == '_' || r == '.' || r == '+') {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			r == '-', r == '_', r == '.', r == '+':
+			// allowed package-name character
+		default:
 			return false
 		}
 	}
