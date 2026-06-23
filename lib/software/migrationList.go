@@ -131,6 +131,7 @@ func processSoftwareBinaries(prevOrder *int, binaries []softwaremodel.Binary) ([
 			CmdlineSlice:     b.CmdlineSlice,
 			Envs:             b.Envs,
 			NeededLibraries:  b.NeededLibraries,
+			RequiredPackages: b.RequiredPackages,
 			BinaryPath:       b.BinaryPath,
 			CustomDataPaths:  b.CustomDataPaths,
 			CustomConfigs:    b.CustomConfigs,

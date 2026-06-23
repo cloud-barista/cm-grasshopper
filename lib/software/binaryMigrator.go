@@ -613,6 +613,88 @@ func startBinaryService(sourceClient, targetClient *ssh.Client, binary *software
 // data directories, recreates the owning user, applies the relevant environment
 // variables and starts the software, reproducing the source's launch mechanism
 // (systemd unit copy, or a synthesized systemd unit for command-started software).
+// validPackageName reports whether n is a safe OS package name to pass to the
+// target's package manager (guards the shell command against injection).
+func validPackageName(n string) bool {
+	if n == "" {
+		return false
+	}
+	for _, r := range n {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' ||
+			r == '-' || r == '_' || r == '.' || r == '+') {
+			return false
+		}
+	}
+	return true
+}
+
+// sanitizePackageNames returns the unique, valid package names from the list.
+func sanitizePackageNames(names []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if !validPackageName(n) || seen[n] {
+			continue
+		}
+		seen[n] = true
+		out = append(out, n)
+	}
+	return out
+}
+
+// installRequiredPackages installs, via the target's package manager, the OS
+// packages that provide the libraries a migrated binary links against (e.g.
+// libpcre2-8 for a source-built Apache). These libraries are not copied from the
+// source, so the target must install them to satisfy the binary's runtime
+// dependencies. Returns an error the caller treats as non-fatal: the package may
+// already be present, or its name may differ on a cross-distro target.
+func installRequiredPackages(targetClient *ssh.Client, binary *softwaremodel.BinaryMigrationInfo, migrationLogger *Logger) error {
+	pkgs := sanitizePackageNames(binary.RequiredPackages)
+	if len(pkgs) == 0 {
+		return nil
+	}
+
+	systemType, err := getSystemType(targetClient, migrationLogger)
+	if err != nil {
+		return fmt.Errorf("failed to detect target system type: %v", err)
+	}
+
+	var installCmd string
+	switch systemType {
+	case Debian:
+		installCmd = "DEBIAN_FRONTEND=noninteractive apt-get install -y " + strings.Join(pkgs, " ")
+	case RHEL:
+		if err := checkCommandExists(targetClient, "dnf"); err == nil {
+			installCmd = "dnf install -y " + strings.Join(pkgs, " ")
+		} else {
+			installCmd = "yum install -y " + strings.Join(pkgs, " ")
+		}
+	default:
+		return fmt.Errorf("unsupported target system type for package install: %v", systemType)
+	}
+
+	migrationLogger.Printf(INFO, "Installing %d required package(s) for %s: %s\n",
+		len(pkgs), binary.Name, strings.Join(pkgs, " "))
+
+	session, err := targetClient.NewSessionWithRetry()
+	if err != nil {
+		return fmt.Errorf("failed to create SSH session: %v", err)
+	}
+	defer func() {
+		_ = session.Close()
+	}()
+
+	output, err := session.CombinedOutput(sudoWrapper(installCmd, targetClient.SSHTarget.Password))
+	migrationLogger.Printf(DEBUG, "Package install output: %s\n", string(output))
+	if err != nil {
+		return fmt.Errorf("package install failed: %s", string(output))
+	}
+
+	migrationLogger.Printf(INFO, "Required packages installed for %s\n", binary.Name)
+	return nil
+}
+
 func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremodel.BinaryMigrationInfo, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting binary migration for %s (version: %s)\n", binary.Name, binary.Version)
 
@@ -625,6 +707,15 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 		if err := wineInstaller(targetClient, migrationLogger); err != nil {
 			return fmt.Errorf("failed to install Wine runtime: %v", err)
 		}
+	}
+
+	// Install the OS packages that provide the binary's package-managed shared
+	// libraries (e.g. libpcre2 for a source-built Apache). These are not copied
+	// from the source, so the target must install them via its package manager to
+	// satisfy the binary's runtime dependencies. Non-fatal: a package may already
+	// be present, and a real shortfall surfaces when the service is started.
+	if err := installRequiredPackages(targetClient, binary, migrationLogger); err != nil {
+		migrationLogger.Printf(WARN, "Required package installation issue for %s: %v\n", binary.Name, err)
 	}
 
 	// Tracks paths already transferred to avoid re-copying nested configs/data.
