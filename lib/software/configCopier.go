@@ -218,6 +218,21 @@ func copyFile(sourceClient *ssh.Client, targetClient *ssh.Client, filePath strin
 		migrationLogger.Printf(INFO, "File is a symbolic link\n")
 
 		migrationLogger.Printf(DEBUG, "Symlink target: %s\n", symlinkTarget)
+
+		// A symlink whose target resolves to a directory (e.g.
+		// /etc/xdg/systemd/user -> /etc/systemd/user) cannot be read with cat.
+		// Recreate the link itself on the target instead of copying content.
+		dirCheck, _ := runSSHCommand(sourceClient, fmt.Sprintf("test -d '%s' && echo dir || echo notdir", symlinkTarget))
+		if strings.TrimSpace(dirCheck) == "dir" {
+			migrationLogger.Printf(INFO, "Symlink target is a directory; recreating link only: %s -> %s\n", filePath, symlinkTarget)
+			recreateCmd := fmt.Sprintf("mkdir -p \"$(dirname '%s')\" && ln -sfn '%s' '%s'", filePath, symlinkTarget, filePath)
+			if out, rerr := runSSHCommand(targetClient, recreateCmd); rerr != nil {
+				return fmt.Errorf("failed to recreate directory symlink %s -> %s: %s", filePath, symlinkTarget, out)
+			}
+			migrationLogger.Printf(INFO, "Successfully recreated directory symlink: %s\n", filePath)
+			return nil
+		}
+
 		contentCmd := fmt.Sprintf("cat '%s'", symlinkTarget)
 		session, err := sourceClient.NewSessionWithRetry()
 		if err != nil {
@@ -514,8 +529,11 @@ func copyConfigFiles(sourceClient *ssh.Client, targetClient *ssh.Client, configs
 
 		err = copyFile(sourceClient, targetClient, conf.Path, migrationLogger)
 		if err != nil {
-			migrationLogger.Printf(ERROR, "Failed to copy config file %s: %v\n", conf.Path, err)
-			return fmt.Errorf("failed to copy file %s: %v", conf.Path, err)
+			// A single unreadable/odd config file (binary special file, dangling
+			// symlink, transient error) must not abort the whole package migration.
+			// Log it and continue with the remaining files.
+			migrationLogger.Printf(WARN, "Failed to copy config file %s (continuing): %v\n", conf.Path, err)
+			continue
 		}
 
 		migrationLogger.Printf(DEBUG, "Searching for associated cert/key files for: %s\n", conf.Path)
