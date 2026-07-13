@@ -1245,6 +1245,14 @@ const docTemplate = `{
                 },
                 "namespace": {
                     "type": "string"
+                },
+                "tumblebug": {
+                    "description": "Tumblebug optionally references a cb-tumblebug-managed k8s cluster. When set and\nKubeconfig is empty, the kubeconfig is resolved from cb-tumblebug at request time.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.TumblebugK8sRef"
+                        }
+                    ]
                 }
             }
         },
@@ -1287,6 +1295,17 @@ const docTemplate = `{
             "properties": {
                 "s3": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.S3Access"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.TumblebugK8sRef": {
+            "type": "object",
+            "properties": {
+                "k8sClusterId": {
+                    "type": "string"
+                },
+                "namespaceId": {
+                    "type": "string"
                 }
             }
         },
@@ -2236,6 +2255,13 @@ const docTemplate = `{
                     "description": "PIDFile= for forking services",
                     "type": "string"
                 },
+                "required_packages": {
+                    "description": "OS packages the target must install (package-provided linked libs)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "service_type": {
                     "description": "systemd Type= (\"simple\"|\"forking\"|...)",
                     "type": "string"
@@ -2333,6 +2359,13 @@ const docTemplate = `{
                 },
                 "pid_file": {
                     "type": "string"
+                },
+                "required_packages": {
+                    "description": "OS packages the target must install (package-provided linked libs)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "service_type": {
                     "type": "string"
@@ -2843,6 +2876,10 @@ const docTemplate = `{
                 "SoftwarePackageTypeDEB": "Debian based package type",
                 "SoftwarePackageTypeRPM": "RHEL based package type"
             },
+            "x-enum-descriptions": [
+                "Debian based package type",
+                "RHEL based package type"
+            ],
             "x-enum-varnames": [
                 "SoftwarePackageTypeDEB",
                 "SoftwarePackageTypeRPM"
