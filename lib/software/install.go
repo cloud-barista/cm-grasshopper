@@ -121,14 +121,6 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 
 		filteredBinaries := make([]softwaremodel.BinaryMigrationInfo, 0, len(server.MigrationList.Binaries))
 		for _, execution := range server.MigrationList.Binaries {
-			// Defense in depth: init/base-OS daemons (systemd, rpcbind, ...) collected
-			// as running binaries must never be migrated, even from an unfiltered model.
-			if isSystemBaseBinary(execution.Name) {
-				logger.Println(logger.INFO, true, "Skipping base system binary: "+execution.Name)
-				continue
-			}
-			filteredBinaries = append(filteredBinaries, execution)
-
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
@@ -144,6 +136,17 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 				UpdatedAt:              time.Time{},
 				ErrorMessage:           "",
 			}
+
+			// Base/init daemons (systemd, rpcbind, ...) are recorded as "skipped"
+			// with a reason rather than dropped, so the operator can see what was not
+			// migrated and why instead of the item silently disappearing.
+			if reason := baseBinarySkipReason(execution.Name); reason != "" {
+				softwareMigrationStatus.Status = "skipped"
+				softwareMigrationStatus.ErrorMessage = reason
+			} else {
+				filteredBinaries = append(filteredBinaries, execution)
+			}
+
 			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
 			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
 			if err != nil {
@@ -159,16 +162,6 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 
 		filteredPackages := make([]softwaremodel.PackageMigrationInfo, 0, len(server.MigrationList.Packages))
 		for _, execution := range server.MigrationList.Packages {
-			// Defense in depth: base OS / cloud-agent / host-daemon packages must
-			// never be migrated even if an upstream caller (damselfly/cicada) passes
-			// an unfiltered model. The target already ships them; migrating them only
-			// slows the run and produces spurious host-service failures.
-			if isSystemBasePackage(execution.Name) {
-				logger.Println(logger.INFO, true, "Skipping base system package: "+execution.Name)
-				continue
-			}
-			filteredPackages = append(filteredPackages, execution)
-
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
@@ -184,6 +177,17 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 				UpdatedAt:              time.Time{},
 				ErrorMessage:           "",
 			}
+
+			// Base OS / cloud-agent / host-daemon packages are recorded as "skipped"
+			// with a reason (target already ships them) instead of being dropped, so
+			// the status list stays complete and auditable.
+			if reason := basePackageSkipReason(execution.Name); reason != "" {
+				softwareMigrationStatus.Status = "skipped"
+				softwareMigrationStatus.ErrorMessage = reason
+			} else {
+				filteredPackages = append(filteredPackages, execution)
+			}
+
 			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
 			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
 			if err != nil {
@@ -463,6 +467,12 @@ func MigrateSoftware(execution *Execution) {
 
 	// Start software migration in order
 	for _, ms := range execution.MigrationStatusList {
+		// Items filtered out at preparation time carry a terminal "skipped" status
+		// and a reason; leave them as-is.
+		if ms.Status == "skipped" {
+			continue
+		}
+
 		switch ms.SoftwareInstallType {
 		case softwaremodel.SoftwareTypeBinary:
 			binary := getBinary(execution, &ms)

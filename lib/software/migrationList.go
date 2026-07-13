@@ -164,6 +164,31 @@ func isSystemBaseBinary(binaryName string) bool {
 	return systemBaseBinaries[binaryName]
 }
 
+// basePackageSkipReason returns a human-readable reason when a package should be
+// skipped (recorded as "skipped" in the status list), or "" to migrate it.
+//
+// NOTE: there is no single reliable manifest signal that separates base-image
+// packages from user applications on cloud images — dpkg Priority and
+// `apt-mark showmanual` both classify cloud/base packages (walinuxagent,
+// azure-vm-utils, ubuntu-server, ...) the same as real apps (mariadb, nginx). So
+// this uses a curated denylist of well-known base/cloud/host packages that the
+// target base image already provides. Extend systemBasePackages as needed.
+func basePackageSkipReason(name string) string {
+	if isSystemBasePackage(name) {
+		return "skipped: base OS/cloud package provided by the target base image"
+	}
+	return ""
+}
+
+// baseBinarySkipReason mirrors basePackageSkipReason for init/base-OS daemons
+// (systemd, rpcbind, ...) that honeybee collects as running binaries.
+func baseBinarySkipReason(name string) string {
+	if isSystemBaseBinary(name) {
+		return "skipped: init/base-OS daemon provided by the target base image"
+	}
+	return ""
+}
+
 //func getConnectionInfoInfra(sgID string, connectionID string) (*infra.Infra, error) {
 //	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 //		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
