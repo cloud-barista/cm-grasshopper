@@ -418,16 +418,40 @@ func serviceMigrator(sourceClient *ssh.Client, targetClient *ssh.Client, package
 				_ = session.Close()
 				return fmt.Errorf("failed to start service %s: %v", service.Name, err)
 			}
+			_ = session.Close()
 
-			cmd = fmt.Sprintf("systemctl is-active %s", service.Name)
-			output, err := session.CombinedOutput(sudoWrapper(cmd, targetClient.SSHTarget.Password))
-			if err != nil || strings.TrimSpace(string(output)) != "active" {
+			// Poll is-active instead of checking once: forking/notify services
+			// (nginx, nfs-server, ...) briefly report "activating" right after start,
+			// which previously registered as a false failure.
+			var status string
+			active := false
+			for attempt := 0; attempt < 15; attempt++ {
+				checkSession, cerr := targetClient.NewSessionWithRetry()
+				if cerr != nil {
+					migrationLogger.Printf(ERROR, "Failed to create SSH session: %v\n", cerr)
+					return fmt.Errorf("failed to create session: %v", cerr)
+				}
+				out, _ := checkSession.CombinedOutput(sudoWrapper(fmt.Sprintf("systemctl is-active %s", service.Name), targetClient.SSHTarget.Password))
+				_ = checkSession.Close()
+				status = strings.TrimSpace(string(out))
+				if status == "active" {
+					active = true
+					break
+				}
+				if status == "failed" || status == "inactive" {
+					// Terminal negative state: no point waiting further.
+					if attempt >= 2 {
+						break
+					}
+				}
+				time.Sleep(2 * time.Second)
+			}
+
+			if !active {
 				migrationLogger.Printf(ERROR, "Service %s failed to start properly. Status: %s\n",
-					service.Name, strings.TrimSpace(string(output)))
-				_ = session.Close()
+					service.Name, status)
 				return fmt.Errorf("service %s failed to start properly", service.Name)
 			}
-			_ = session.Close()
 
 			migrationLogger.Printf(INFO, "Successfully started service: %s\n", service.Name)
 		}
