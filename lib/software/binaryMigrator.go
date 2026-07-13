@@ -115,27 +115,41 @@ var systemPrefixDenyList = map[string]bool{
 	"/tmp": true, "/srv": true, "/mnt": true,
 }
 
+// selfContainedMarkers are sibling directories a self-contained install keeps
+// next to its bin/ (its own libraries, config and loadable modules).
+var selfContainedMarkers = []string{"lib", "lib64", "libexec", "conf", "etc", "modules", "htdocs", "share", "include"}
+
 // selfContainedPrefix returns the install prefix of a source-built application
-// when its binary lives at "<prefix>/bin/<name>" and the prefix is a dedicated
-// directory under /opt or /usr/local (e.g. /usr/local/apache2/bin/httpd ->
-// /usr/local/apache2). Such installs keep apachectl, the loadable modules, the
-// SONAME symlinks and the config (with the operator's port changes) alongside the
-// ELF binary, so only copying the ELF leaves the service unable to start. Returns
-// "" when the binary is an ordinary system binary that should be copied on its own.
-func selfContainedPrefix(binaryPath string) string {
+// when its binary lives at "<prefix>/bin/<name>" (or sbin/) and the prefix looks
+// self-contained, e.g. /usr/local/apache2/bin/httpd -> /usr/local/apache2. Such
+// installs keep apachectl, the loadable modules, the SONAME symlinks and the
+// config (with the operator's port changes) next to the ELF binary, so copying
+// only the ELF leaves the service unable to start.
+//
+// Detection is structural rather than location-based: the prefix is accepted for
+// ANY path (not just /opt or /usr/local) as long as it is not a shared system
+// root and the source actually has at least one marker sibling (lib/, conf/, ...)
+// next to bin/. This avoids wholesale-copying an arbitrary directory that merely
+// contains a bin/ subdir, while supporting custom locations (/srv/app, /data/...).
+// Returns "" for an ordinary system binary that should be copied on its own.
+func selfContainedPrefix(sourceClient *ssh.Client, binaryPath string, migrationLogger *Logger) string {
 	bp := strings.TrimRight(strings.TrimSpace(binaryPath), "/")
 	dir := filepath.Dir(bp)
-	if filepath.Base(dir) != "bin" {
+	if base := filepath.Base(dir); base != "bin" && base != "sbin" {
 		return ""
 	}
 	prefix := filepath.Dir(dir)
-	if systemPrefixDenyList[prefix] {
+	if prefix == "" || prefix == "/" || systemPrefixDenyList[prefix] {
 		return ""
 	}
-	if !strings.HasPrefix(prefix, "/opt/") && !strings.HasPrefix(prefix, "/usr/local/") {
-		return ""
+
+	for _, marker := range selfContainedMarkers {
+		if remotePathType(sourceClient, prefix+"/"+marker) == "dir" {
+			migrationLogger.Printf(DEBUG, "Detected self-contained prefix %s (marker: %s)\n", prefix, marker)
+			return prefix
+		}
 	}
-	return prefix
+	return ""
 }
 
 // isUnderCopiedPath returns true if path equals or is located under any path
@@ -775,7 +789,7 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 	// /usr/local/apache2) is copied as a whole prefix so apachectl, the loadable
 	// modules, the SONAME symlinks and the port-adjusted config all come along.
 	// Anything already inside that prefix (deps, configs) is then skipped.
-	prefix := selfContainedPrefix(binary.BinaryPath)
+	prefix := selfContainedPrefix(sourceClient, binary.BinaryPath, migrationLogger)
 
 	// 1. Copy runtime dependency paths (e.g. /opt/jdk for Java).
 	for _, dep := range binary.NeededLibraries {
