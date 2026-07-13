@@ -38,33 +38,73 @@ type Client struct {
 	keepAliveOnce  sync.Once
 }
 
+// isConnBroken reports whether err indicates the underlying SSH transport is
+// dead (as opposed to a command-level failure). Long migrations open thousands
+// of sessions against the same connection; the target sshd, a network blip or an
+// idle-timeout can tear the transport down mid-run. When that happens every later
+// session/command fails until the connection is rebuilt, so these errors must
+// trigger a reconnect rather than a plain retry.
+func IsConnBroken(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{
+		"eof",
+		"connection reset",
+		"broken pipe",
+		"use of closed network connection",
+		"connection lost",
+		"connection closed",
+		"session creation failed",
+		"failed to create session",
+		"unexpected packet",
+		"disconnect",
+		"handshake failed",
+		"connection refused",
+		"i/o timeout",
+		"no route to host",
+	} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// reconnect tears down the current transport and rebuilds it, updating the
+// embedded goph client in place so callers keep using the same *Client.
+func (c *Client) reconnect() error {
+	if c.Client != nil {
+		_ = c.Client.Close()
+	}
+
+	newClient, err := NewSSHClient(c.connectionType, c.id, c.nsID, c.infraID)
+	if err != nil {
+		return err
+	}
+
+	c.Client = newClient.Client
+	return nil
+}
+
 func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
 	var session *ssh.Session
 	var err error
 
 	// Try to create session with existing connection first
-	for retry := 0; retry < 3; retry++ {
+	for retry := 0; retry < 5; retry++ {
 		session, err = c.NewSession()
 		if err == nil {
 			return session, nil
 		}
 
-		// If EOF error, try to reconnect
-		if err.Error() == "EOF" {
-			// Close existing connection
-			if c.Client != nil {
-				_ = c.Close()
-			}
-
-			// Recreate connection
-			newClient, reconnectErr := NewSSHClient(c.connectionType, c.id, c.nsID, c.infraID)
-			if reconnectErr != nil {
+		// If the transport looks dead, rebuild the connection before retrying.
+		if IsConnBroken(err) {
+			if reconnectErr := c.reconnect(); reconnectErr != nil {
 				time.Sleep(time.Second * 2)
 				continue
 			}
-
-			// Update client
-			c.Client = newClient.Client
 			continue
 		}
 
@@ -75,11 +115,37 @@ func (c *Client) NewSessionWithRetry() (*ssh.Session, error) {
 	return nil, err
 }
 
+// RunWithRetry runs cmd on the host and returns its combined output. Unlike the
+// embedded goph Run, it rebuilds the connection and retries when the transport
+// dies mid-run, so a single reset does not cascade into every remaining step.
+func (c *Client) RunWithRetry(cmd string) ([]byte, error) {
+	var out []byte
+	var err error
+
+	for retry := 0; retry < 5; retry++ {
+		out, err = c.Run(cmd)
+		if err == nil {
+			return out, nil
+		}
+
+		if IsConnBroken(err) {
+			if reconnectErr := c.reconnect(); reconnectErr != nil {
+				time.Sleep(time.Second * 2)
+			}
+			continue
+		}
+
+		return out, err
+	}
+
+	return out, err
+}
+
 func (c *Client) startKeepAlive() {
 	c.keepAliveOnce.Do(func() {
 		c.keepAliveStop = make(chan struct{})
 		go func() {
-			ticker := time.NewTicker(1 * time.Second)
+			ticker := time.NewTicker(15 * time.Second)
 			defer ticker.Stop()
 
 			for {
