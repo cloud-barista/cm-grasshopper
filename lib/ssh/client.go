@@ -3,8 +3,10 @@ package ssh
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"sync"
+	"syscall"
 
 	"net"
 	"strconv"
@@ -38,16 +40,41 @@ type Client struct {
 	keepAliveOnce  sync.Once
 }
 
-// isConnBroken reports whether err indicates the underlying SSH transport is
+// IsConnBroken reports whether err indicates the underlying SSH transport is
 // dead (as opposed to a command-level failure). Long migrations open thousands
 // of sessions against the same connection; the target sshd, a network blip or an
 // idle-timeout can tear the transport down mid-run. When that happens every later
 // session/command fails until the connection is rebuilt, so these errors must
 // trigger a reconnect rather than a plain retry.
+//
+// Network-layer failures are matched against real error values via errors.Is/As
+// (io.EOF, net.ErrClosed, the syscall errnos, the net.Error timeout interface),
+// which is robust to wrapping. golang.org/x/crypto/ssh reports many channel- and
+// session-level transport failures as plain unwrapped strings, so a lower-cased
+// substring check is kept as a fallback for those.
 func IsConnBroken(err error) bool {
 	if err == nil {
 		return false
 	}
+
+	// Typed / sentinel errors (wrapping-safe).
+	if errors.Is(err, io.EOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNABORTED) ||
+		errors.Is(err, syscall.ETIMEDOUT) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.EHOSTUNREACH) ||
+		errors.Is(err, syscall.ENETUNREACH) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	// Fallback: the SSH library surfaces these as unwrapped strings.
 	msg := strings.ToLower(err.Error())
 	for _, s := range []string{
 		"eof",
