@@ -59,15 +59,28 @@ var envDenyList = map[string]bool{
 // runSSHCommand runs a command on the given host wrapped with sudo and returns
 // its combined output as a string.
 func runSSHCommand(client *ssh.Client, cmd string) (string, error) {
-	session, err := client.NewSessionWithRetry()
-	if err != nil {
-		return "", fmt.Errorf("failed to create session: %v", err)
-	}
-	defer func() {
-		_ = session.Close()
-	}()
+	wrapped := sudoWrapper(cmd, client.SSHTarget.Password)
 
-	output, err := session.CombinedOutput(sudoWrapper(cmd, client.SSHTarget.Password))
+	var output []byte
+	var err error
+
+	// Retry the whole command (fresh session each attempt) so a connection reset
+	// mid-transfer self-heals instead of aborting the migration. NewSessionWithRetry
+	// rebuilds the transport when it detects the connection is dead.
+	for attempt := 0; attempt < 3; attempt++ {
+		session, sessErr := client.NewSessionWithRetry()
+		if sessErr != nil {
+			return "", fmt.Errorf("failed to create session: %v", sessErr)
+		}
+
+		output, err = session.CombinedOutput(wrapped)
+		_ = session.Close()
+
+		if err == nil || !ssh.IsConnBroken(err) {
+			break
+		}
+	}
+
 	return string(output), err
 }
 
@@ -89,6 +102,40 @@ func wineInstaller(client *ssh.Client, migrationLogger *Logger) error {
 func remotePathType(client *ssh.Client, path string) string {
 	out, _ := runSSHCommand(client, fmt.Sprintf("if [ -d '%s' ]; then echo dir; elif [ -e '%s' ]; then echo file; else echo none; fi", path, path))
 	return strings.TrimSpace(out)
+}
+
+// systemPrefixDenyList holds paths that must never be treated as a self-contained
+// application prefix. Copying one of these wholesale would drag in the entire base
+// system, so a binary living directly under them falls back to a single-file copy.
+var systemPrefixDenyList = map[string]bool{
+	"/": true, "/usr": true, "/usr/local": true, "/opt": true,
+	"/bin": true, "/sbin": true, "/usr/bin": true, "/usr/sbin": true,
+	"/usr/local/bin": true, "/usr/local/sbin": true, "/lib": true, "/lib64": true,
+	"/usr/lib": true, "/var": true, "/etc": true, "/home": true, "/root": true,
+	"/tmp": true, "/srv": true, "/mnt": true,
+}
+
+// selfContainedPrefix returns the install prefix of a source-built application
+// when its binary lives at "<prefix>/bin/<name>" and the prefix is a dedicated
+// directory under /opt or /usr/local (e.g. /usr/local/apache2/bin/httpd ->
+// /usr/local/apache2). Such installs keep apachectl, the loadable modules, the
+// SONAME symlinks and the config (with the operator's port changes) alongside the
+// ELF binary, so only copying the ELF leaves the service unable to start. Returns
+// "" when the binary is an ordinary system binary that should be copied on its own.
+func selfContainedPrefix(binaryPath string) string {
+	bp := strings.TrimRight(strings.TrimSpace(binaryPath), "/")
+	dir := filepath.Dir(bp)
+	if filepath.Base(dir) != "bin" {
+		return ""
+	}
+	prefix := filepath.Dir(dir)
+	if systemPrefixDenyList[prefix] {
+		return ""
+	}
+	if !strings.HasPrefix(prefix, "/opt/") && !strings.HasPrefix(prefix, "/usr/local/") {
+		return ""
+	}
+	return prefix
 }
 
 // isUnderCopiedPath returns true if path equals or is located under any path
@@ -724,6 +771,12 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 	// Tracks paths already transferred to avoid re-copying nested configs/data.
 	copiedPaths := make(map[string]bool)
 
+	// A source-built app under /opt or /usr/local (e.g. Apache at
+	// /usr/local/apache2) is copied as a whole prefix so apachectl, the loadable
+	// modules, the SONAME symlinks and the port-adjusted config all come along.
+	// Anything already inside that prefix (deps, configs) is then skipped.
+	prefix := selfContainedPrefix(binary.BinaryPath)
+
 	// 1. Copy runtime dependency paths (e.g. /opt/jdk for Java).
 	for _, dep := range binary.NeededLibraries {
 		dep = strings.TrimSpace(dep)
@@ -736,7 +789,18 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 			migrationLogger.Printf(DEBUG, "Skipping non-absolute dependency: %s\n", dep)
 			continue
 		}
+		if prefix != "" && (dep == prefix || strings.HasPrefix(dep, prefix+"/")) {
+			migrationLogger.Printf(DEBUG, "Dependency %s is inside prefix %s, will be copied with it\n", dep, prefix)
+			continue
+		}
 		if isUnderCopiedPath(copiedPaths, dep) {
+			continue
+		}
+		// A dependency path that does not exist on the source is not fatal: it may
+		// be a container-internal path collected in error, or a SONAME provided by
+		// the base system. Skip it instead of aborting the whole binary migration.
+		if remotePathType(sourceClient, dep) == "none" {
+			migrationLogger.Printf(WARN, "Dependency path not found on source, skipping: %s\n", dep)
 			continue
 		}
 
@@ -747,13 +811,24 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 		copiedPaths[dep] = true
 	}
 
-	// 2. Copy the binary path itself (e.g. /opt/tomcat).
+	// 2. Copy the binary path itself (e.g. /opt/tomcat), or the whole install
+	// prefix for a self-contained source build.
 	if bp := strings.TrimSpace(binary.BinaryPath); bp != "" && strings.HasPrefix(bp, "/") {
-		migrationLogger.Printf(INFO, "Copying binary path: %s\n", bp)
-		if err := copyPathWithChunks(sourceClient, targetClient, bp, uuid, migrationLogger); err != nil {
-			return fmt.Errorf("failed to copy binary path %s: %v", bp, err)
+		copyTarget := bp
+		if prefix != "" && remotePathType(sourceClient, bp) == "file" {
+			copyTarget = prefix
+			migrationLogger.Printf(INFO, "Binary %s is a self-contained install; copying whole prefix %s\n", bp, prefix)
 		}
-		copiedPaths[bp] = true
+
+		if remotePathType(sourceClient, copyTarget) == "none" {
+			migrationLogger.Printf(WARN, "Binary path not found on source, skipping copy: %s\n", copyTarget)
+		} else {
+			migrationLogger.Printf(INFO, "Copying binary path: %s\n", copyTarget)
+			if err := copyPathWithChunks(sourceClient, targetClient, copyTarget, uuid, migrationLogger); err != nil {
+				return fmt.Errorf("failed to copy binary path %s: %v", copyTarget, err)
+			}
+			copiedPaths[copyTarget] = true
+		}
 	}
 
 	// 3. Copy custom config files (skip ones already inside a copied directory).
