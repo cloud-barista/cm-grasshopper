@@ -521,6 +521,19 @@ func MigrateSoftware(execution *Execution) {
 				continue
 			}
 
+			// A database server package installs empty; migrate its databases and
+			// users so dependent apps (e.g. WordPress) work. Non-fatal on error: the
+			// package itself installed successfully.
+			if isDatabaseServerPackage(pkg.Name) {
+				if err := migrateSQLDatabase(execution.SourceClient, execution.TargetClient, execution.ExecutionID, migrationLogger); err != nil {
+					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+						", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
+						", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+						", InstallType=package, DatabaseMigration, Error="+err.Error())
+					migrationLogger.Printf(WARN, "Database migration for %s did not complete: %v\n", pkg.Name, err)
+				}
+			}
+
 			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
 		case softwaremodel.SoftwareTypeContainer:
 			container := getContainer(execution, &ms)
