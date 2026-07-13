@@ -119,7 +119,16 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			return nil, nil, fmt.Errorf("failed to connect to target host: %v", err)
 		}
 
+		filteredBinaries := make([]softwaremodel.BinaryMigrationInfo, 0, len(server.MigrationList.Binaries))
 		for _, execution := range server.MigrationList.Binaries {
+			// Defense in depth: init/base-OS daemons (systemd, rpcbind, ...) collected
+			// as running binaries must never be migrated, even from an unfiltered model.
+			if isSystemBaseBinary(execution.Name) {
+				logger.Println(logger.INFO, true, "Skipping base system binary: "+execution.Name)
+				continue
+			}
+			filteredBinaries = append(filteredBinaries, execution)
+
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
@@ -145,7 +154,21 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			}
 		}
 
+		// Keep the migration list in sync with the filtered binary status list.
+		server.MigrationList.Binaries = filteredBinaries
+
+		filteredPackages := make([]softwaremodel.PackageMigrationInfo, 0, len(server.MigrationList.Packages))
 		for _, execution := range server.MigrationList.Packages {
+			// Defense in depth: base OS / cloud-agent / host-daemon packages must
+			// never be migrated even if an upstream caller (damselfly/cicada) passes
+			// an unfiltered model. The target already ships them; migrating them only
+			// slows the run and produces spurious host-service failures.
+			if isSystemBasePackage(execution.Name) {
+				logger.Println(logger.INFO, true, "Skipping base system package: "+execution.Name)
+				continue
+			}
+			filteredPackages = append(filteredPackages, execution)
+
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
 				ExecutionID:            executionID,
 				SourceConnectionInfoID: server.SourceConnectionInfoID,
@@ -170,6 +193,9 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 					"SoftwareInstallType: "+string(softwareMigrationStatus.SoftwareInstallType)+")")
 			}
 		}
+
+		// Keep the migration list in sync with the filtered status list.
+		server.MigrationList.Packages = filteredPackages
 
 		for _, execution := range server.MigrationList.Containers {
 			softwareMigrationStatus := model.SoftwareMigrationStatus{
