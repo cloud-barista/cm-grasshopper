@@ -510,8 +510,11 @@ func MigrateSoftware(execution *Execution) {
 		}
 	}
 
-	// Start software migration in order
-	for _, ms := range execution.MigrationStatusList {
+	// Start software migration in order. Each software is attempted up to
+	// migrationRetryCount times before it is recorded as failed.
+	for i := range execution.MigrationStatusList {
+		ms := &execution.MigrationStatusList[i]
+
 		// Items filtered out at preparation time carry a terminal "skipped" status
 		// and a reason; leave them as-is.
 		if ms.Status == "skipped" {
@@ -520,66 +523,38 @@ func MigrateSoftware(execution *Execution) {
 
 		switch ms.SoftwareInstallType {
 		case softwaremodel.SoftwareTypeBinary:
-			binary := getBinary(execution, &ms)
+			binary := getBinary(execution, ms)
 			if binary == nil {
 				continue
 			}
 
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "installing", "", true)
-
-			err = binaryMigrator(execution.SourceClient, execution.TargetClient, binary, execution.ExecutionID, migrationLogger)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", InstallType=binary, Error="+err.Error())
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			}
-
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
+			_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "binary "+binary.Name, func() error {
+				return binaryMigrator(execution.SourceClient, execution.TargetClient, binary, execution.ExecutionID, migrationLogger)
+			})
 		case softwaremodel.SoftwareTypePackage:
-			pkg := getPackage(execution, &ms)
+			pkg := getPackage(execution, ms)
 			if pkg == nil {
 				continue
 			}
 
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "installing", "", true)
-
-			err = runPlaybook(execution.ExecutionID, "package", pkg.Name, execution.TargetClient.SSHTarget)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", InstallType=package, Error="+err.Error())
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			}
-
-			err = configCopier(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", InstallType=package, Error="+err.Error())
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			}
-
-			err = serviceMigrator(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", InstallType=package, Error="+err.Error())
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			}
+			installErr := runItemWithRetry(execution, ms, &exStatus, migrationLogger, "package "+pkg.Name, func() error {
+				if err := runPlaybook(execution.ExecutionID, "package", pkg.Name, execution.TargetClient.SSHTarget); err != nil {
+					return err
+				}
+				if err := configCopier(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
+					return err
+				}
+				if err := serviceMigrator(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
+					return err
+				}
+				return nil
+			})
 
 			// A database server package installs empty; migrate its databases and
 			// users so dependent apps (e.g. WordPress) work. Non-fatal on error: the
-			// package itself installed successfully.
-			if isDatabaseServerPackage(pkg.Name) {
+			// package itself installed successfully. Only attempt it once the package
+			// migration itself succeeded.
+			if installErr == nil && isDatabaseServerPackage(pkg.Name) {
 				if err := migrateSQLDatabase(execution.SourceClient, execution.TargetClient, execution.ExecutionID, migrationLogger); err != nil {
 					logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
 						", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
@@ -588,255 +563,17 @@ func MigrateSoftware(execution *Execution) {
 					migrationLogger.Printf(WARN, "Database migration for %s did not complete: %v\n", pkg.Name, err)
 				}
 			}
-
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
 		case softwaremodel.SoftwareTypeContainer:
-			container := getContainer(execution, &ms)
+			container := getContainer(execution, ms)
 			if container == nil {
 				continue
 			}
 
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "installing", "", true)
-
-			logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-				", InstallType=container, ContainerName="+container.Name)
-
-			sourceRuntime := container.Runtime // sourceRuntime
-			runtime := container.Runtime       // targetRuntime
-
-			imageRef := fmt.Sprintf("%s:%s", container.ContainerImage.ImageName, container.ContainerImage.ImageVersion)
-
-			// 1. image pull
-			pullCmd := sudoWrapper(fmt.Sprintf("%s pull %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
-			if _, err := execution.TargetClient.RunWithRetry(pullCmd); err != nil {
-				migrationLogger.Printf(INFO, "pull failed, trying save/load fallback: %s\n", imageRef)
-
-				saveTempDir := fmt.Sprintf("/tmp/grasshopper_save_%s", execution.ExecutionID)
-				tarPath := fmt.Sprintf("%s/image.tar", saveTempDir)
-
-				mkdirCmd := sudoWrapper(fmt.Sprintf("mkdir -p %s", saveTempDir), execution.SourceClient.SSHTarget.Password)
-				if _, serr := execution.SourceClient.RunWithRetry(mkdirCmd); serr != nil {
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "mkdir failed: "+serr.Error(), false)
-					continue
-				}
-
-				var saveCmdStr string
-				if sourceRuntime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
-					saveCmdStr = fmt.Sprintf("%s save --format oci-archive -o %s %s", sourceRuntime, tarPath, imageRef)
-				} else {
-					saveCmdStr = fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, imageRef)
-				}
-				saveCmd := sudoWrapper(saveCmdStr, execution.SourceClient.SSHTarget.Password)
-
-				if _, serr := execution.SourceClient.RunWithRetry(saveCmd); serr != nil {
-					// save 실패 시 commit으로 스냅샷 후 재시도
-					migrationLogger.Printf(INFO, "save failed, trying commit fallback: %s\n", container.Name)
-
-					commitTag := fmt.Sprintf("grasshopper-snapshot-%s", container.Name)
-					commitCmd := sudoWrapper(fmt.Sprintf("%s commit %s %s", sourceRuntime, container.ContainerId, commitTag), execution.SourceClient.SSHTarget.Password)
-					if _, cerr := execution.SourceClient.RunWithRetry(commitCmd); cerr != nil {
-						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "commit failed: "+cerr.Error(), false)
-						continue
-					}
-
-					saveCmd2 := sudoWrapper(fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, commitTag), execution.SourceClient.SSHTarget.Password)
-					if _, serr2 := execution.SourceClient.RunWithRetry(saveCmd2); serr2 != nil {
-						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "save after commit failed: "+serr2.Error(), false)
-						continue
-					}
-
-					_, _ = execution.SourceClient.RunWithRetry(sudoWrapper(fmt.Sprintf("%s rmi %s", sourceRuntime, commitTag), execution.SourceClient.SSHTarget.Password))
-				}
-
-				if terr := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, saveTempDir, execution.ExecutionID, migrationLogger); terr != nil {
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "transfer failed: "+terr.Error(), false)
-					continue
-				}
-
-				loadCmd := sudoWrapper(fmt.Sprintf("%s load -i %s", runtime, tarPath), execution.TargetClient.SSHTarget.Password)
-				if out, lerr := execution.TargetClient.RunWithRetry(loadCmd); lerr != nil {
-					migrationLogger.Printf(INFO, "load failed: %s\n", lerr.Error())
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "load failed: "+lerr.Error(), false)
-				} else {
-					migrationLogger.Printf(INFO, "load success: %s\n", out)
-					outStr := string(out)
-					var loadedImage string
-					for _, line := range strings.Split(outStr, "\n") {
-						if strings.Contains(line, "Loaded image:") || strings.Contains(line, "Loaded image(s):") {
-							loadedImage = strings.TrimSpace(line)
-							loadedImage = strings.TrimPrefix(loadedImage, "Loaded image(s):")
-							loadedImage = strings.TrimPrefix(loadedImage, "Loaded image:")
-							loadedImage = strings.TrimSpace(loadedImage)
-							break
-						}
-					}
-					if loadedImage != "" {
-						tagCmd := sudoWrapper(fmt.Sprintf("%s tag %s %s", runtime, loadedImage, imageRef), execution.TargetClient.SSHTarget.Password)
-						if _, terr := execution.TargetClient.RunWithRetry(tagCmd); terr != nil {
-							migrationLogger.Printf(INFO, "tag failed (non-fatal): %s\n", terr.Error())
-						} else {
-							migrationLogger.Printf(INFO, "tag success: %s -> %s\n", loadedImage, imageRef)
-						}
-					} else {
-						migrationLogger.Printf(INFO, "could not parse loaded image name\n")
-					}
-
-					// SHA-256 image ID verification
-					sourceImageID := ""
-					sourceInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", sourceRuntime, imageRef), execution.SourceClient.SSHTarget.Password)
-					if srcOut, serr := execution.SourceClient.RunWithRetry(sourceInspectCmd); serr != nil {
-						// commit fallback 케이스 - 소스 이미지 없을 수 있음
-						migrationLogger.Printf(INFO, "source inspect failed (commit fallback case), skipping sha256 compare: %s\n", serr.Error())
-					} else {
-						sourceImageID = strings.TrimSpace(string(srcOut))
-					}
-
-					targetInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
-					if tgtOut, terr := execution.TargetClient.RunWithRetry(targetInspectCmd); terr != nil {
-						migrationLogger.Printf(INFO, "target inspect failed, image may not exist: %s\n", terr.Error())
-						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "image not found on target after load: "+terr.Error(), false)
-					} else {
-						targetImageID := strings.TrimSpace(string(tgtOut))
-						if sourceImageID != "" {
-							if sourceImageID != targetImageID {
-								migrationLogger.Printf(INFO, "sha256 mismatch: source=%s, target=%s\n", sourceImageID, targetImageID)
-								updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "image sha256 mismatch: source="+sourceImageID+", target="+targetImageID, false)
-							} else {
-								migrationLogger.Printf(INFO, "sha256 verified: %s\n", targetImageID)
-							}
-						} else {
-							migrationLogger.Printf(INFO, "target image exists (sha256 skipped, commit fallback): %s\n", targetImageID)
-						}
-					}
-				}
-
-				// cleanup
-				_, _ = execution.SourceClient.RunWithRetry(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.SourceClient.SSHTarget.Password))
-				_, _ = execution.TargetClient.RunWithRetry(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.TargetClient.SSHTarget.Password))
-			}
-
-			// 2. port validation
-			if err := listenPortsValidator(execution.SourceClient, execution.TargetClient, container.Name, migrationLogger); err != nil {
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			}
-
-			// 3. copy docker compose
-			if container.DockerComposePath != "" {
-				baseDir := filepath.Dir(container.DockerComposePath) // => /home/ubuntu
-				dockerComposeFile := filepath.Base(container.DockerComposePath)
-
-				logger.Println(logger.INFO, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					"ExecutionID="+execution.ExecutionID+", Info=Copying full directory: "+baseDir)
-
-				if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, baseDir, execution.ExecutionID, migrationLogger); err != nil {
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-					continue
-				}
-
-				// 3-1 volume
-				for _, mount := range container.MountPaths {
-					hostPath := strings.Split(mount, ":")[0]
-					if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
-						updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "failed to copy volume "+hostPath+": "+err.Error(), false)
-						continue
-					}
-				}
-
-				// 3-2 create compose network
-				if container.NetworkMode != "" && container.NetworkMode != "bridge" {
-					rmCmd := fmt.Sprintf("%s network rm %s || true", runtime, container.NetworkMode)
-					rmNetCmd := sudoWrapper(rmCmd, execution.TargetClient.SSHTarget.Password)
-					_, _ = execution.TargetClient.RunWithRetry(rmNetCmd)
-				}
-
-				var composeUpCmd string
-				if runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
-					composeUpCmd = fmt.Sprintf("cd %s && podman-compose -f %s up -d", baseDir, dockerComposeFile)
-				} else {
-					composeUpCmd = fmt.Sprintf("cd %s && docker compose -f %s up -d", baseDir, dockerComposeFile)
-				}
-				composeCmd := sudoWrapper(composeUpCmd, execution.TargetClient.SSHTarget.Password)
-
-				if _, err := execution.TargetClient.RunWithRetry(composeCmd); err != nil {
-					migrationLogger.Printf(INFO, "compose up failed: %s\n", err.Error()) // 추가
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				} else {
-					migrationLogger.Printf(INFO, "compose up success: %s\n", container.Name) // 추가
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
-				}
-
-				continue
-			}
-
-			// 4. generate network
-			if container.DockerComposePath == "" {
-				if container.NetworkMode != "" && container.NetworkMode != "bridge" {
-					checkCmd := fmt.Sprintf("%s network ls --format '{{.Name}}' | grep -w %s", runtime, container.NetworkMode)
-					checkNetCmd := sudoWrapper(checkCmd, execution.TargetClient.SSHTarget.Password)
-
-					if _, err := execution.TargetClient.RunWithRetry(checkNetCmd); err != nil {
-						createCmd := fmt.Sprintf("%s network create %s", runtime, container.NetworkMode)
-						createNetCmd := sudoWrapper(createCmd, execution.TargetClient.SSHTarget.Password)
-
-						if _, cerr := execution.TargetClient.RunWithRetry(createNetCmd); cerr != nil {
-							updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", cerr.Error(), false)
-							continue
-						}
-					}
-				}
-			}
-
-			// 5. docker run
-			baseCmd := fmt.Sprintf("%s run -d --name %s", runtime, container.Name)
-
-			validatedPorts := make(map[int]bool)
-			for _, port := range container.ContainerPorts {
-				if port.HostPort > 0 && !validatedPorts[port.HostPort] {
-					baseCmd += fmt.Sprintf(" -p %d:%d/%s", port.HostPort, port.ContainerPort, port.Protocol)
-					validatedPorts[port.HostPort] = true
-				}
-			}
-
-			for _, mount := range container.MountPaths {
-				hostPath := strings.Split(mount, ":")[0]
-				if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
-					updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", "failed to copy mount path "+hostPath+": "+err.Error(), false)
-					continue
-				}
-				baseCmd += fmt.Sprintf(" -v %s", mount)
-			}
-
-			for _, env := range container.Envs {
-				baseCmd += fmt.Sprintf(" -e %s=%s", env.Name, env.Value)
-			}
-			if container.NetworkMode != "" {
-				baseCmd += fmt.Sprintf(" --network %s", container.NetworkMode)
-			}
-			if container.RestartPolicy != "" {
-				baseCmd += fmt.Sprintf(" --restart %s", container.RestartPolicy)
-			}
-			baseCmd += " " + imageRef
-
-			runCmd := sudoWrapper(baseCmd, execution.TargetClient.SSHTarget.Password)
-			migrationLogger.Printf(INFO, "running container cmd: %s\n", runCmd)
-
-			if _, err := execution.TargetClient.RunWithRetry(runCmd); err != nil {
-				migrationLogger.Printf(INFO, "container run failed: %s\n", err.Error())
-				updateSoftwareInstallStatus(execution, &exStatus, &ms, "failed", err.Error(), false)
-				continue
-			} else {
-				migrationLogger.Printf(INFO, "container run success: %s\n", container.Name)
-			}
-
-			updateSoftwareInstallStatus(execution, &exStatus, &ms, "finished", "", false)
-
+			_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "container "+container.Name, func() error {
+				return migrateContainerItem(execution, container, migrationLogger)
+			})
 		case softwaremodel.SoftwareTypeKubernetes:
-			kubernetes := getKubernetes(execution, &ms)
+			kubernetes := getKubernetes(execution, ms)
 			if kubernetes == nil {
 				continue
 			}
@@ -844,4 +581,240 @@ func MigrateSoftware(execution *Execution) {
 			// TODO - Kubernetes Migration
 		}
 	}
+}
+
+// migrateContainerItem migrates a single container to the target: pull the image
+// (falling back to save / commit+save then load when pull fails), verify it,
+// validate ports, then recreate the workload via docker/podman compose or a
+// direct run. It returns an error on any fatal step so the caller can retry and
+// record the terminal status.
+func migrateContainerItem(execution *Execution, container *softwaremodel.ContainerMigrationInfo, migrationLogger *Logger) error {
+	logger.Println(logger.DEBUG, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+		", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
+		", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+		", InstallType=container, ContainerName="+container.Name)
+
+	sourceRuntime := container.Runtime // sourceRuntime
+	runtime := container.Runtime       // targetRuntime
+
+	imageRef := fmt.Sprintf("%s:%s", container.ContainerImage.ImageName, container.ContainerImage.ImageVersion)
+
+	// 1. image pull
+	pullCmd := sudoWrapper(fmt.Sprintf("%s pull %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
+	if _, err := execution.TargetClient.RunWithRetry(pullCmd); err != nil {
+		migrationLogger.Printf(INFO, "pull failed, trying save/load fallback: %s\n", imageRef)
+
+		saveTempDir := fmt.Sprintf("/tmp/grasshopper_save_%s", execution.ExecutionID)
+		tarPath := fmt.Sprintf("%s/image.tar", saveTempDir)
+
+		cleanup := func() {
+			_, _ = execution.SourceClient.RunWithRetry(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.SourceClient.SSHTarget.Password))
+			_, _ = execution.TargetClient.RunWithRetry(sudoWrapper(fmt.Sprintf("rm -rf %s", saveTempDir), execution.TargetClient.SSHTarget.Password))
+		}
+
+		mkdirCmd := sudoWrapper(fmt.Sprintf("mkdir -p %s", saveTempDir), execution.SourceClient.SSHTarget.Password)
+		if _, serr := execution.SourceClient.RunWithRetry(mkdirCmd); serr != nil {
+			return fmt.Errorf("mkdir failed: %v", serr)
+		}
+
+		var saveCmdStr string
+		if sourceRuntime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+			saveCmdStr = fmt.Sprintf("%s save --format oci-archive -o %s %s", sourceRuntime, tarPath, imageRef)
+		} else {
+			saveCmdStr = fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, imageRef)
+		}
+		saveCmd := sudoWrapper(saveCmdStr, execution.SourceClient.SSHTarget.Password)
+
+		if _, serr := execution.SourceClient.RunWithRetry(saveCmd); serr != nil {
+			// save 실패 시 commit으로 스냅샷 후 재시도
+			migrationLogger.Printf(INFO, "save failed, trying commit fallback: %s\n", container.Name)
+
+			commitTag := fmt.Sprintf("grasshopper-snapshot-%s", container.Name)
+			commitCmd := sudoWrapper(fmt.Sprintf("%s commit %s %s", sourceRuntime, container.ContainerId, commitTag), execution.SourceClient.SSHTarget.Password)
+			if _, cerr := execution.SourceClient.RunWithRetry(commitCmd); cerr != nil {
+				cleanup()
+				return fmt.Errorf("commit failed: %v", cerr)
+			}
+
+			saveCmd2 := sudoWrapper(fmt.Sprintf("%s save -o %s %s", sourceRuntime, tarPath, commitTag), execution.SourceClient.SSHTarget.Password)
+			if _, serr2 := execution.SourceClient.RunWithRetry(saveCmd2); serr2 != nil {
+				cleanup()
+				return fmt.Errorf("save after commit failed: %v", serr2)
+			}
+
+			_, _ = execution.SourceClient.RunWithRetry(sudoWrapper(fmt.Sprintf("%s rmi %s", sourceRuntime, commitTag), execution.SourceClient.SSHTarget.Password))
+		}
+
+		if terr := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, saveTempDir, execution.ExecutionID, migrationLogger); terr != nil {
+			cleanup()
+			return fmt.Errorf("transfer failed: %v", terr)
+		}
+
+		loadCmd := sudoWrapper(fmt.Sprintf("%s load -i %s", runtime, tarPath), execution.TargetClient.SSHTarget.Password)
+		out, lerr := execution.TargetClient.RunWithRetry(loadCmd)
+		if lerr != nil {
+			migrationLogger.Printf(INFO, "load failed: %s\n", lerr.Error())
+			cleanup()
+			return fmt.Errorf("load failed: %v", lerr)
+		}
+
+		migrationLogger.Printf(INFO, "load success: %s\n", out)
+		outStr := string(out)
+		var loadedImage string
+		for _, line := range strings.Split(outStr, "\n") {
+			if strings.Contains(line, "Loaded image:") || strings.Contains(line, "Loaded image(s):") {
+				loadedImage = strings.TrimSpace(line)
+				loadedImage = strings.TrimPrefix(loadedImage, "Loaded image(s):")
+				loadedImage = strings.TrimPrefix(loadedImage, "Loaded image:")
+				loadedImage = strings.TrimSpace(loadedImage)
+				break
+			}
+		}
+		if loadedImage != "" {
+			tagCmd := sudoWrapper(fmt.Sprintf("%s tag %s %s", runtime, loadedImage, imageRef), execution.TargetClient.SSHTarget.Password)
+			if _, terr := execution.TargetClient.RunWithRetry(tagCmd); terr != nil {
+				migrationLogger.Printf(INFO, "tag failed (non-fatal): %s\n", terr.Error())
+			} else {
+				migrationLogger.Printf(INFO, "tag success: %s -> %s\n", loadedImage, imageRef)
+			}
+		} else {
+			migrationLogger.Printf(INFO, "could not parse loaded image name\n")
+		}
+
+		// SHA-256 image ID verification
+		sourceImageID := ""
+		sourceInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", sourceRuntime, imageRef), execution.SourceClient.SSHTarget.Password)
+		if srcOut, serr := execution.SourceClient.RunWithRetry(sourceInspectCmd); serr != nil {
+			// commit fallback 케이스 - 소스 이미지 없을 수 있음
+			migrationLogger.Printf(INFO, "source inspect failed (commit fallback case), skipping sha256 compare: %s\n", serr.Error())
+		} else {
+			sourceImageID = strings.TrimSpace(string(srcOut))
+		}
+
+		targetInspectCmd := sudoWrapper(fmt.Sprintf("%s inspect --format='{{.Id}}' %s", runtime, imageRef), execution.TargetClient.SSHTarget.Password)
+		tgtOut, terr := execution.TargetClient.RunWithRetry(targetInspectCmd)
+		if terr != nil {
+			migrationLogger.Printf(INFO, "target inspect failed, image may not exist: %s\n", terr.Error())
+			cleanup()
+			return fmt.Errorf("image not found on target after load: %v", terr)
+		}
+		targetImageID := strings.TrimSpace(string(tgtOut))
+		if sourceImageID != "" {
+			if sourceImageID != targetImageID {
+				migrationLogger.Printf(INFO, "sha256 mismatch: source=%s, target=%s\n", sourceImageID, targetImageID)
+				cleanup()
+				return fmt.Errorf("image sha256 mismatch: source=%s, target=%s", sourceImageID, targetImageID)
+			}
+			migrationLogger.Printf(INFO, "sha256 verified: %s\n", targetImageID)
+		} else {
+			migrationLogger.Printf(INFO, "target image exists (sha256 skipped, commit fallback): %s\n", targetImageID)
+		}
+
+		cleanup()
+	}
+
+	// 2. port validation
+	if err := listenPortsValidator(execution.SourceClient, execution.TargetClient, container.Name, migrationLogger); err != nil {
+		return err
+	}
+
+	// 3. copy docker compose
+	if container.DockerComposePath != "" {
+		baseDir := filepath.Dir(container.DockerComposePath) // => /home/ubuntu
+		dockerComposeFile := filepath.Base(container.DockerComposePath)
+
+		logger.Println(logger.INFO, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
+			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+			"ExecutionID="+execution.ExecutionID+", Info=Copying full directory: "+baseDir)
+
+		if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, baseDir, execution.ExecutionID, migrationLogger); err != nil {
+			return err
+		}
+
+		// 3-1 volume
+		for _, mount := range container.MountPaths {
+			hostPath := strings.Split(mount, ":")[0]
+			if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
+				return fmt.Errorf("failed to copy volume %s: %v", hostPath, err)
+			}
+		}
+
+		// 3-2 create compose network
+		if container.NetworkMode != "" && container.NetworkMode != "bridge" {
+			rmCmd := fmt.Sprintf("%s network rm %s || true", runtime, container.NetworkMode)
+			rmNetCmd := sudoWrapper(rmCmd, execution.TargetClient.SSHTarget.Password)
+			_, _ = execution.TargetClient.RunWithRetry(rmNetCmd)
+		}
+
+		var composeUpCmd string
+		if runtime == string(softwaremodel.SoftwareContainerRuntimeTypePodman) {
+			composeUpCmd = fmt.Sprintf("cd %s && podman-compose -f %s up -d", baseDir, dockerComposeFile)
+		} else {
+			composeUpCmd = fmt.Sprintf("cd %s && docker compose -f %s up -d", baseDir, dockerComposeFile)
+		}
+		composeCmd := sudoWrapper(composeUpCmd, execution.TargetClient.SSHTarget.Password)
+
+		if _, err := execution.TargetClient.RunWithRetry(composeCmd); err != nil {
+			migrationLogger.Printf(INFO, "compose up failed: %s\n", err.Error())
+			return err
+		}
+		migrationLogger.Printf(INFO, "compose up success: %s\n", container.Name)
+		return nil
+	}
+
+	// 4. generate network
+	if container.NetworkMode != "" && container.NetworkMode != "bridge" {
+		checkCmd := fmt.Sprintf("%s network ls --format '{{.Name}}' | grep -w %s", runtime, container.NetworkMode)
+		checkNetCmd := sudoWrapper(checkCmd, execution.TargetClient.SSHTarget.Password)
+
+		if _, err := execution.TargetClient.RunWithRetry(checkNetCmd); err != nil {
+			createCmd := fmt.Sprintf("%s network create %s", runtime, container.NetworkMode)
+			createNetCmd := sudoWrapper(createCmd, execution.TargetClient.SSHTarget.Password)
+
+			if _, cerr := execution.TargetClient.RunWithRetry(createNetCmd); cerr != nil {
+				return cerr
+			}
+		}
+	}
+
+	// 5. docker run
+	baseCmd := fmt.Sprintf("%s run -d --name %s", runtime, container.Name)
+
+	validatedPorts := make(map[int]bool)
+	for _, port := range container.ContainerPorts {
+		if port.HostPort > 0 && !validatedPorts[port.HostPort] {
+			baseCmd += fmt.Sprintf(" -p %d:%d/%s", port.HostPort, port.ContainerPort, port.Protocol)
+			validatedPorts[port.HostPort] = true
+		}
+	}
+
+	for _, mount := range container.MountPaths {
+		hostPath := strings.Split(mount, ":")[0]
+		if err := copyDirectoryWithChunks(execution.SourceClient, execution.TargetClient, hostPath, execution.ExecutionID, migrationLogger); err != nil {
+			return fmt.Errorf("failed to copy mount path %s: %v", hostPath, err)
+		}
+		baseCmd += fmt.Sprintf(" -v %s", mount)
+	}
+
+	for _, env := range container.Envs {
+		baseCmd += fmt.Sprintf(" -e %s=%s", env.Name, env.Value)
+	}
+	if container.NetworkMode != "" {
+		baseCmd += fmt.Sprintf(" --network %s", container.NetworkMode)
+	}
+	if container.RestartPolicy != "" {
+		baseCmd += fmt.Sprintf(" --restart %s", container.RestartPolicy)
+	}
+	baseCmd += " " + imageRef
+
+	runCmd := sudoWrapper(baseCmd, execution.TargetClient.SSHTarget.Password)
+	migrationLogger.Printf(INFO, "running container cmd: %s\n", runCmd)
+
+	if _, err := execution.TargetClient.RunWithRetry(runCmd); err != nil {
+		migrationLogger.Printf(INFO, "container run failed: %s\n", err.Error())
+		return err
+	}
+	migrationLogger.Printf(INFO, "container run success: %s\n", container.Name)
+	return nil
 }
