@@ -52,6 +52,33 @@ jobs:
           password: ${{ secrets.CM_SERVER_SSH_PASSWORD }}
           port: ${{ secrets.CM_SERVER_SSH_PORT }}
           script: |
+            set -e
+
+            # Ensure the RustFS object store (dependency of cm-grasshopper) is running.
+            RUSTFS_DATA_DIR=/var/lib/cm-grasshopper/rustfs_data
+            mkdir -p "$RUSTFS_DATA_DIR"
+            docker pull rustfs/rustfs:latest
+            docker rm -f cm-grasshopper-rustfs 2>/dev/null || true
+            docker run -d \
+              --name cm-grasshopper-rustfs \
+              --restart always \
+              --user 0:0 \
+              -p 19000:9000 \
+              -e RUSTFS_ACCESS_KEY=rustfsadmin \
+              -e RUSTFS_SECRET_KEY=rustfsadmin \
+              -e RUSTFS_VOLUMES=/data \
+              -e RUSTFS_ADDRESS=:9000 \
+              -v "$RUSTFS_DATA_DIR":/data \
+              rustfs/rustfs:latest
+
+            # Wait until RustFS is healthy before (re)starting cm-grasshopper.
+            for i in $(seq 1 30); do
+              if curl -s -o /dev/null http://127.0.0.1:19000/; then
+                break
+              fi
+              sleep 2
+            done
+
             systemctl stop cm-grasshopper
             mv -f /tmp/cm-grasshopper /usr/bin/cm-grasshopper
             systemctl start cm-grasshopper
