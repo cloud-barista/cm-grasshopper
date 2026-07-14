@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloud-barista/cm-grasshopper/dao"
@@ -261,6 +262,87 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 	return exList, targetMappings, nil
 }
 
+// migrationRetryCount is how many times each software's migration is attempted
+// before it is marked failed.
+const migrationRetryCount = 3
+
+// executionStatusMu serializes read-modify-write updates to the shared
+// ExecutionStatus row. Each target runs MigrateSoftware in its own goroutine, so
+// without this a goroutine that loaded the row early would overwrite sibling
+// targets' statuses with stale values on write-back (a lost update that left
+// finished targets stuck at "ready").
+var executionStatusMu sync.Mutex
+
+// setTargetMappingStatus re-reads the current ExecutionStatus, updates only this
+// execution's own target mapping, then writes it back under a lock so concurrent
+// target goroutines don't clobber each other's status.
+func setTargetMappingStatus(execution *Execution, status string, setFinishedAt bool) {
+	executionStatusMu.Lock()
+	defer executionStatusMu.Unlock()
+
+	executionStatus, err := dao.ExecutionStatusGet(execution.ExecutionID)
+	if err != nil {
+		logger.Println(logger.ERROR, true, "setTargetMappingStatus: ExecutionID="+execution.ExecutionID+
+			", NODE_ID="+execution.Target.NodeID+", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+			", Error=failed to get execution status: "+err.Error())
+		return
+	}
+
+	for i := range executionStatus.TargetMappings {
+		tm := &executionStatus.TargetMappings[i]
+		if tm.Target.NamespaceID == execution.Target.NamespaceID &&
+			tm.Target.InfraID == execution.Target.InfraID &&
+			tm.Target.NodeID == execution.Target.NodeID &&
+			tm.SourceConnectionInfoID == execution.SourceConnectionInfoID {
+			tm.Status = status
+			break
+		}
+	}
+
+	if setFinishedAt {
+		executionStatus.FinishedAt = time.Now()
+	}
+
+	if err := dao.ExecutionStatusUpdate(executionStatus); err != nil {
+		logger.Println(logger.ERROR, true, "setTargetMappingStatus: ExecutionID="+execution.ExecutionID+
+			", NODE_ID="+execution.Target.NodeID+", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+			", Error=failed to update execution status: "+err.Error())
+	}
+}
+
+// runItemWithRetry marks the item "installing", runs fn up to migrationRetryCount
+// times, and records the terminal status ("finished" or "failed") once. Retrying
+// the whole item — rather than flipping the per-target status on the first failed
+// attempt — keeps a later success from being reported as an error. Returns the
+// final error (nil on success).
+func runItemWithRetry(execution *Execution, ms *model.SoftwareMigrationStatus, exStatus *string,
+	migrationLogger *Logger, label string, fn func() error) error {
+	updateSoftwareInstallStatus(execution, exStatus, ms, "installing", "", true)
+
+	var err error
+	for attempt := 1; attempt <= migrationRetryCount; attempt++ {
+		if err = fn(); err == nil {
+			if attempt > 1 {
+				migrationLogger.Printf(INFO, "%s migration succeeded on attempt %d/%d\n", label, attempt, migrationRetryCount)
+			}
+			break
+		}
+		migrationLogger.Printf(WARN, "%s migration attempt %d/%d failed: %v\n", label, attempt, migrationRetryCount, err)
+	}
+
+	if err != nil {
+		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
+			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
+			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
+			", Software="+ms.SoftwareName+", Error="+err.Error())
+		updateSoftwareInstallStatus(execution, exStatus, ms, "failed", err.Error(), false)
+		return err
+	}
+
+	updateSoftwareInstallStatus(execution, exStatus, ms, "finished", "", false)
+	return nil
+}
+
 func updateSoftwareInstallStatus(execution *Execution, exStatus *string,
 	softwareMigrationStatus *model.SoftwareMigrationStatus, status string, errMsg string, updateStartedTime bool) {
 	if status == "failed" {
@@ -326,53 +408,16 @@ func getKubernetes(execution *Execution, packageMigrationStatus *model.SoftwareM
 
 func MigrateSoftware(execution *Execution) {
 	exStatus := "finished"
-	var idx int
+	var err error
 
-	executionStatus, err := dao.ExecutionStatusGet(execution.ExecutionID)
-	if err != nil {
-		logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-			", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-			", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-			", Error=failed to initialize executionStatus: "+err.Error())
-		return
-	}
-
-	for i, target := range executionStatus.TargetMappings {
-		if target.Target.NamespaceID == execution.Target.NamespaceID &&
-			target.Target.InfraID == execution.Target.InfraID &&
-			target.Target.NodeID == execution.Target.NodeID &&
-			target.SourceConnectionInfoID == execution.SourceConnectionInfoID {
-			idx = i
-
-			executionStatus.TargetMappings[idx].Status = "running"
-
-			err := dao.ExecutionStatusUpdate(executionStatus)
-			if err != nil {
-				logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-					", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-					", Error=failed to update execution status: "+err.Error())
-				return
-			}
-
-			break
-		}
-	}
+	// Mark this target running. setTargetMappingStatus re-reads and writes back
+	// under a lock so concurrent target goroutines don't clobber each other.
+	setTargetMappingStatus(execution, "running", false)
 
 	defer func() {
 		_ = execution.SourceClient.Close()
 		_ = execution.TargetClient.Close()
-		executionStatus.TargetMappings[idx].Status = exStatus
-		executionStatus.FinishedAt = time.Now()
-		err := dao.ExecutionStatusUpdate(executionStatus)
-		if err != nil {
-			logger.Println(logger.ERROR, true, "migrateSoftware: ExecutionID="+execution.ExecutionID+
-				", NS_ID="+execution.Target.NamespaceID+", INFRA_ID="+execution.Target.InfraID+", NODE_ID="+execution.Target.NodeID+
-				", SourceConnectionInfoID="+execution.SourceConnectionInfoID+
-				", Error=failed to update execution status: "+err.Error())
-		}
+		setTargetMappingStatus(execution, exStatus, true)
 	}()
 
 	// Cache system types once at the beginning
