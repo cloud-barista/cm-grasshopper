@@ -341,39 +341,83 @@ func resolveSourceUser(client *ssh.Client, binary *softwaremodel.BinaryMigration
 }
 
 // createBinaryUserOnTarget recreates the binary's owner (group then user) on the
-// target host, preserving the source UID/GID. Existing entries are left untouched.
-func createBinaryUserOnTarget(client *ssh.Client, info *binaryUserInfo, migrationLogger *Logger) error {
+// target host. It matches accounts by NAME, not by UID/GID number: the unit runs
+// as User=<name>, so the named account must exist even when the source's numeric
+// UID/GID collides with an unrelated account on the target base image (e.g. the
+// source's tomcat UID 998 maps to `lxd` on the Ubuntu cloud image — checking by
+// number alone wrongly "skipped" creation and left the unit unresolvable, failing
+// with systemd 217/USER). The source UID/GID is preferred but falls back to a
+// system-assigned one on collision, after which the copied paths (whose tarball
+// preserved the source numeric owner) are re-owned by name so they belong to the
+// runtime user regardless of the final numbers.
+func createBinaryUserOnTarget(client *ssh.Client, info *binaryUserInfo, ownedPaths []string, migrationLogger *Logger) error {
 	if info == nil || info.uname == "" {
 		return nil
 	}
 
-	// Group
-	if gout, _ := runSSHCommand(client, fmt.Sprintf("getent group %d", info.gid)); strings.TrimSpace(gout) == "" {
-		if out, err := runSSHCommand(client, fmt.Sprintf("groupadd -g %d %s", info.gid, info.gname)); err != nil {
-			migrationLogger.Printf(WARN, "Failed to create group %s (gid=%d): %s\n", info.gname, info.gid, out)
+	// Group: reuse an existing group with the same name, else create it preferring
+	// the source GID and falling back to a system-assigned GID when it is taken.
+	if gout, _ := runSSHCommand(client, fmt.Sprintf("getent group %s", info.gname)); strings.TrimSpace(gout) != "" {
+		migrationLogger.Printf(INFO, "Group %s already exists on target, reusing\n", info.gname)
+	} else if out, err := runSSHCommand(client, fmt.Sprintf("groupadd -g %d %s", info.gid, info.gname)); err != nil {
+		migrationLogger.Printf(WARN, "groupadd -g %d %s failed (%s); retrying with a system-assigned GID\n",
+			info.gid, info.gname, strings.TrimSpace(out))
+		if out2, err2 := runSSHCommand(client, fmt.Sprintf("groupadd %s", info.gname)); err2 != nil {
+			migrationLogger.Printf(WARN, "Failed to create group %s: %s\n", info.gname, strings.TrimSpace(out2))
 		} else {
-			migrationLogger.Printf(INFO, "Created group %s (gid=%d)\n", info.gname, info.gid)
+			migrationLogger.Printf(INFO, "Created group %s (system-assigned GID)\n", info.gname)
 		}
 	} else {
-		migrationLogger.Printf(INFO, "Group with GID %d already exists on target, skipping groupadd\n", info.gid)
+		migrationLogger.Printf(INFO, "Created group %s (gid=%d)\n", info.gname, info.gid)
 	}
 
-	// User
-	if uout, _ := runSSHCommand(client, fmt.Sprintf("getent passwd %d", info.uid)); strings.TrimSpace(uout) == "" {
-		useraddCmd := fmt.Sprintf("useradd -m -u %d -g %d -d %s -s %s %s",
-			info.uid, info.gid, info.home, info.shell, info.uname)
-		if out, err := runSSHCommand(client, useraddCmd); err != nil {
-			// useradd may exit non-zero on warnings (e.g. home already exists).
-			// Treat it as fatal only if the user really was not created.
-			if recheck, _ := runSSHCommand(client, fmt.Sprintf("getent passwd %d", info.uid)); strings.TrimSpace(recheck) == "" {
-				return fmt.Errorf("failed to create user %s (uid=%d): %s", info.uname, info.uid, out)
+	// Resolve the group's effective GID (whatever it ended up being) for useradd -g.
+	effectiveGID := info.gid
+	if gline, _ := runSSHCommand(client, fmt.Sprintf("getent group %s", info.gname)); strings.TrimSpace(gline) != "" {
+		parts := strings.Split(strings.TrimSpace(gline), ":")
+		if len(parts) >= 3 {
+			if g, gerr := strconv.Atoi(parts[2]); gerr == nil {
+				effectiveGID = int32(g)
 			}
-			migrationLogger.Printf(WARN, "useradd reported a warning for %s: %s\n", info.uname, out)
 		}
-		migrationLogger.Printf(INFO, "Created user %s (uid=%d, gid=%d, home=%s, shell=%s)\n",
-			info.uname, info.uid, info.gid, info.home, info.shell)
+	}
+
+	// User: reuse an existing user with the same name, else create it preferring the
+	// source UID and falling back to a system-assigned UID when it is taken.
+	if uout, _ := runSSHCommand(client, fmt.Sprintf("getent passwd %s", info.uname)); strings.TrimSpace(uout) != "" {
+		migrationLogger.Printf(INFO, "User %s already exists on target, reusing\n", info.uname)
 	} else {
-		migrationLogger.Printf(INFO, "User with UID %d already exists on target, skipping useradd\n", info.uid)
+		// -M: do not create/populate a home dir; the binary path was already copied.
+		useraddCmd := fmt.Sprintf("useradd -M -u %d -g %d -d %s -s %s %s",
+			info.uid, effectiveGID, info.home, info.shell, info.uname)
+		if out, err := runSSHCommand(client, useraddCmd); err != nil {
+			migrationLogger.Printf(WARN, "useradd with UID %d for %s failed (%s); retrying with a system-assigned UID\n",
+				info.uid, info.uname, strings.TrimSpace(out))
+			retryCmd := fmt.Sprintf("useradd -M -g %d -d %s -s %s %s",
+				effectiveGID, info.home, info.shell, info.uname)
+			if out2, err2 := runSSHCommand(client, retryCmd); err2 != nil {
+				if recheck, _ := runSSHCommand(client, fmt.Sprintf("getent passwd %s", info.uname)); strings.TrimSpace(recheck) == "" {
+					return fmt.Errorf("failed to create user %s: %s", info.uname, strings.TrimSpace(out2))
+				}
+			}
+			migrationLogger.Printf(INFO, "Created user %s (system-assigned UID, gid=%d)\n", info.uname, effectiveGID)
+		} else {
+			migrationLogger.Printf(INFO, "Created user %s (uid=%d, gid=%d, home=%s, shell=%s)\n",
+				info.uname, info.uid, effectiveGID, info.home, info.shell)
+		}
+	}
+
+	// Re-own the application's own paths (install root + data dirs) to the runtime
+	// user by NAME. The tarball preserved the source's numeric UID/GID, which may map
+	// to an unrelated account on the target, so this guarantees the service user
+	// actually owns its files. Shared dependency paths are intentionally excluded.
+	for _, path := range ownedPaths {
+		if strings.TrimSpace(path) == "" {
+			continue
+		}
+		if out, err := runSSHCommand(client, fmt.Sprintf("chown -R %s:%s '%s'", info.uname, info.gname, path)); err != nil {
+			migrationLogger.Printf(WARN, "Failed to chown %s to %s:%s: %s\n", path, info.uname, info.gname, strings.TrimSpace(out))
+		}
 	}
 
 	return nil
@@ -785,6 +829,10 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 	// Tracks paths already transferred to avoid re-copying nested configs/data.
 	copiedPaths := make(map[string]bool)
 
+	// The application's own paths (install root + data dirs) that should be owned by
+	// the runtime user. Shared dependency paths are excluded on purpose.
+	var ownedPaths []string
+
 	// A source-built app under /opt or /usr/local (e.g. Apache at
 	// /usr/local/apache2) is copied as a whole prefix so apachectl, the loadable
 	// modules, the SONAME symlinks and the port-adjusted config all come along.
@@ -842,6 +890,7 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 				return fmt.Errorf("failed to copy binary path %s: %v", copyTarget, err)
 			}
 			copiedPaths[copyTarget] = true
+			ownedPaths = append(ownedPaths, copyTarget)
 		}
 	}
 
@@ -887,11 +936,12 @@ func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremode
 			return fmt.Errorf("failed to copy data path %s: %v", dataPath, err)
 		}
 		copiedPaths[dataPath] = true
+		ownedPaths = append(ownedPaths, dataPath)
 	}
 
 	// 5. Recreate the owning user/group on the target (non-fatal on failure).
 	userInfo := resolveSourceUser(sourceClient, binary, migrationLogger)
-	if err := createBinaryUserOnTarget(targetClient, userInfo, migrationLogger); err != nil {
+	if err := createBinaryUserOnTarget(targetClient, userInfo, ownedPaths, migrationLogger); err != nil {
 		migrationLogger.Printf(WARN, "User creation issue for %s: %v\n", binary.Name, err)
 	}
 
