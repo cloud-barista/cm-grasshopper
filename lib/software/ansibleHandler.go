@@ -443,6 +443,12 @@ func runPlaybook(executionID string, playbookName string, softwareName string, s
 	if err != nil {
 		errMsg := "ANSIBLE: Failed to run the playbook. (ID: " + playbookName + ", Error: " + err.Error() + ")"
 		logger.Logger.Println(logger.ERROR, true, errMsg)
+		// Propagate the failure so the caller marks the software "failed" at the
+		// install step with the real reason. Swallowing it here let broken
+		// installs proceed to config/service migration, which then failed later
+		// at a misleading point (e.g. "failed to start service: Unit not found"
+		// because the package was never actually installed). See install.go.
+		return fmt.Errorf("failed to install %s: ansible-playbook exited with error: %w", softwareName, err)
 	}
 
 	return nil
