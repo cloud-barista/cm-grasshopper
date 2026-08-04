@@ -75,14 +75,40 @@ func getNodeId(sourceConnectionInfoID, nsID, infraID string) (string, error) {
 	}
 
 	for _, node := range tbInfraInfo.Node {
-		// cm-beetle - v0.3.7
-		// https://github.com/cloud-barista/cm-beetle/commit/94e030cba5cf2dcdc055240ec5e46d24666da06d
-		if node.Label["sourceMachineId"] == machineid {
+		// cm-beetle stamps the source machine id onto the target node as a label.
+		// The label KEY differs by recommendation path:
+		//   - "sourceMachineId"  (vm-infra path):        a single id
+		//   - "sourceMachineIds" (infra-with-nlb path):  one id, or a comma-joined
+		//                                                 list for an NLB backend group
+		// Match either key (and any member of the comma list) so migration works no
+		// matter which path provisioned the target. Matching only the singular key
+		// made whole-infra migrations created via the NLB path fail with
+		// "can't find matched target node". (cm-beetle v0.3.7, commit 94e030c)
+		if nodeLabelMatchesMachineID(node.Label, machineid) {
 			return node.Id, nil
 		}
 	}
 
 	return "", errors.New("can't find matched target node")
+}
+
+// nodeLabelMatchesMachineID reports whether a tumblebug node's labels identify it
+// as the target for the given source machine id, tolerating both the singular
+// ("sourceMachineId") and plural, possibly comma-joined ("sourceMachineIds")
+// label keys that cm-beetle emits.
+func nodeLabelMatchesMachineID(label map[string]string, machineID string) bool {
+	if machineID == "" {
+		return false
+	}
+	if label["sourceMachineId"] == machineID {
+		return true
+	}
+	for _, id := range strings.Split(label["sourceMachineIds"], ",") {
+		if strings.TrimSpace(id) == machineID {
+			return true
+		}
+	}
+	return false
 }
 
 func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, infraId string) ([]Execution, []model.TargetMapping, error) {
