@@ -30,7 +30,33 @@ type Execution struct {
 	TargetClient           *ssh.Client
 }
 
-func getNodeId(sourceConnectionInfoID, nsID, infraID string) (string, error) {
+// getTumblebugInfra fetches the target infra from cb-tumblebug. Its
+// /ns/:nsId/infra/:infraId route is rate-limited (2 req/s) in cb-tumblebug, so it
+// must be fetched ONCE per migration and reused for every source server. Fetching
+// it per server made multi-server migrations trip the limiter, whose 429 body was
+// then silently parsed into an empty node list ("can't find matched target node").
+func getTumblebugInfra(nsID, infraID string) (*model.TBInfraInfo, error) {
+	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
+		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
+		"/tumblebug/ns/"+nsID+"/infra/"+infraID,
+		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	var tbInfraInfo model.TBInfraInfo
+	if err := json.Unmarshal(data, &tbInfraInfo); err != nil {
+		return nil, err
+	}
+
+	return &tbInfraInfo, nil
+}
+
+// getNodeId resolves the source server's machine id (via cm-honeybee) and matches
+// it against the already-fetched target infra's nodes. tbInfraInfo is passed in so
+// the rate-limited cb-tumblebug infra call happens only once per migration
+// regardless of the number of source servers.
+func getNodeId(tbInfraInfo *model.TBInfraInfo, sourceConnectionInfoID string) (string, error) {
 	data, err := common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerAddress+
 		":"+config.CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort+
 		"/honeybee/connection_info/"+sourceConnectionInfoID, "", "")
@@ -59,20 +85,6 @@ func getNodeId(sourceConnectionInfoID, nsID, infraID string) (string, error) {
 	}
 
 	machineid := infraInfo.Compute.OS.Node.Machineid
-
-	data, err = common.GetHTTPRequest("http://"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerAddress+
-		":"+config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort+
-		"/tumblebug/ns/"+nsID+"/infra/"+infraID,
-		config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username, config.CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password)
-	if err != nil {
-		return "", err
-	}
-
-	var tbInfraInfo model.TBInfraInfo
-	err = json.Unmarshal(data, &tbInfraInfo)
-	if err != nil {
-		return "", err
-	}
 
 	for _, node := range tbInfraInfo.Node {
 		// cm-beetle stamps the source machine id onto the target node as a label.
@@ -120,6 +132,15 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 	var exList = make([]Execution, 0)
 	var targetMappings []model.TargetMapping
 
+	// The target infra is identical for every source server, and cb-tumblebug
+	// rate-limits its /infra/:infraId route (2 req/s). Fetch it once up front and
+	// reuse it for all node matching instead of re-fetching per server (which tripped
+	// the limiter and surfaced as "can't find matched target node").
+	tbInfraInfo, err := getTumblebugInfra(nsId, infraId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get target infra: %v", err)
+	}
+
 	for _, server := range targetServers {
 		var softwareMigrationStatusList []model.SoftwareMigrationStatus
 
@@ -128,7 +149,7 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			return nil, nil, fmt.Errorf("failed to connect to source host: %v", err)
 		}
 
-		nodeId, err := getNodeId(server.SourceConnectionInfoID, nsId, infraId)
+		nodeId, err := getNodeId(tbInfraInfo, server.SourceConnectionInfoID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get node ID: %v", err)
 		}
