@@ -456,21 +456,12 @@ velero 백업/복원 로직을 구현·검증하는 사람이 이 kubeconfig 해
       password: <TB 비밀번호>
   ```
 - 실행 환경(컨테이너/로컬)에 **`sh` + `curl`(7.52 이상) + `jq`** 존재. 컨테이너는 이미 Dockerfile 에 포함됨. **로컬 바이너리로 직접 돌릴 때는 `jq` 를 별도 설치**해야 EKS/GKE/NCP 가 동작함. `curl` 7.52 미만은 broker-exec 의 재시도 옵션(`--retry-connrefused`)을 인식하지 못함.
-- **로컬 바이너리 실행 시 추가 전제조건.** 아래가 없으면 기동 중 panic 으로 종료됩니다(`cmd/cm-grasshopper/main.go`).
+- **software migration 의존성은 선택 사항.** 아래가 없어도 기동은 계속되며(경고만 남김), 해당 항목이 없으면 software migration 만 사용할 수 없습니다. k8s 마이그레이션만 쓰는 배포는 별도 설정 없이 그대로 동작합니다.
 
   | 항목 | 없을 때 |
   |---|---|
-  | `ansible-playbook` | `'ansible-playbook' command not found please install Ansible` |
-  | `<RootPath>/honeybee.key` | `Honeybee's private key not found` |
-
-  k8s 마이그레이션만 쓸 경우 설정에서 software migration 을 꺼서 두 검사를 건너뛸 수 있습니다.
-
-  ```yaml
-  cm-grasshopper:
-      features:
-          software_migration: false
-          k8s_migration: true
-  ```
+  | `ansible-playbook` | 경고 로그 후 계속, software migration 비활성 |
+  | `<RootPath>/honeybee.key` | 경고 로그 후 계속, software migration 비활성 |
 
 - 설정 파일은 **바이너리 옆 `conf/` 가 1순위**이고 `~/.cm-grasshopper/conf` 는 폴백입니다. 기동 로그의 `Loaded config: <path>` 로 실제 로드된 파일을 확인하세요.
 - 실행 환경에서 **cb-tumblebug 와 대상 클러스터 API 서버, S3 엔드포인트** 에 네트워크 도달 가능해야 함.

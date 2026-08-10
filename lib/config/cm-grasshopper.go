@@ -20,12 +20,6 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
-		// Features toggles the two migration subsystems. Pointers so that an absent flag is
-		// distinguishable from an explicit false and keeps both enabled.
-		Features struct {
-			SoftwareMigration *bool `yaml:"software_migration"`
-			K8sMigration      *bool `yaml:"k8s_migration"`
-		} `yaml:"features"`
 		Software struct {
 			TempFolder string `yaml:"temp_folder"`
 			LogFolder  string `yaml:"log_folder"`
@@ -56,18 +50,6 @@ type cmGrasshopperConfig struct {
 var CMGrasshopperConfig cmGrasshopperConfig
 var cmGrasshopperConfigFile = "cm-grasshopper.yaml"
 
-func SoftwareMigrationEnabled() bool {
-	return enabled(CMGrasshopperConfig.CMGrasshopper.Features.SoftwareMigration)
-}
-
-func K8sMigrationEnabled() bool {
-	return enabled(CMGrasshopperConfig.CMGrasshopper.Features.K8sMigration)
-}
-
-func enabled(flag *bool) bool {
-	return flag == nil || *flag
-}
-
 func checkCMGrasshopperConfigFile() error {
 	if CMGrasshopperConfig.CMGrasshopper.Listen.Port == "" {
 		return errors.New("config error: cm-grasshopper.listen.port is empty")
@@ -77,10 +59,8 @@ func checkCMGrasshopperConfigFile() error {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
 	}
 
-	if SoftwareMigrationEnabled() {
-		if err := checkSoftwareMigrationConfig(); err != nil {
-			return err
-		}
+	if err := checkSoftwareMigrationConfig(); err != nil {
+		return err
 	}
 
 	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
@@ -91,17 +71,15 @@ func checkCMGrasshopperConfigFile() error {
 		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort has invalid value")
 	}
 
-	if K8sMigrationEnabled() {
-		if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
-			return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
-		}
-		if CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder == "" {
-			return errors.New("config error: cm-grasshopper.k8s.job_log_folder is empty")
-		}
-		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder) {
-			return errors.New("config error: cm-grasshopper.k8s.job_log_folder (" +
-				CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder + ") is not exist")
-		}
+	if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
+		return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
+	}
+	if CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder == "" {
+		return errors.New("config error: cm-grasshopper.k8s.job_log_folder is empty")
+	}
+	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder) {
+		return errors.New("config error: cm-grasshopper.k8s.job_log_folder (" +
+			CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder + ") is not exist")
 	}
 
 	return nil

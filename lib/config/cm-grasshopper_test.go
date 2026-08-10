@@ -2,68 +2,18 @@ package config
 
 import (
 	"testing"
-
-	"gopkg.in/yaml.v3"
 )
 
-// Existing deployments have no features block. Their behaviour must not change on upgrade,
-// so an absent flag means enabled.
-func TestFeatureFlagsDefaultToEnabled(t *testing.T) {
-	restore := swapConfig(t)
-	defer restore()
-
-	if err := yaml.Unmarshal([]byte("cm-grasshopper:\n    listen:\n        port: \"8084\"\n"), &CMGrasshopperConfig); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
-	if !SoftwareMigrationEnabled() {
-		t.Error("software migration must default to enabled")
-	}
-	if !K8sMigrationEnabled() {
-		t.Error("k8s migration must default to enabled")
-	}
-}
-
-func TestFeatureFlagsHonourExplicitFalse(t *testing.T) {
-	restore := swapConfig(t)
-	defer restore()
-
-	raw := "cm-grasshopper:\n    features:\n        software_migration: false\n        k8s_migration: true\n"
-	if err := yaml.Unmarshal([]byte(raw), &CMGrasshopperConfig); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
-	if SoftwareMigrationEnabled() {
-		t.Error("software_migration: false must disable software migration")
-	}
-	if !K8sMigrationEnabled() {
-		t.Error("k8s_migration: true must keep k8s migration enabled")
-	}
-}
-
-// A k8s-only deployment has no ansible playbooks and no software folders. Validating them
-// anyway is what made the process refuse to start.
-func TestCheckConfig_SkipsSoftwarePathsWhenDisabled(t *testing.T) {
-	restore := swapConfig(t)
-	defer restore()
-
-	fillValidK8sConfig(t)
-	disabled := false
-	CMGrasshopperConfig.CMGrasshopper.Features.SoftwareMigration = &disabled
-
-	if err := checkCMGrasshopperConfigFile(); err != nil {
-		t.Errorf("software paths must not be validated when software migration is off: %v", err)
-	}
-}
-
-func TestCheckConfig_ValidatesSoftwarePathsWhenEnabled(t *testing.T) {
+// Software and k8s config are always validated (both subsystems are always enabled).
+// A missing software temp_folder must be reported.
+func TestCheckConfig_ValidatesSoftwarePaths(t *testing.T) {
 	restore := swapConfig(t)
 	defer restore()
 
 	fillValidK8sConfig(t)
 
 	if err := checkCMGrasshopperConfigFile(); err == nil {
-		t.Error("expected the missing software temp_folder to be reported while enabled")
+		t.Error("expected the missing software temp_folder to be reported")
 	}
 }
 

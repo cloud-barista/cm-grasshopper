@@ -63,13 +63,9 @@ func New() *echo.Echo {
 	// Hide Echo Banner
 	e.HideBanner = true
 
-	if config.SoftwareMigrationEnabled() {
-		route.Software(e)
-	}
-	if config.K8sMigrationEnabled() {
-		route.Job(e)
-		route.Velero(e)
-	}
+	route.Software(e)
+	route.Job(e)
+	route.Velero(e)
 	route.RegisterSwagger(e)
 	route.RegisterUtility(e)
 

@@ -40,11 +40,6 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
   - Configuration options
     - listen
       - port : Listen port of the API.
-    - features
-      - software_migration: Enable software migration. Defaults to true when omitted.
-        Turning it off skips the Ansible and Honeybee key checks at startup along with the
-        software API routes, which is what a k8s-migration-only deployment wants.
-      - k8s_migration: Enable Kubernetes migration. Defaults to true when omitted.
     - software
       - temp_folder: Temporary folder while running software migration. (Used for copying Ansible playbook files.)
       - log_folder: Log folder used for logging software installation and migration.
@@ -63,9 +58,6 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
     cm-grasshopper:
         listen:
             port: 8084
-        features:
-            software_migration: true
-            k8s_migration: true
     software:
         temp_folder: ./software_temp
         log_folder: ./software_log

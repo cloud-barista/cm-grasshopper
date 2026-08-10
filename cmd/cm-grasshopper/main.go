@@ -80,23 +80,19 @@ func main() {
 		logger.Panicln(logger.ERROR, true, err.Error())
 	}
 
-	if config.SoftwareMigrationEnabled() {
-		controller.SetOkMessage("Software migration dependencies are not ready")
-		if err := initSoftwareMigrationDependencies(); err != nil {
-			logger.Panicln(logger.ERROR, true, err.Error())
-		}
-	} else {
-		logger.Println(logger.INFO, false,
-			"Software migration is disabled; skipping Ansible and Honeybee key checks")
+	// Software migration dependencies (Ansible, Honeybee key) are optional at
+	// startup: a deployment that only runs k8s migration need not install them.
+	// Warn and continue instead of aborting; the software migration endpoints fail
+	// with a clear error if they are actually used without these dependencies.
+	controller.SetOkMessage("Checking software migration dependencies")
+	if err := initSoftwareMigrationDependencies(); err != nil {
+		logger.Println(logger.WARN, true,
+			"Software migration dependencies are not ready, software migration will be unavailable: "+err.Error())
 	}
 
-	if config.K8sMigrationEnabled() {
-		controller.SetOkMessage("K8s migration dependencies are not ready")
-		if err := initK8sMigrationDependencies(); err != nil {
-			logger.Panicln(logger.ERROR, true, err.Error())
-		}
-	} else {
-		logger.Println(logger.INFO, false, "K8s migration is disabled")
+	controller.SetOkMessage("K8s migration dependencies are not ready")
+	if err := initK8sMigrationDependencies(); err != nil {
+		logger.Panicln(logger.ERROR, true, err.Error())
 	}
 
 	controller.SetOkMessage("CM-Grasshopper API server is ready")
