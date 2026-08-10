@@ -106,9 +106,12 @@ func NewS3Client(s3Access *commonmodel.S3Access) (*minio.Client, error) {
 		return nil, err
 	}
 
+	// Pin the region velero will use. minio-go otherwise probes it and succeeds against
+	// stores that reject velero, hiding the misconfiguration until the BSL goes Unavailable.
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:        credentials.NewStaticV4(s3Access.AccessKey, s3Access.SecretKey, ""),
 		Secure:       useSSL,
+		Region:       k8scommon.DefaultS3Region(s3Access),
 		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {

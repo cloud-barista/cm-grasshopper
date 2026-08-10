@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,6 +31,9 @@ const (
 	veleroChartURL         = "https://github.com/vmware-tanzu/helm-charts/releases/download/velero-12.0.0/velero-12.0.0.tgz"
 	veleroChartVersion     = "12.0.0"
 	veleroImageTag         = "v1.18.0"
+
+	veleroBSLName               = "default"
+	veleroCredentialsSecretName = "cloud-credentials"
 )
 
 type InstallResult struct {
@@ -124,36 +128,125 @@ func (v *VeleroInstaller) ensureNamespace(ctx context.Context, clientset *kubern
 }
 
 func (v *VeleroInstaller) ensureSecret(ctx context.Context, clientset *kubernetes.Clientset, namespace string, s3Access *commonmodel.S3Access, force bool) error {
-	secretName := "cloud-credentials"
+	desired := buildCloudCredentials(s3Access)
+	secrets := clientset.CoreV1().Secrets(namespace)
 
 	if force {
-		_ = clientset.CoreV1().Secrets(namespace).Delete(ctx, secretName, metav1.DeleteOptions{})
+		_ = secrets.Delete(ctx, veleroCredentialsSecretName, metav1.DeleteOptions{})
 	}
 
-	_, err := clientset.CoreV1().Secrets(namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if err == nil {
-		return nil
-	}
-	if !apierrors.IsNotFound(err) {
+	existing, err := secrets.Get(ctx, veleroCredentialsSecretName, metav1.GetOptions{})
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+
+		_, err = secrets.Create(ctx, &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      veleroCredentialsSecretName,
+				Namespace: namespace,
+			},
+			StringData: map[string]string{"cloud": desired},
+		}, metav1.CreateOptions{})
+
 		return err
 	}
 
-	secret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
-		},
-		StringData: map[string]string{
-			"cloud": fmt.Sprintf(`[default]
-aws_access_key_id=%s
-aws_secret_access_key=%s
-region=default
-`, s3Access.AccessKey, s3Access.SecretKey),
-		},
+	if !cloudCredentialsChanged(existing, desired) {
+		return nil
 	}
 
-	_, err = clientset.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
+	updated := existing.DeepCopy()
+	updated.StringData = map[string]string{"cloud": desired}
+	delete(updated.Data, "cloud")
+	_, err = secrets.Update(ctx, updated, metav1.UpdateOptions{})
+
 	return err
+}
+
+// buildCloudCredentials renders the AWS-style credentials file velero's aws plugin reads.
+func buildCloudCredentials(s3Access *commonmodel.S3Access) string {
+	return fmt.Sprintf(`[default]
+aws_access_key_id=%s
+aws_secret_access_key=%s
+region=%s
+`, s3Access.AccessKey, s3Access.SecretKey, k8scommon.DefaultS3Region(s3Access))
+}
+
+func toValuesMap(config map[string]string) map[string]interface{} {
+	values := make(map[string]interface{}, len(config))
+	for k, v := range config {
+		values[k] = v
+	}
+
+	return values
+}
+
+// buildBSLConfig renders the BackupStorageLocation spec.config block. Both the Helm values
+// and the controller-runtime path go through here so the two cannot drift apart.
+func buildBSLConfig(s3Access *commonmodel.S3Access) (map[string]string, error) {
+	s3URL, err := k8scommon.BuildS3URL(s3Access)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		"region":           k8scommon.DefaultS3Region(s3Access),
+		"s3Url":            s3URL,
+		"s3ForcePathStyle": "true",
+	}, nil
+}
+
+// buildBSLSpec renders the BackupStorageLocation the install should converge on.
+func buildBSLSpec(s3Access *commonmodel.S3Access) (velerov1.BackupStorageLocationSpec, error) {
+	config, err := buildBSLConfig(s3Access)
+	if err != nil {
+		return velerov1.BackupStorageLocationSpec{}, err
+	}
+
+	return velerov1.BackupStorageLocationSpec{
+		Provider: "aws",
+		StorageType: velerov1.StorageType{
+			ObjectStorage: &velerov1.ObjectStorageLocation{
+				Bucket: k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket),
+				Prefix: k8scommon.DefaultS3Prefix(s3Access),
+			},
+		},
+		Config: config,
+		Credential: &v1.SecretKeySelector{
+			LocalObjectReference: v1.LocalObjectReference{Name: veleroCredentialsSecretName},
+			Key:                  "cloud",
+		},
+		Default: true,
+	}, nil
+}
+
+func bslNeedsUpdate(existing *velerov1.BackupStorageLocation, desired velerov1.BackupStorageLocationSpec) bool {
+	if existing == nil {
+		return true
+	}
+
+	current := existing.Spec
+	if current.Provider != desired.Provider || current.Default != desired.Default {
+		return true
+	}
+	if current.ObjectStorage == nil || desired.ObjectStorage == nil {
+		return current.ObjectStorage != desired.ObjectStorage
+	}
+	if current.ObjectStorage.Bucket != desired.ObjectStorage.Bucket ||
+		current.ObjectStorage.Prefix != desired.ObjectStorage.Prefix {
+		return true
+	}
+
+	return !maps.Equal(current.Config, desired.Config)
+}
+
+func cloudCredentialsChanged(existing *v1.Secret, desired string) bool {
+	if existing == nil {
+		return true
+	}
+
+	return string(existing.Data["cloud"]) != desired
 }
 
 func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configuration, namespace string, s3Access *commonmodel.S3Access, force bool, volumeBackupMode string) error {
@@ -200,10 +293,14 @@ func (v *VeleroInstaller) installOrUpgradeChart(actionConfig *action.Configurati
 }
 
 func buildVeleroValues(s3Access *commonmodel.S3Access, volumeBackupMode string) map[string]interface{} {
-	s3URL, err := k8scommon.BuildS3URL(s3Access)
+	bslConfig, err := buildBSLConfig(s3Access)
 	if err != nil {
 		// Validation runs before installer execution, so this fallback is defensive only.
-		s3URL = fmt.Sprintf("http://%s", strings.TrimSuffix(s3Access.Endpoint, "/"))
+		bslConfig = map[string]string{
+			"region":           k8scommon.DefaultS3Region(s3Access),
+			"s3Url":            fmt.Sprintf("http://%s", strings.TrimSuffix(s3Access.Endpoint, "/")),
+			"s3ForcePathStyle": "true",
+		}
 	}
 	bucketName := k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket)
 	if volumeBackupMode == "" {
@@ -238,14 +335,11 @@ func buildVeleroValues(s3Access *commonmodel.S3Access, volumeBackupMode string) 
 			"features": features,
 			"backupStorageLocation": []interface{}{
 				map[string]interface{}{
-					"name":     "default",
+					"name":     veleroBSLName,
 					"provider": "aws",
 					"bucket":   bucketName,
-					"config": map[string]interface{}{
-						"region":           "default",
-						"s3Url":            s3URL,
-						"s3ForcePathStyle": "true",
-					},
+					"prefix":   k8scommon.DefaultS3Prefix(s3Access),
+					"config":   toValuesMap(bslConfig),
 					"credential": map[string]interface{}{
 						"name": "cloud-credentials",
 						"key":  "cloud",
@@ -316,53 +410,46 @@ func (v *VeleroInstaller) waitForDeploymentReady(ctx context.Context, clientset 
 	return fmt.Errorf("timed out waiting for velero deployment readiness")
 }
 
+// ensureBackupStorageLocation converges the BackupStorageLocation on buildBSLSpec. The Helm
+// chart renders the same location, so an install that skipped an update here used to leave
+// whichever spec happened to be applied first - which is how source and target ended up
+// pointing at different bucket prefixes.
 func (v *VeleroInstaller) ensureBackupStorageLocation(ctx context.Context, controllerClient ctrlclient.Client, namespace string, s3Access *commonmodel.S3Access, force bool) error {
-	s3URL, err := k8scommon.BuildS3URL(s3Access)
+	desired, err := buildBSLSpec(s3Access)
 	if err != nil {
 		return err
 	}
-	bucketName := k8scommon.DefaultS3Bucket(s3Access, DefaultVeleroBucket)
 
-	key := ctrlclient.ObjectKey{Namespace: namespace, Name: "default"}
+	key := ctrlclient.ObjectKey{Namespace: namespace, Name: veleroBSLName}
 	existing := &velerov1.BackupStorageLocation{}
 	err = controllerClient.Get(ctx, key, existing)
-	if err == nil && !force {
-		return nil
-	}
-	if err == nil && force {
-		if delErr := controllerClient.Delete(ctx, existing); delErr != nil {
-			return delErr
-		}
-	}
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 
-	bsl := &velerov1.BackupStorageLocation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: namespace,
-		},
-		Spec: velerov1.BackupStorageLocationSpec{
-			Provider: "aws",
-			StorageType: velerov1.StorageType{
-				ObjectStorage: &velerov1.ObjectStorageLocation{
-					Bucket: bucketName,
-					Prefix: "backups",
-				},
-			},
-			Config: map[string]string{
-				"region":           "default",
-				"s3Url":            s3URL,
-				"s3ForcePathStyle": "true",
-			},
-			Credential: &v1.SecretKeySelector{
-				LocalObjectReference: v1.LocalObjectReference{Name: "cloud-credentials"},
-				Key:                  "cloud",
-			},
-			Default: true,
-		},
+	if err == nil && force {
+		if delErr := controllerClient.Delete(ctx, existing); delErr != nil {
+			return delErr
+		}
+		err = apierrors.NewNotFound(velerov1.Resource("backupstoragelocations"), veleroBSLName)
 	}
 
-	return controllerClient.Create(ctx, bsl)
+	if apierrors.IsNotFound(err) {
+		return controllerClient.Create(ctx, &velerov1.BackupStorageLocation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      veleroBSLName,
+				Namespace: namespace,
+			},
+			Spec: desired,
+		})
+	}
+
+	if !bslNeedsUpdate(existing, desired) {
+		return nil
+	}
+
+	updated := existing.DeepCopy()
+	updated.Spec = desired
+
+	return controllerClient.Update(ctx, updated)
 }

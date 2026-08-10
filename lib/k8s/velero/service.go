@@ -552,6 +552,11 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmode
 		}
 		updateJobProgressSafe(job.JobID, 65, fmt.Sprintf("Backup %s completed with phase %s", backupName, backup.Status.Phase))
 
+		if locationErr := s.checkBackupLocations(ctx, sourceCluster, targetCluster); locationErr != nil {
+			_ = joblib.DefaultManager.FailJob(job.JobID, locationErr)
+			return
+		}
+
 		updateJobProgressSafe(job.JobID, 70, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
 		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
 		if waitSyncErr := s.waitForBackupSync(ctx, targetCluster, backupName, job.JobID, 72); waitSyncErr != nil {
@@ -1149,7 +1154,7 @@ func assessSnapshotCompatibility(
 	return result, warnings, errors, nil
 }
 
-func collectPVCProvisioners(ctx context.Context, clientset *kubernetes.Clientset, namespaces []string) (map[string]string, error) {
+func collectPVCProvisioners(ctx context.Context, clientset kubernetes.Interface, namespaces []string) (map[string]string, error) {
 	result := map[string]string{}
 	for _, namespace := range namespaces {
 		pvcList, err := clientset.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
@@ -1166,6 +1171,11 @@ func collectPVCProvisioners(ctx context.Context, clientset *kubernetes.Clientset
 			}
 			sc, err := clientset.StorageV1().StorageClasses().Get(ctx, scName, metav1.GetOptions{})
 			if err != nil {
+				// A PVC can outlive its StorageClass. Skip it and let the caller's mapping
+				// checks report it rather than aborting the precheck.
+				if apierrors.IsNotFound(err) {
+					continue
+				}
 				return nil, err
 			}
 			result[scName] = sc.Provisioner
@@ -1174,7 +1184,7 @@ func collectPVCProvisioners(ctx context.Context, clientset *kubernetes.Clientset
 	return result, nil
 }
 
-func collectTargetMappedProvisioners(ctx context.Context, clientset *kubernetes.Clientset, sourceDrivers map[string]string, storageClassMappings map[string]string) (map[string]string, error) {
+func collectTargetMappedProvisioners(ctx context.Context, clientset kubernetes.Interface, sourceDrivers map[string]string, storageClassMappings map[string]string) (map[string]string, error) {
 	result := map[string]string{}
 	for sourceSC := range sourceDrivers {
 		targetSC := sourceSC
@@ -1183,6 +1193,11 @@ func collectTargetMappedProvisioners(ctx context.Context, clientset *kubernetes.
 		}
 		sc, err := clientset.StorageV1().StorageClasses().Get(ctx, targetSC, metav1.GetOptions{})
 		if err != nil {
+			// A source StorageClass absent from the target is the ordinary cross-CSP case
+			// and is what the storageClassMappings recommendation exists to report.
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			return nil, err
 		}
 		result[sourceSC] = sc.Provisioner
@@ -1456,6 +1471,66 @@ func (s *Service) waitForBackupCompletion(ctx context.Context, cluster *commonmo
 			}
 		}
 	}
+}
+
+// checkBackupLocations fails the migration before the sync wait when the two clusters store
+// backups in different places. A read failure is not fatal here: the wait that follows is
+// still the authority on whether the backup shows up.
+func (s *Service) checkBackupLocations(ctx context.Context, sourceCluster, targetCluster *commonmodel.ClusterAccess) error {
+	source, err := s.getBackupStorageLocation(ctx, sourceCluster)
+	if err != nil {
+		return nil
+	}
+	target, err := s.getBackupStorageLocation(ctx, targetCluster)
+	if err != nil {
+		return nil
+	}
+
+	return backupLocationMismatch(source, target)
+}
+
+func (s *Service) getBackupStorageLocation(ctx context.Context, cluster *commonmodel.ClusterAccess) (*velerov1.BackupStorageLocation, error) {
+	_, controllerClient, err := k8sclient.NewKubernetesClient(cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	namespace := k8scommon.DefaultNamespace(cluster, k8sinstaller.DefaultVeleroNamespace)
+	bsl := &velerov1.BackupStorageLocation{}
+	key := ctrlclient.ObjectKey{Namespace: namespace, Name: "default"}
+	if err := controllerClient.Get(ctx, key, bsl); err != nil {
+		return nil, err
+	}
+
+	return bsl, nil
+}
+
+// backupLocationMismatch reports source/target BackupStorageLocations that point at
+// different places. Velero gives no signal for this: the target simply never discovers the
+// backup, so without an upfront check the migration only fails once the backup timeout
+// expires, with a message that names neither side.
+func backupLocationMismatch(source, target *velerov1.BackupStorageLocation) error {
+	describe := func(bsl *velerov1.BackupStorageLocation) (string, bool) {
+		if bsl == nil || bsl.Spec.ObjectStorage == nil {
+			return "", false
+		}
+
+		return bsl.Spec.ObjectStorage.Bucket + "/" + bsl.Spec.ObjectStorage.Prefix, true
+	}
+
+	sourceLocation, sourceOK := describe(source)
+	targetLocation, targetOK := describe(target)
+	if !sourceOK || !targetOK {
+		return fmt.Errorf("BackupStorageLocation is missing objectStorage: source=%q target=%q",
+			sourceLocation, targetLocation)
+	}
+	if sourceLocation != targetLocation {
+		return fmt.Errorf("source and target BackupStorageLocation point at different locations "+
+			"(source=%s, target=%s); the target will never discover the backup - reinstall velero "+
+			"on both clusters with the same storage settings", sourceLocation, targetLocation)
+	}
+
+	return nil
 }
 
 func (s *Service) waitForBackupSync(ctx context.Context, cluster *commonmodel.ClusterAccess, name, jobID string, progress int) error {

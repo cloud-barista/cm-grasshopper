@@ -265,7 +265,10 @@ users:
 | **AWS EKS** | exec-plugin | ✅ | ❌ | ✅ |
 | **GCP GKE** | exec-plugin | ✅ | ❌ | ✅ |
 | **NCP NKS** | exec-plugin | ✅ | ❌ | ✅ |
-| NHN | CSP-native passthrough | 추정 ✅ | ⚠️ | 없음 |
+| **NHN NKS** | 인증서 임베드 | ❌ | ✅ | 없음 |
+
+> NHN 은 2026-08-10 실측 결과 `client-certificate-data` + `client-key-data` 를 임베드한
+> 자체완결형이었습니다. Azure 와 같은 경로로 처리되며 broker-exec 재작성이 필요 없습니다.
 
 ---
 
@@ -372,10 +375,24 @@ client-go 가 kubeconfig 의 exec 명령(sh -c "curl … /token | jq …")을 �
   "sourceCluster": { "tumblebug": { "namespaceId": "testns01", "k8sClusterId": "ekstest01" } },
   "targetCluster": { "tumblebug": { "namespaceId": "testns01", "k8sClusterId": "k8stest01" } },
   "storage": {
-    "s3": { "endpoint": "1.2.3.4:9000", "accessKey": "...", "secretKey": "...", "bucket": "velero", "useSSL": false }
+    "s3": {
+      "endpoint": "1.2.3.4:9000", "accessKey": "...", "secretKey": "...",
+      "bucket": "velero", "useSSL": false,
+      "region": "us-east-1", "prefix": "backups"
+    }
   }
 }
 ```
+
+| 필드 | 생략 시 | 설명 |
+|---|---|---|
+| `region` | `us-east-1` | SigV4 서명 리전. AWS S3 와 `MINIO_REGION` 을 설정한 MinIO 는 불일치를 거부합니다 |
+| `prefix` | `backups` | 버킷 안에서 백업이 저장되는 키 접두사 |
+
+> **source 와 target 의 `bucket`·`prefix` 는 반드시 같아야 합니다.** 다르면 target 이 백업을
+> 영원히 발견하지 못합니다. 실행 시 두 값을 비교해 즉시 실패시키지만, 애초에 두 클러스터를
+> 같은 `storage` 설정으로 설치하는 것이 맞습니다. 버킷 루트에 저장하려면 `"prefix": ""` 를
+> 명시합니다.
 
 - EKS/GKE/NCP → 자동으로 broker-exec 로 변환
 - Azure AKS → 임베드 kubeconfig 그대로
@@ -417,7 +434,9 @@ kube-system       Active   3h37m
 
 - **토큰 만료 처리**: cb-tumblebug `/token` 응답에는 `status.expirationTimestamp` 가 없습니다(현재 `status.token` 만 존재). 이 경우 client-go 는 토큰을 미리 갱신하지 못하고 **401 을 받은 뒤 exec 를 재실행**하여 self-heal 합니다(요청 1회 실패 후 복구). 매끄럽게 하려면 cb-tumblebug/cb-spider 가 응답에 만료 시각(EKS STS 기준 약 15분)을 채워주는 것이 좋습니다 — 이는 cm-grasshopper 범위 밖의 개선입니다.
 - **자격증명 노출**: broker-exec kubeconfig 에는 cb-tumblebug basic-auth 자격증명이 평문으로 들어갑니다. 이는 기존에 cm-grasshopper 가 TB 와 통신하던 방식과 동일한 수준이며, kubeconfig 가 저장/전달될 때의 보호는 운영 환경에서 관리해야 합니다.
-- **NHN** 등 기타 CSP 는 kubeconfig 형식을 추가 확인 후 동일 패턴 적용 가능 여부를 판단해야 합니다.
+- **cb-tumblebug `/token` 버스트 제한**: 토큰 요청이 짧은 간격으로 연달아 오면 3번째부터 HTTP 429 가 반환됩니다(수 초 내 회복). broker-exec 의 `curl` 에 `--retry` 를 넣어 흡수하지만, source/target 설치를 동시에 시작하는 등 동시성이 높으면 지연이 생길 수 있습니다.
+- **S3 엔드포인트 도달성**: velero 는 **클러스터 안 파드**가 S3 에 접속합니다. cm-grasshopper 가 도는 곳에서 접속되는 것과 무관하므로, 사내망 전용 스토리지는 클러스터에서 도달하지 못합니다. 설치 Job 은 성공하는데 BackupStorageLocation 만 `Unavailable` 이 되는 형태로 드러납니다.
+- 기타 CSP 는 kubeconfig 형식을 추가 확인 후 동일 패턴 적용 가능 여부를 판단해야 합니다.
 
 ---
 
@@ -436,17 +455,48 @@ velero 백업/복원 로직을 구현·검증하는 사람이 이 kubeconfig 해
       username: <TB 계정>
       password: <TB 비밀번호>
   ```
-- 실행 환경(컨테이너/로컬)에 **`sh` + `curl` + `jq`** 존재. 컨테이너는 이미 Dockerfile 에 포함됨. **로컬 바이너리로 직접 돌릴 때는 `jq` 를 별도 설치**해야 EKS/GKE/NCP 가 동작함.
+- 실행 환경(컨테이너/로컬)에 **`sh` + `curl`(7.52 이상) + `jq`** 존재. 컨테이너는 이미 Dockerfile 에 포함됨. **로컬 바이너리로 직접 돌릴 때는 `jq` 를 별도 설치**해야 EKS/GKE/NCP 가 동작함. `curl` 7.52 미만은 broker-exec 의 재시도 옵션(`--retry-connrefused`)을 인식하지 못함.
+- **로컬 바이너리 실행 시 추가 전제조건.** 아래가 없으면 기동 중 panic 으로 종료됩니다(`cmd/cm-grasshopper/main.go`).
+
+  | 항목 | 없을 때 |
+  |---|---|
+  | `ansible-playbook` | `'ansible-playbook' command not found please install Ansible` |
+  | `<RootPath>/honeybee.key` | `Honeybee's private key not found` |
+
+  k8s 마이그레이션만 쓸 경우 설정에서 software migration 을 꺼서 두 검사를 건너뛸 수 있습니다.
+
+  ```yaml
+  cm-grasshopper:
+      features:
+          software_migration: false
+          k8s_migration: true
+  ```
+
+- 설정 파일은 **바이너리 옆 `conf/` 가 1순위**이고 `~/.cm-grasshopper/conf` 는 폴백입니다. 기동 로그의 `Loaded config: <path>` 로 실제 로드된 파일을 확인하세요.
 - 실행 환경에서 **cb-tumblebug 와 대상 클러스터 API 서버, S3 엔드포인트** 에 네트워크 도달 가능해야 함.
 
-### 10.2 테스트용 라이브 클러스터 (참고)
+### 10.2 테스트용 클러스터 준비
 
-| 용도 | namespaceId | k8sClusterId | CSP | kubeconfig 유형 |
-|---|---|---|---|---|
-| exec-plugin 검증 | `testns01` | `ekstest01` | AWS EKS | broker-exec 로 재작성됨 |
-| 임베드 검증 | `testns01` | `k8stest01` | Azure AKS | 원본 그대로 |
+**아래 클러스터는 상시 유지되지 않습니다.** 테스트할 때마다 1.3~1.4 절 절차로 직접 생성하세요. 두 가지 인증 방식을 모두 거치려면 exec-plugin CSP 와 임베드 CSP 를 하나씩 준비합니다.
 
-> 참고: `ekstest01` 은 컨트롤플레인만 Active 이고 노드그룹이 비어 있을 수 있음(AWS 는 클러스터 생성 후 노드그룹을 별도 추가). 실제 워크로드 백업/복원까지 보려면 노드그룹을 추가해 워커 노드를 띄워야 함.
+| 용도 | 예시 이름 | CSP | kubeconfig 유형 |
+|---|---|---|---|
+| exec-plugin 검증 | `ekstest01` | AWS EKS | broker-exec 로 재작성됨 |
+| 임베드 검증 | `k8stest01` | Azure AKS | 원본 그대로 |
+
+CSP 별로 생성 요청이 달라지는 부분입니다.
+
+| CSP | connectionName 예시 | specId 예시 | 생성 시 노드그룹 |
+|---|---|---|---|
+| AWS | `aws-ap-northeast-2` | `aws+ap-northeast-2+t3.medium` | ❌ 별도 추가 필요 |
+| Azure | `azure-koreacentral` | `azure+koreacentral+standard_b2ms` | ✅ |
+| NHN | `nhn-kr1` | `nhn+kr1+m2.c2m4` | ✅ |
+
+> **AWS 는 클러스터 생성 후 노드그룹을 따로 붙여야 합니다.** `POST /ns/{ns}/k8sCluster/{id}/k8sNodeGroupDynamic` 로 추가하기 전까지 컨트롤플레인만 Active 이고 워커 노드가 없습니다. 삭제할 때도 노드그룹을 먼저 지워야 하며, 노드그룹 삭제 응답이 와도 CSP 쪽 삭제가 끝난 것은 아니라 클러스터 삭제를 몇 분 뒤 재시도해야 할 수 있습니다.
+
+> **버전은 `/availableK8sVersion` 응답을 그대로 믿지 마세요.** CSP 가 실제로 받는 버전과 다를 수 있습니다. 생성이 `InvalidKubernetesVersion` 류로 거부되면 오류 메시지에 담긴 허용 목록을 쓰세요.
+
+> **PVC 를 쓰는 마이그레이션은 target 에 StorageClass 가 있어야 합니다.** CSI 드라이버가 없는 클러스터(NHN 기본 상태 등)로는 PVC 복원을 검증할 수 없습니다.
 
 ### 10.3 단계별 테스트
 

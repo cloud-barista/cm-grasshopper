@@ -95,7 +95,13 @@ func rewriteExecToBroker(cfg *clientcmdapi.Config, base, nsID, k8sClusterID, use
 
 	// cb-tumblebug wraps the ExecCredential under an "execCredential" key, but client-go
 	// expects the bare ExecCredential object on stdout, so unwrap it with jq.
-	shellCmd := fmt.Sprintf(`curl -fsS -u %s %s | jq -ce .execCredential`,
+	//
+	// --retry covers curl's transient set, which includes the HTTP 429 cb-tumblebug returns
+	// once a few token requests arrive in quick succession; without it a rate-limited refresh
+	// surfaces as a bare "Unauthorized" from the API server. --retry-all-errors is deliberately
+	// left out so wrong credentials still fail on the first attempt.
+	shellCmd := fmt.Sprintf(
+		`curl -fsS --retry 5 --retry-delay 2 --retry-max-time 60 --retry-connrefused -u %s %s | jq -ce .execCredential`,
 		shellQuote(user+":"+pass), shellQuote(tokenURL))
 
 	broker := &clientcmdapi.ExecConfig{

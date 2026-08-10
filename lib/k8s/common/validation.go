@@ -10,6 +10,13 @@ import (
 	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
 )
 
+// DefaultS3RegionName is the fallback SigV4 signing region. Stores that validate a
+// different region name must set S3Access.Region explicitly.
+const DefaultS3RegionName = "us-east-1"
+
+// DefaultS3PrefixName is the fallback bucket key prefix for velero backups.
+const DefaultS3PrefixName = "backups"
+
 func DecodeKubeconfig(value string) (string, error) {
 	if value == "" {
 		return "", errors.New("kubeconfig is required")
@@ -119,6 +126,22 @@ func BuildS3URL(s3 *commonmodel.S3Access) (string, error) {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, endpoint), nil
+}
+
+func DefaultS3Prefix(s3 *commonmodel.S3Access) string {
+	if s3 == nil || s3.Prefix == nil {
+		return DefaultS3PrefixName
+	}
+
+	return strings.TrimSpace(*s3.Prefix)
+}
+
+func DefaultS3Region(s3 *commonmodel.S3Access) string {
+	if s3 == nil || strings.TrimSpace(s3.Region) == "" {
+		return DefaultS3RegionName
+	}
+
+	return strings.TrimSpace(s3.Region)
 }
 
 func DefaultS3Bucket(s3 *commonmodel.S3Access, fallback string) string {

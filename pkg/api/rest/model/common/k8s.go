@@ -26,7 +26,14 @@ type S3Access struct {
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
 	Bucket    string `json:"bucket,omitempty"`
-	UseSSL    bool   `json:"useSSL"`
+	// Region is the SigV4 signing region. AWS S3 and MinIO with MINIO_REGION set reject a
+	// mismatch; permissive stores ignore it. Empty falls back to DefaultS3RegionName.
+	Region string `json:"region,omitempty"`
+	// Prefix is the key prefix backups live under inside the bucket. Source and target must
+	// agree or the target never sees the backup. Unset falls back to DefaultS3PrefixName;
+	// set it to "" to keep backups at the bucket root.
+	Prefix *string `json:"prefix,omitempty"`
+	UseSSL bool    `json:"useSSL"`
 }
 
 type StorageAccess struct {

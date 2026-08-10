@@ -1275,6 +1275,14 @@
                 "endpoint": {
                     "type": "string"
                 },
+                "prefix": {
+                    "description": "Prefix is the key prefix backups live under inside the bucket. Source and target must\nagree or the target never sees the backup. Unset falls back to DefaultS3PrefixName;\nset it to \"\" to keep backups at the bucket root.",
+                    "type": "string"
+                },
+                "region": {
+                    "description": "Region is the SigV4 signing region. AWS S3 and MinIO with MINIO_REGION set reject a\nmismatch; permissive stores ignore it. Empty falls back to DefaultS3RegionName.",
+                    "type": "string"
+                },
                 "secretKey": {
                     "type": "string"
                 },

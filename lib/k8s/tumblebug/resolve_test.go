@@ -104,6 +104,31 @@ func TestRewriteExecToBroker_EKS(t *testing.T) {
 	}
 }
 
+// cb-tumblebug rate-limits /token after a couple of rapid calls. client-go runs this command
+// per credential refresh, so two installs started together made one of them fail with a bare
+// "Unauthorized" while the same request on its own succeeded.
+func TestRewriteExecToBroker_RetriesTransientTokenFailures(t *testing.T) {
+	cfg, err := clientcmd.Load([]byte(eksKubeconfig))
+	if err != nil {
+		t.Fatalf("load eks kubeconfig: %v", err)
+	}
+
+	rewriteExecToBroker(cfg, "http://tb:1323", "testns01", "ekstest01", "default", "default")
+	shellCmd := cfg.AuthInfos["aws-iam-user"].Exec.Args[1]
+
+	for _, want := range []string{"--retry 5", "--retry-delay 2", "--retry-max-time 60", "--retry-connrefused"} {
+		if !strings.Contains(shellCmd, want) {
+			t.Errorf("broker shell command missing %q\n got: %s", want, shellCmd)
+		}
+	}
+
+	// --retry covers 429 and 5xx. --retry-all-errors would also retry a genuine 401, turning
+	// wrong cb-tumblebug credentials into a multi-second stall on every API call.
+	if strings.Contains(shellCmd, "--retry-all-errors") {
+		t.Errorf("permanent auth failures must not be retried\n got: %s", shellCmd)
+	}
+}
+
 func TestRewriteExecToBroker_AKS_NoRewrite(t *testing.T) {
 	cfg, err := clientcmd.Load([]byte(aksKubeconfig))
 	if err != nil {

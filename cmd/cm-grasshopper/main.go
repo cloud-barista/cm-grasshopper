@@ -80,14 +80,23 @@ func main() {
 		logger.Panicln(logger.ERROR, true, err.Error())
 	}
 
-	controller.SetOkMessage("Software migration dependencies are not ready")
-	if err := initSoftwareMigrationDependencies(); err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
+	if config.SoftwareMigrationEnabled() {
+		controller.SetOkMessage("Software migration dependencies are not ready")
+		if err := initSoftwareMigrationDependencies(); err != nil {
+			logger.Panicln(logger.ERROR, true, err.Error())
+		}
+	} else {
+		logger.Println(logger.INFO, false,
+			"Software migration is disabled; skipping Ansible and Honeybee key checks")
 	}
 
-	controller.SetOkMessage("K8s migration dependencies are not ready")
-	if err := initK8sMigrationDependencies(); err != nil {
-		logger.Panicln(logger.ERROR, true, err.Error())
+	if config.K8sMigrationEnabled() {
+		controller.SetOkMessage("K8s migration dependencies are not ready")
+		if err := initK8sMigrationDependencies(); err != nil {
+			logger.Panicln(logger.ERROR, true, err.Error())
+		}
+	} else {
+		logger.Println(logger.INFO, false, "K8s migration is disabled")
 	}
 
 	controller.SetOkMessage("CM-Grasshopper API server is ready")

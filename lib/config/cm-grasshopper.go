@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,6 +20,12 @@ type cmGrasshopperConfig struct {
 		Listen struct {
 			Port string `yaml:"port"`
 		} `yaml:"listen"`
+		// Features toggles the two migration subsystems. Pointers so that an absent flag is
+		// distinguishable from an explicit false and keeps both enabled.
+		Features struct {
+			SoftwareMigration *bool `yaml:"software_migration"`
+			K8sMigration      *bool `yaml:"k8s_migration"`
+		} `yaml:"features"`
 		Software struct {
 			TempFolder string `yaml:"temp_folder"`
 			LogFolder  string `yaml:"log_folder"`
@@ -49,6 +56,18 @@ type cmGrasshopperConfig struct {
 var CMGrasshopperConfig cmGrasshopperConfig
 var cmGrasshopperConfigFile = "cm-grasshopper.yaml"
 
+func SoftwareMigrationEnabled() bool {
+	return enabled(CMGrasshopperConfig.CMGrasshopper.Features.SoftwareMigration)
+}
+
+func K8sMigrationEnabled() bool {
+	return enabled(CMGrasshopperConfig.CMGrasshopper.Features.K8sMigration)
+}
+
+func enabled(flag *bool) bool {
+	return flag == nil || *flag
+}
+
 func checkCMGrasshopperConfigFile() error {
 	if CMGrasshopperConfig.CMGrasshopper.Listen.Port == "" {
 		return errors.New("config error: cm-grasshopper.listen.port is empty")
@@ -58,6 +77,37 @@ func checkCMGrasshopperConfigFile() error {
 		return errors.New("config error: cm-grasshopper.listen.port has invalid value")
 	}
 
+	if SoftwareMigrationEnabled() {
+		if err := checkSoftwareMigrationConfig(); err != nil {
+			return err
+		}
+	}
+
+	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
+		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort is empty")
+	}
+	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort)
+	if err != nil || port < 1 || port > 65535 {
+		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort has invalid value")
+	}
+
+	if K8sMigrationEnabled() {
+		if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
+			return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
+		}
+		if CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder == "" {
+			return errors.New("config error: cm-grasshopper.k8s.job_log_folder is empty")
+		}
+		if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder) {
+			return errors.New("config error: cm-grasshopper.k8s.job_log_folder (" +
+				CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder + ") is not exist")
+		}
+	}
+
+	return nil
+}
+
+func checkSoftwareMigrationConfig() error {
 	if CMGrasshopperConfig.CMGrasshopper.Software.TempFolder == "" {
 		return errors.New("config error: cm-grasshopper.software.temp_folder is empty")
 	}
@@ -85,28 +135,9 @@ func checkCMGrasshopperConfigFile() error {
 	if CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort == "" {
 		return errors.New("config error: cm-grasshopper.honeybee.ServerPort is empty")
 	}
-	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
+	port, err := strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Honeybee.ServerPort)
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("config error: cm-grasshopper.honeybee.ServerPort has invalid value")
-	}
-
-	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort == "" {
-		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort is empty")
-	}
-	port, err = strconv.Atoi(CMGrasshopperConfig.CMGrasshopper.Tumblebug.ServerPort)
-	if err != nil || port < 1 || port > 65535 {
-		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort has invalid value")
-	}
-
-	if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
-		return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
-	}
-	if CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder == "" {
-		return errors.New("config error: cm-grasshopper.k8s.job_log_folder is empty")
-	}
-	if !fileutil.IsExist(CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder) {
-		return errors.New("config error: cm-grasshopper.k8s.job_log_folder (" +
-			CMGrasshopperConfig.CMGrasshopper.K8s.JobLogFolder + ") is not exist")
 	}
 
 	return nil
@@ -133,13 +164,16 @@ func readCMGrasshopperConfigFile() error {
 		return err
 	}
 
+	// The conf directory next to the binary wins over the one under RootPath. It is
+	// gitignored, so a stale copy there silently overrides the home-directory config.
 	exPath := filepath.Dir(ex)
 	configDir := exPath + "/conf"
 	if !fileutil.IsExist(configDir) {
 		configDir = common.RootPath + "/conf"
 	}
 
-	data, err := os.ReadFile(configDir + "/" + cmGrasshopperConfigFile)
+	configPath := configDir + "/" + cmGrasshopperConfigFile
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return errors.New("can't find the config file (" + cmGrasshopperConfigFile + ")" + fmt.Sprintln() +
 			"Must be placed in '." + strings.ToLower(common.ModuleName) + "/conf' directory " +
@@ -151,6 +185,7 @@ func readCMGrasshopperConfigFile() error {
 	if err != nil {
 		return err
 	}
+	log.Println("Loaded config: " + configPath)
 
 	err = checkCMGrasshopperConfigFile()
 	if err != nil {

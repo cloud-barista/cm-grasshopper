@@ -30,13 +30,21 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
 
 ### 1. Write the configuration file.
   - Configuration file name is 'cm-grasshopper.yaml'
-  - The configuration file must be placed in one of the following directories.
-    - .cm-grasshopper/conf directory under user's home directory
-      - 'conf' directory where running the binary
-    - 'conf' directory where placed in the path of 'CMGRASSHOPPER_ROOT' environment variable
+  - The configuration file is looked up in this order. The first directory that exists wins.
+    1. 'conf' directory next to the binary being run
+    2. 'conf' directory under the path of the 'CMGRASSHOPPER_ROOT' environment variable,
+       or '.cm-grasshopper/conf' under the user's home directory when it is unset
+  - The loaded path is printed at startup as `Loaded config: <path>`. A leftover 'conf'
+    directory next to the binary silently takes precedence over the one in your home
+    directory, so check this line when a setting appears to have no effect.
   - Configuration options
     - listen
       - port : Listen port of the API.
+    - features
+      - software_migration: Enable software migration. Defaults to true when omitted.
+        Turning it off skips the Ansible and Honeybee key checks at startup along with the
+        software API routes, which is what a k8s-migration-only deployment wants.
+      - k8s_migration: Enable Kubernetes migration. Defaults to true when omitted.
     - software
       - temp_folder: Temporary folder while running software migration. (Used for copying Ansible playbook files.)
       - log_folder: Log folder used for logging software installation and migration.
@@ -55,6 +63,9 @@ Software Migration framework (codename: cm-grasshopper) is going to support:
     cm-grasshopper:
         listen:
             port: 8084
+        features:
+            software_migration: true
+            k8s_migration: true
     software:
         temp_folder: ./software_temp
         log_folder: ./software_log
