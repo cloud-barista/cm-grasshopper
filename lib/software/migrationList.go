@@ -266,6 +266,13 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 				Origin:        pkg.Origin,
 				OriginURL:     pkg.OriginURL,
 				ApplicationID: pkg.ApplicationID,
+				Revision:      pkg.Revision,
+				Confinement:   pkg.Confinement,
+				Base:          pkg.Base,
+				BlobPath:      pkg.BlobPath,
+				Runtime:       pkg.Runtime,
+				Branch:        pkg.Branch,
+				Scope:         pkg.Scope,
 			})
 			continue
 		}

@@ -588,13 +588,13 @@ func MigrateSoftware(execution *Execution) {
 			// target OS package manager / Ansible playbook flow below.
 			if pkg.Type == softwaremodel.SoftwarePackageTypeSnap {
 				_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "snap "+pkg.Name, func() error {
-					return snapMigrator(execution.TargetClient, pkg, migrationLogger)
+					return snapMigrator(execution.SourceClient, execution.TargetClient, pkg, execution.ExecutionID, migrationLogger)
 				})
 				continue
 			}
 			if pkg.Type == softwaremodel.SoftwarePackageTypeFlatpak {
 				_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "flatpak "+pkg.Name, func() error {
-					return flatpakMigrator(execution.TargetClient, pkg, migrationLogger)
+					return flatpakMigrator(execution.SourceClient, execution.TargetClient, pkg, execution.ExecutionID, migrationLogger)
 				})
 				continue
 			}
