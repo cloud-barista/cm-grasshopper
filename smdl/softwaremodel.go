@@ -122,6 +122,13 @@ type Package struct {
 	Origin        string `json:"origin,omitempty"`         // flatpak remote name (e.g. flathub)
 	OriginURL     string `json:"origin_url,omitempty"`     // flatpak remote repo URL (from the source host)
 	ApplicationID string `json:"application_id,omitempty"` // flatpak application id (e.g. org.gnome.Extensions)
+	Revision      string `json:"revision,omitempty"`       // snap store revision (informational; drifts on auto-refresh)
+	Confinement   string `json:"confinement,omitempty"`    // snap confinement: strict/classic/devmode (classic needs --classic)
+	Base          string `json:"base,omitempty"`           // snap base (e.g. core22)
+	BlobPath      string `json:"blob_path,omitempty"`      // snap on-source blob path (offline sideload)
+	Runtime       string `json:"runtime,omitempty"`        // flatpak required runtime ref (e.g. org.gnome.Platform/x86_64/47)
+	Branch        string `json:"branch,omitempty"`         // flatpak branch
+	Scope         string `json:"scope,omitempty"`          // flatpak install scope: system/user
 }
 
 type Container struct {
@@ -208,6 +215,13 @@ type PackageMigrationInfo struct {
 	Origin        string `json:"origin,omitempty"`         // flatpak remote name
 	OriginURL     string `json:"origin_url,omitempty"`     // flatpak remote repo URL (from source)
 	ApplicationID string `json:"application_id,omitempty"` // flatpak application id
+	Revision      string `json:"revision,omitempty"`       // snap store revision (informational)
+	Confinement   string `json:"confinement,omitempty"`    // snap confinement: strict/classic/devmode
+	Base          string `json:"base,omitempty"`           // snap base
+	BlobPath      string `json:"blob_path,omitempty"`      // snap on-source blob path (offline sideload)
+	Runtime       string `json:"runtime,omitempty"`        // flatpak required runtime ref
+	Branch        string `json:"branch,omitempty"`         // flatpak branch
+	Scope         string `json:"scope,omitempty"`          // flatpak install scope: system/user
 }
 
 type ContainerMigrationInfo struct {
