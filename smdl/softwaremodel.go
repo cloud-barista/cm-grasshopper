@@ -119,7 +119,8 @@ type Package struct {
 
 	// snap/flatpak-only fields.
 	Channel       string `json:"channel,omitempty"`        // snap tracking channel (e.g. latest/stable)
-	Origin        string `json:"origin,omitempty"`         // flatpak remote (e.g. flathub)
+	Origin        string `json:"origin,omitempty"`         // flatpak remote name (e.g. flathub)
+	OriginURL     string `json:"origin_url,omitempty"`     // flatpak remote repo URL (from the source host)
 	ApplicationID string `json:"application_id,omitempty"` // flatpak application id (e.g. org.gnome.Extensions)
 }
 
@@ -204,7 +205,8 @@ type PackageMigrationInfo struct {
 
 	// snap/flatpak-only fields.
 	Channel       string `json:"channel,omitempty"`        // snap tracking channel
-	Origin        string `json:"origin,omitempty"`         // flatpak remote
+	Origin        string `json:"origin,omitempty"`         // flatpak remote name
+	OriginURL     string `json:"origin_url,omitempty"`     // flatpak remote repo URL (from source)
 	ApplicationID string `json:"application_id,omitempty"` // flatpak application id
 }
 

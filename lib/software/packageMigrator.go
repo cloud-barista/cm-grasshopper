@@ -97,11 +97,16 @@ func flatpakMigrator(targetClient *ssh.Client, pkg *softwaremodel.PackageMigrati
 	}
 
 	origin := strings.TrimSpace(pkg.Origin)
-	if origin == "" || origin == "flathub" {
+	if origin == "" {
 		origin = "flathub"
-		// Flathub is the common default remote; other remotes are assumed present.
-		_, _ = runTargetCmd(targetClient,
-			"flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo")
+	}
+	// Configure the remote using the URL collected from the source host (not a
+	// hard-coded one). Source-trusted, so gpg verification is disabled for the
+	// added remote; remotes that already exist on the target are left as-is.
+	if url := strings.TrimSpace(pkg.OriginURL); url != "" {
+		migrationLogger.Printf(INFO, "Ensuring flatpak remote %s -> %s\n", origin, url)
+		_, _ = runTargetCmd(targetClient, "flatpak remote-add --if-not-exists --no-gpg-verify "+
+			shellSingleQuote(origin)+" "+shellSingleQuote(url))
 	}
 
 	appID := strings.TrimSpace(pkg.ApplicationID)

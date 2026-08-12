@@ -264,6 +264,7 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 				Version:       pkg.Version,
 				Channel:       pkg.Channel,
 				Origin:        pkg.Origin,
+				OriginURL:     pkg.OriginURL,
 				ApplicationID: pkg.ApplicationID,
 			})
 			continue
