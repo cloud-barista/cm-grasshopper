@@ -584,6 +584,21 @@ func MigrateSoftware(execution *Execution) {
 				continue
 			}
 
+			// snap/flatpak are installed by their own package managers, not the
+			// target OS package manager / Ansible playbook flow below.
+			if pkg.Type == softwaremodel.SoftwarePackageTypeSnap {
+				_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "snap "+pkg.Name, func() error {
+					return snapMigrator(execution.TargetClient, pkg, migrationLogger)
+				})
+				continue
+			}
+			if pkg.Type == softwaremodel.SoftwarePackageTypeFlatpak {
+				_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "flatpak "+pkg.Name, func() error {
+					return flatpakMigrator(execution.TargetClient, pkg, migrationLogger)
+				})
+				continue
+			}
+
 			installErr := runItemWithRetry(execution, ms, &exStatus, migrationLogger, "package "+pkg.Name, func() error {
 				if err := runPlaybook(execution.ExecutionID, "package", pkg.Name, execution.TargetClient.SSHTarget); err != nil {
 					return err

@@ -252,6 +252,23 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 	errMsgs := make([]string, 0)
 
 	for _, pkg := range packages {
+		// snap/flatpak are installed by their own package managers, not the OS
+		// package manager — skip the deb/rpm base/library/kernel name filters
+		// (they were already filtered at collection) and carry their fields.
+		if pkg.Type == softwaremodel.SoftwarePackageTypeSnap || pkg.Type == softwaremodel.SoftwarePackageTypeFlatpak {
+			*prevOrder++
+			migrationPackages = append(migrationPackages, softwaremodel.PackageMigrationInfo{
+				Order:         *prevOrder,
+				Name:          pkg.Name,
+				Type:          pkg.Type,
+				Version:       pkg.Version,
+				Channel:       pkg.Channel,
+				Origin:        pkg.Origin,
+				ApplicationID: pkg.ApplicationID,
+			})
+			continue
+		}
+
 		if isLibraryPackage(pkg.Name) {
 			continue
 		}
@@ -277,6 +294,7 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 		newSoftware := softwaremodel.PackageMigrationInfo{
 			Order:                *prevOrder,
 			Name:                 pkg.Name,
+			Type:                 pkg.Type,
 			Version:              pkg.Version,
 			NeededPackages:       strings.Split(pkg.NeededPackages, ","),
 			NeedToDeletePackages: strings.Split(pkg.NeedToDeletePackages, ","),

@@ -49,8 +49,10 @@ const (
 type SoftwarePackageType string
 
 const (
-	SoftwarePackageTypeDEB SoftwarePackageType = "deb" // Debian based package type
-	SoftwarePackageTypeRPM SoftwarePackageType = "rpm" // RHEL based package type
+	SoftwarePackageTypeDEB     SoftwarePackageType = "deb"     // Debian based package type
+	SoftwarePackageTypeRPM     SoftwarePackageType = "rpm"     // RHEL based package type
+	SoftwarePackageTypeSnap    SoftwarePackageType = "snap"    // snap package (snapd)
+	SoftwarePackageTypeFlatpak SoftwarePackageType = "flatpak" // flatpak application
 )
 
 type SoftwareContainerRuntimeType string
@@ -114,6 +116,11 @@ type Package struct {
 	RepoURL              string              `json:"repo_url,omitempty"`
 	GPGKeyURL            string              `json:"gpg_key_url,omitempty"`
 	RepoUseOSVersionCode bool                `json:"repo_use_os_version_code,omitempty" default:"false"`
+
+	// snap/flatpak-only fields.
+	Channel       string `json:"channel,omitempty"`        // snap tracking channel (e.g. latest/stable)
+	Origin        string `json:"origin,omitempty"`         // flatpak remote (e.g. flathub)
+	ApplicationID string `json:"application_id,omitempty"` // flatpak application id (e.g. org.gnome.Extensions)
 }
 
 type Container struct {
@@ -183,9 +190,10 @@ type BinaryMigrationInfo struct {
 }
 
 type PackageMigrationInfo struct {
-	Order                int      `json:"order"`
-	Name                 string   `json:"name" validate:"required"`
-	Version              string   `gorm:"version" json:"version" validate:"required"`
+	Order                int                 `json:"order"`
+	Name                 string              `json:"name" validate:"required"`
+	Type                 SoftwarePackageType `json:"type,omitempty"` // deb/rpm (OS package) or snap/flatpak
+	Version              string              `gorm:"version" json:"version" validate:"required"`
 	NeededPackages       []string `json:"needed_packages" validate:"required"`
 	NeedToDeletePackages []string `json:"need_to_delete_packages"`
 	CustomDataPaths      []string `json:"custom_data_paths"`
@@ -193,6 +201,11 @@ type PackageMigrationInfo struct {
 	RepoURL              string   `json:"repo_url"`
 	GPGKeyURL            string   `json:"gpg_key_url"`
 	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
+
+	// snap/flatpak-only fields.
+	Channel       string `json:"channel,omitempty"`        // snap tracking channel
+	Origin        string `json:"origin,omitempty"`         // flatpak remote
+	ApplicationID string `json:"application_id,omitempty"` // flatpak application id
 }
 
 type ContainerMigrationInfo struct {
