@@ -357,11 +357,19 @@ func setTargetMappingStatus(execution *Execution, status string, setFinishedAt b
 	}
 }
 
+// skipItemError signals that an item should be recorded as "skipped" rather than
+// "failed" — it is not a real migratable item on this host (e.g. a process that
+// runs inside a container and was collected as a host binary in error). It is not
+// retried and does not turn the overall execution into "finished with error".
+type skipItemError struct{ reason string }
+
+func (e *skipItemError) Error() string { return e.reason }
+
 // runItemWithRetry marks the item "installing", runs fn up to migrationRetryCount
-// times, and records the terminal status ("finished" or "failed") once. Retrying
-// the whole item — rather than flipping the per-target status on the first failed
-// attempt — keeps a later success from being reported as an error. Returns the
-// final error (nil on success).
+// times, and records the terminal status ("finished", "failed" or "skipped") once.
+// Retrying the whole item — rather than flipping the per-target status on the first
+// failed attempt — keeps a later success from being reported as an error. Returns
+// the final error (nil on success or skip).
 func runItemWithRetry(execution *Execution, ms *model.SoftwareMigrationStatus, exStatus *string,
 	migrationLogger *Logger, label string, fn func() error) error {
 	updateSoftwareInstallStatus(execution, exStatus, ms, "installing", "", true)
@@ -373,6 +381,13 @@ func runItemWithRetry(execution *Execution, ms *model.SoftwareMigrationStatus, e
 				migrationLogger.Printf(INFO, "%s migration succeeded on attempt %d/%d\n", label, attempt, migrationRetryCount)
 			}
 			break
+		}
+		// A skip is a deliberate, non-retryable no-op; record it and stop.
+		var skip *skipItemError
+		if errors.As(err, &skip) {
+			migrationLogger.Printf(INFO, "%s skipped: %s\n", label, skip.reason)
+			updateSoftwareInstallStatus(execution, exStatus, ms, "skipped", skip.reason, false)
+			return nil
 		}
 		migrationLogger.Printf(WARN, "%s migration attempt %d/%d failed: %v\n", label, attempt, migrationRetryCount, err)
 	}

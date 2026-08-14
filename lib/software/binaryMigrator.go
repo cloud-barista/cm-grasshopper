@@ -806,6 +806,21 @@ func installRequiredPackages(targetClient *ssh.Client, binary *softwaremodel.Bin
 func binaryMigrator(sourceClient, targetClient *ssh.Client, binary *softwaremodel.BinaryMigrationInfo, uuid string, migrationLogger *Logger) error {
 	migrationLogger.Printf(INFO, "Starting binary migration for %s (version: %s)\n", binary.Name, binary.Version)
 
+	// A binary whose install path is an absolute path that does not exist on the
+	// source host is not a real host binary: it is almost always a process running
+	// inside a container (e.g. the official tomcat/mariadb images expose
+	// /usr/local/tomcat, /usr/sbin/mariadbd) that was collected as a host binary in
+	// error. There is nothing to copy, and synthesizing a systemd unit whose
+	// ExecStart references container-internal paths only produces a service that
+	// never starts. Skip it — the actual software is migrated via its container.
+	if bp := strings.TrimSpace(binary.BinaryPath); bp != "" && strings.HasPrefix(bp, "/") {
+		if remotePathType(sourceClient, bp) == "none" {
+			migrationLogger.Printf(WARN, "Binary %s install path %s does not exist on the source host; "+
+				"treating it as a container-internal process and skipping host binary migration\n", binary.Name, bp)
+			return &skipItemError{reason: fmt.Sprintf("install path %s not present on source host (runs inside a container)", bp)}
+		}
+	}
+
 	// Wine applications need the Wine runtime on the target. The WINEPREFIX bottle
 	// (set as BinaryPath during refinement) is copied like any other path, the
 	// WINEPREFIX env is carried through, and the captured `wine ...` command line is
