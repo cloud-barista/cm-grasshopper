@@ -412,11 +412,26 @@ func createBinaryUserOnTarget(client *ssh.Client, info *binaryUserInfo, ownedPat
 	// to an unrelated account on the target, so this guarantees the service user
 	// actually owns its files. Shared dependency paths are intentionally excluded.
 	for _, path := range ownedPaths {
-		if strings.TrimSpace(path) == "" {
+		path = strings.TrimSpace(path)
+		if path == "" {
 			continue
 		}
-		if out, err := runSSHCommand(client, fmt.Sprintf("chown -R %s:%s '%s'", info.uname, info.gname, path)); err != nil {
-			migrationLogger.Printf(WARN, "Failed to chown %s to %s:%s: %s\n", path, info.uname, info.gname, strings.TrimSpace(out))
+
+		// An install dir is often reached through a symlink (e.g.
+		// /opt/tomcat -> /opt/apache-tomcat-11.0.24). "chown -R" on the symlink only
+		// re-owns the link and leaves the real tree owned by the source's numeric
+		// UID; the runtime user then cannot traverse a 0750 install dir and the
+		// service dies at exec with 203/EXEC. Re-own the symlink itself, then re-own
+		// the resolved real path recursively (readlink -f is a no-op on a real path).
+		resolved := path
+		if out, _ := runSSHCommand(client, fmt.Sprintf("readlink -f '%s'", path)); strings.TrimSpace(out) != "" {
+			resolved = strings.TrimSpace(out)
+		}
+		if resolved != path {
+			_, _ = runSSHCommand(client, fmt.Sprintf("chown -h %s:%s '%s'", info.uname, info.gname, path))
+		}
+		if out, err := runSSHCommand(client, fmt.Sprintf("chown -R %s:%s '%s'", info.uname, info.gname, resolved)); err != nil {
+			migrationLogger.Printf(WARN, "Failed to chown %s to %s:%s: %s\n", resolved, info.uname, info.gname, strings.TrimSpace(out))
 		}
 	}
 
