@@ -76,6 +76,26 @@ func GetListeningConnections(client *ssh.Client, password string) ([]Connection,
 	return connections, nil
 }
 
+// remoteHasIPv6 reports whether the host exposes an IPv6 network stack. When
+// IPv6 is disabled at the kernel level, /proc/net/tcp6 does not exist.
+func remoteHasIPv6(client *ssh.Client) bool {
+	session, err := client.NewSessionWithRetry()
+	if err != nil {
+		return true // Assume present on error; do not weaken verification spuriously.
+	}
+	defer func() {
+		_ = session.Close()
+	}()
+
+	cmd := sudoWrapper("if [ -e /proc/net/tcp6 ]; then echo yes; else echo no; fi", client.SSHTarget.Password)
+	var out bytes.Buffer
+	session.Stdout = &out
+	if err := session.Run(cmd); err != nil {
+		return true
+	}
+	return strings.TrimSpace(out.String()) == "yes"
+}
+
 func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool) ([]Connection, error) {
 	session, err := client.NewSessionWithRetry()
 	if err != nil {
@@ -86,7 +106,12 @@ func readProcNetFile(client *ssh.Client, password, protocol string, isIPv6 bool)
 	}()
 
 	filePath := fmt.Sprintf("/proc/net/%s", protocol)
-	cmd := sudoWrapper(fmt.Sprintf("cat %s", filePath), password)
+	// When IPv6 is disabled on the host (common on some CSP images, e.g. NCP),
+	// the v6 files /proc/net/tcp6 and /proc/net/udp6 do not exist. Guard the read
+	// so an absent file yields no connections instead of failing the whole
+	// listen-port verification (which would falsely mark every migrated package
+	// as failed). A file that exists is still read normally.
+	cmd := sudoWrapper(fmt.Sprintf("if [ -e %s ]; then cat %s; fi", filePath, filePath), password)
 	var out bytes.Buffer
 	session.Stdout = &out
 
@@ -204,6 +229,11 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 			conn.Protocol, conn.LocalAddress, conn.ForeignAddress, conn.PID, conn.ProgramName, conn.Command)
 	}
 
+	// A target with IPv6 disabled (no /proc/net/tcp6) cannot reproduce an IPv6
+	// listen socket. Detect that once so IPv6-only source ports are not reported
+	// as hard mismatches on such targets.
+	targetHasIPv6 := remoteHasIPv6(targetClient)
+
 	var mismatchedPorts []string
 	for _, sourceConn := range sourceServiceConnections {
 		var found bool
@@ -216,6 +246,11 @@ func compareServicePorts(sourceClient, targetClient *ssh.Client, serviceName str
 			}
 		}
 		if !found {
+			if strings.HasSuffix(sourceConn.Protocol, "6") && !targetHasIPv6 {
+				migrationLogger.Printf(WARN, "Source listens on %s %s but IPv6 is disabled on the target; skipping this port\n",
+					sourceConn.Protocol, sourceConn.LocalAddress)
+				continue
+			}
 			mismatchedPorts = append(mismatchedPorts, sourceConn.Protocol+" "+sourceConn.LocalAddress)
 			migrationLogger.Printf(ERROR, "No matching port for %s %s on target\n",
 				sourceConn.Protocol, sourceConn.LocalAddress)
