@@ -621,11 +621,23 @@ func MigrateSoftware(execution *Execution) {
 
 			installErr := runItemWithRetry(execution, ms, &exStatus, migrationLogger, "package "+pkg.Name, func() error {
 				if err := runPlaybook(execution.ExecutionID, "package", pkg.Name, execution.TargetClient.SSHTarget); err != nil {
-					return err
+					// A package whose default config binds an IPv6 socket (e.g. nginx
+					// "listen [::]:80") fails its post-install service start on a target
+					// with IPv6 disabled. Neutralize the IPv6 binds and finish
+					// configuring; if the package ends up installed, treat it as
+					// recovered instead of failing the whole item.
+					if !neutralizeIPv6BindsOnTarget(execution.TargetClient, migrationLogger) ||
+						!packageIsInstalled(execution.TargetClient, pkg.Name) {
+						return err
+					}
+					migrationLogger.Printf(INFO, "Package %s recovered after neutralizing IPv6 binds on the IPv6-disabled target\n", pkg.Name)
 				}
 				if err := configCopier(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
 					return err
 				}
+				// The migrated source config may itself bind IPv6 (the source had IPv6);
+				// neutralize again so the service restart below succeeds on IPv4.
+				neutralizeIPv6BindsOnTarget(execution.TargetClient, migrationLogger)
 				if err := serviceMigrator(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
 					return err
 				}

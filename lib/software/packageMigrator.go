@@ -128,6 +128,59 @@ func warnConfinementDrift(targetClient *ssh.Client, pkg *softwaremodel.PackageMi
 	}
 }
 
+// neutralizeIPv6BindsOnTarget works around targets that have IPv6 disabled at the
+// kernel level (common on some CSP images, e.g. NCP: ipv6.disable=1). There,
+// creating an AF_INET6 socket fails with EAFNOSUPPORT, so any service whose config
+// binds an IPv6 address (e.g. nginx "listen [::]:80", apache "Listen [::]:80",
+// "ListenAddress ::") fails to start — which also fails the package's post-install
+// step and, later, the restart after the source config is copied. This comments
+// out the IPv6-only listen/bind directives so the service can start on IPv4, then
+// finishes configuring any half-installed package. It is a no-op when the target
+// has a working IPv6 stack, and is idempotent (only uncommented matches are
+// touched). Returns true when the target has IPv6 disabled (remediation ran).
+func neutralizeIPv6BindsOnTarget(targetClient *ssh.Client, migrationLogger *Logger) bool {
+	if remoteHasIPv6(targetClient) {
+		return false
+	}
+
+	migrationLogger.Printf(WARN, "Target has IPv6 disabled; commenting out IPv6 listen/bind directives so services can start on IPv4\n")
+
+	// Comment IPv6-only listen/bind directives under the common web/proxy/ssh
+	// config trees, then finish configuring any package left half-installed by a
+	// failed IPv6 socket bind. Kept conservative on purpose: only lines that bind a
+	// bare IPv6 address ("[::]" or "ListenAddress ::") are touched.
+	script := `
+for d in /etc/nginx /etc/apache2 /etc/httpd /etc/lighttpd; do
+  [ -d "$d" ] || continue
+  grep -rlE '^[[:space:]]*(listen|Listen)[[:space:]]+\[::\]' "$d" 2>/dev/null | while IFS= read -r f; do
+    sed -i -E 's#^([[:space:]]*)((listen|Listen)[[:space:]]+\[::\][^#]*)$#\1# \2  # cm-grasshopper: commented (IPv6 disabled on target)#I' "$f"
+  done
+done
+if [ -f /etc/ssh/sshd_config ]; then
+  sed -i -E 's/^([[:space:]]*ListenAddress[[:space:]]+::[[:space:]]*)$/# \1  # cm-grasshopper: commented (IPv6 disabled on target)/' /etc/ssh/sshd_config
+fi
+dpkg --configure -a 2>/dev/null || true
+DEBIAN_FRONTEND=noninteractive apt-get -f install -y 2>/dev/null || true
+`
+	if out, err := runSSHCommand(targetClient, script); err != nil {
+		migrationLogger.Printf(WARN, "IPv6 bind neutralization reported issues: %s\n", strings.TrimSpace(out))
+	}
+	return true
+}
+
+// packageIsInstalled reports whether an OS package is fully installed on the target
+// (dpkg "install ok installed" or a present rpm), used to decide whether an install
+// that errored mid-way actually recovered after remediation.
+func packageIsInstalled(targetClient *ssh.Client, name string) bool {
+	q := shellSingleQuote(name)
+	cmd := "if command -v dpkg-query >/dev/null 2>&1; then " +
+		"dpkg-query -W -f='${Status}' " + q + " 2>/dev/null | grep -q 'install ok installed' && echo yes; " +
+		"elif command -v rpm >/dev/null 2>&1; then " +
+		"rpm -q " + q + " >/dev/null 2>&1 && echo yes; fi"
+	out, _ := runTargetCmd(targetClient, cmd)
+	return strings.Contains(out, "yes")
+}
+
 // resolvePackageType classifies a package whose type was not set upstream and
 // routes it to the right installer. A migration list produced before snap/flatpak
 // support (and frozen into a stored cm-cicada workflow body) carries an empty type
