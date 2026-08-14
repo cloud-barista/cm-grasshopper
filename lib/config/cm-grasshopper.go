@@ -70,6 +70,16 @@ func checkCMGrasshopperConfigFile() error {
 	if err != nil || port < 1 || port > 65535 {
 		return errors.New("config error: cm-grasshopper.tumblebug.ServerPort has invalid value")
 	}
+	// Refuse to start on empty credentials rather than coming up healthy and then
+	// failing every software migration (the CB-Tumblebug call would be unauthorized).
+	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username == "" {
+		return errors.New("config error: cm-grasshopper.tumblebug.username is empty " +
+			"(set it in the config file or via the TB_API_USERNAME environment variable)")
+	}
+	if CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password == "" {
+		return errors.New("config error: cm-grasshopper.tumblebug.password is empty " +
+			"(set it in the config file or via the TB_API_PASSWORD environment variable)")
+	}
 
 	if CMGrasshopperConfig.CMGrasshopper.K8s.JobWorkerCount < 1 {
 		return errors.New("config error: cm-grasshopper.k8s.job_worker_count must be greater than 0")
@@ -163,6 +173,7 @@ func readCMGrasshopperConfigFile() error {
 	if err != nil {
 		return err
 	}
+	applyEnvOverrides()
 	log.Println("Loaded config: " + configPath)
 
 	err = checkCMGrasshopperConfigFile()
@@ -171,6 +182,20 @@ func readCMGrasshopperConfigFile() error {
 	}
 
 	return nil
+}
+
+// applyEnvOverrides lets credentials come from the environment, the way the rest
+// of the stack is wired (cm-mayfly passes TB_API_USERNAME / TB_API_PASSWORD into
+// the container), so an operator can run against non-default CB-Tumblebug
+// credentials without editing the config file. A set variable wins over the file
+// value; an unset one leaves the file value in place.
+func applyEnvOverrides() {
+	if v := os.Getenv("TB_API_USERNAME"); v != "" {
+		CMGrasshopperConfig.CMGrasshopper.Tumblebug.Username = v
+	}
+	if v := os.Getenv("TB_API_PASSWORD"); v != "" {
+		CMGrasshopperConfig.CMGrasshopper.Tumblebug.Password = v
+	}
 }
 
 func prepareCMGrasshopperConfig() error {
