@@ -128,6 +128,34 @@ func warnConfinementDrift(targetClient *ssh.Client, pkg *softwaremodel.PackageMi
 	}
 }
 
+// resolvePackageType classifies a package whose type was not set upstream and
+// routes it to the right installer. A migration list produced before snap/flatpak
+// support (and frozen into a stored cm-cicada workflow body) carries an empty type
+// for snaps/flatpaks; installed via the OS package manager they fail as
+// "No package matching '<name>' is available". Probing the source host recovers the
+// real kind so the snap/flatpak installer is used instead. Only empty types are
+// probed, so normally-classified deb/rpm packages pay no cost.
+func resolvePackageType(sourceClient *ssh.Client, pkg *softwaremodel.PackageMigrationInfo, migrationLogger *Logger) {
+	if pkg.Type != "" {
+		return
+	}
+
+	name := shellSingleQuote(pkg.Name)
+
+	if out, err := runClientCmd(sourceClient, "snap list "+name+" 2>/dev/null"); err == nil && strings.TrimSpace(out) != "" {
+		pkg.Type = softwaremodel.SoftwarePackageTypeSnap
+		migrationLogger.Printf(INFO, "Package %s has no type set; the source reports it as a snap, installing via snap\n", pkg.Name)
+		return
+	}
+
+	if out, err := runClientCmd(sourceClient, "flatpak info "+name+" 2>/dev/null"); err == nil && strings.TrimSpace(out) != "" {
+		pkg.Type = softwaremodel.SoftwarePackageTypeFlatpak
+		migrationLogger.Printf(INFO, "Package %s has no type set; the source reports it as a flatpak, installing via flatpak\n", pkg.Name)
+		return
+	}
+	// Left empty: handled by the OS package (deb/rpm) playbook path.
+}
+
 // snapMigrator installs a snap on the target. It boots snapd, warns on
 // confinement drift, then installs from the store when reachable or sideloads the
 // source blob when the target is air-gapped. Verification is presence/channel

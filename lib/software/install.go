@@ -599,6 +599,11 @@ func MigrateSoftware(execution *Execution) {
 				continue
 			}
 
+			// Recover the package kind when it was not set upstream (e.g. a snap in a
+			// migration list frozen into the workflow before snap support existed), so
+			// it is not misrouted to the OS package manager and failed.
+			resolvePackageType(execution.SourceClient, pkg, migrationLogger)
+
 			// snap/flatpak are installed by their own package managers, not the
 			// target OS package manager / Ansible playbook flow below.
 			if pkg.Type == softwaremodel.SoftwarePackageTypeSnap {
