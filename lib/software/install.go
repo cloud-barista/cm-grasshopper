@@ -626,18 +626,18 @@ func MigrateSoftware(execution *Execution) {
 					// with IPv6 disabled. Neutralize the IPv6 binds and finish
 					// configuring; if the package ends up installed, treat it as
 					// recovered instead of failing the whole item.
-					if !neutralizeIPv6BindsOnTarget(execution.TargetClient, migrationLogger) ||
+					if !neutralizeIPv6ListenDirectives(execution.TargetClient, migrationLogger) ||
 						!packageIsInstalled(execution.TargetClient, pkg.Name) {
 						return err
 					}
-					migrationLogger.Printf(INFO, "Package %s recovered after neutralizing IPv6 binds on the IPv6-disabled target\n", pkg.Name)
+					migrationLogger.Printf(INFO, "Package %s recovered after neutralizing IPv6 listen directives on the IPv6-disabled target\n", pkg.Name)
 				}
 				if err := configCopier(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
 					return err
 				}
 				// The migrated source config may itself bind IPv6 (the source had IPv6);
 				// neutralize again so the service restart below succeeds on IPv4.
-				neutralizeIPv6BindsOnTarget(execution.TargetClient, migrationLogger)
+				neutralizeIPv6ListenDirectives(execution.TargetClient, migrationLogger)
 				if err := serviceMigrator(execution.SourceClient, execution.TargetClient, pkg.Name, execution.ExecutionID, migrationLogger); err != nil {
 					return err
 				}

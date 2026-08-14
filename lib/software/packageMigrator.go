@@ -128,42 +128,38 @@ func warnConfinementDrift(targetClient *ssh.Client, pkg *softwaremodel.PackageMi
 	}
 }
 
-// neutralizeIPv6BindsOnTarget works around targets that have IPv6 disabled at the
-// kernel level (common on some CSP images, e.g. NCP: ipv6.disable=1). There,
+// neutralizeIPv6ListenDirectives works around targets that have IPv6 disabled at
+// the kernel level (common on some CSP images, e.g. NCP: ipv6.disable=1). There,
 // creating an AF_INET6 socket fails with EAFNOSUPPORT, so any service whose config
-// binds an IPv6 address (e.g. nginx "listen [::]:80", apache "Listen [::]:80",
-// "ListenAddress ::") fails to start — which also fails the package's post-install
-// step and, later, the restart after the source config is copied. This comments
-// out the IPv6-only listen/bind directives so the service can start on IPv4, then
-// finishes configuring any half-installed package. It is a no-op when the target
-// has a working IPv6 stack, and is idempotent (only uncommented matches are
-// touched). Returns true when the target has IPv6 disabled (remediation ran).
-func neutralizeIPv6BindsOnTarget(targetClient *ssh.Client, migrationLogger *Logger) bool {
+// binds an IPv6 address (e.g. nginx "listen [::]:80", apache "Listen [::]:80")
+// fails to start — which also fails the package's post-install step and, later,
+// the restart after the source config is copied. It discovers the offending config
+// files by content — every file under /etc with an ACTIVE (uncommented) bare-IPv6
+// listen directive — rather than assuming a package or directory, so it also finds
+// directives in a dependency's config (nginx's default site is owned by
+// nginx-common, not nginx). It comments those directives out, then finishes
+// configuring any half-installed package. No-op when the target has a working IPv6
+// stack; idempotent (a commented "# listen [::]" no longer matches). Returns true
+// when the target has IPv6 disabled (remediation ran).
+func neutralizeIPv6ListenDirectives(targetClient *ssh.Client, migrationLogger *Logger) bool {
 	if remoteHasIPv6(targetClient) {
 		return false
 	}
 
-	migrationLogger.Printf(WARN, "Target has IPv6 disabled; commenting out IPv6 listen/bind directives so services can start on IPv4\n")
+	migrationLogger.Printf(WARN, "Target has IPv6 disabled; commenting out active IPv6 listen directives found under /etc so services can start on IPv4\n")
 
-	// Comment IPv6-only listen/bind directives under the common web/proxy/ssh
-	// config trees, then finish configuring any package left half-installed by a
-	// failed IPv6 socket bind. Kept conservative on purpose: only lines that bind a
-	// bare IPv6 address ("[::]" or "ListenAddress ::") are touched.
+	// The sed delimiter is '@' on purpose: the replacement inserts '#' (the comment
+	// marker), so a '#' delimiter would terminate the s-command early and silently
+	// change nothing. The anchored pattern only matches uncommented directives.
 	script := `
-for d in /etc/nginx /etc/apache2 /etc/httpd /etc/lighttpd; do
-  [ -d "$d" ] || continue
-  grep -rlE '^[[:space:]]*(listen|Listen)[[:space:]]+\[::\]' "$d" 2>/dev/null | while IFS= read -r f; do
-    sed -i -E 's#^([[:space:]]*)((listen|Listen)[[:space:]]+\[::\][^#]*)$#\1# \2  # cm-grasshopper: commented (IPv6 disabled on target)#I' "$f"
-  done
+grep -rslE '^[[:space:]]*(listen|Listen)[[:space:]]+\[::\]' /etc 2>/dev/null | while IFS= read -r f; do
+  sed -i -E 's@^([[:space:]]*)((listen|Listen)[[:space:]]+\[::\][^#]*)$@\1# \2  # cm-grasshopper: commented (IPv6 disabled on target)@I' "$f"
 done
-if [ -f /etc/ssh/sshd_config ]; then
-  sed -i -E 's/^([[:space:]]*ListenAddress[[:space:]]+::[[:space:]]*)$/# \1  # cm-grasshopper: commented (IPv6 disabled on target)/' /etc/ssh/sshd_config
-fi
 dpkg --configure -a 2>/dev/null || true
 DEBIAN_FRONTEND=noninteractive apt-get -f install -y 2>/dev/null || true
 `
 	if out, err := runSSHCommand(targetClient, script); err != nil {
-		migrationLogger.Printf(WARN, "IPv6 bind neutralization reported issues: %s\n", strings.TrimSpace(out))
+		migrationLogger.Printf(WARN, "IPv6 listen neutralization reported issues: %s\n", strings.TrimSpace(out))
 	}
 	return true
 }
