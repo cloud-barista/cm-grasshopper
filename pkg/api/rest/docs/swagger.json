@@ -2585,17 +2585,16 @@
         "github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes": {
             "type": "object",
             "required": [
-                "kube_config",
                 "resources",
                 "version"
             ],
             "properties": {
                 "kube_config": {
+                    "description": "Empty: the consumer fetches it from cm-honeybee by connection id",
                     "type": "string"
                 },
                 "resources": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources"
                 },
                 "version": {
                     "description": "Same as release",
@@ -2603,30 +2602,186 @@
                 }
             }
         },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "chart": {
+                    "type": "string"
+                },
+                "chartVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo": {
             "type": "object",
             "required": [
-                "kube_config",
                 "resources",
                 "velero",
                 "version"
             ],
             "properties": {
                 "kube_config": {
+                    "description": "Empty: the consumer fetches it from cm-honeybee by connection id",
                     "type": "string"
                 },
                 "order": {
                     "type": "integer"
                 },
                 "resources": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources"
                 },
                 "velero": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero"
                 },
                 "version": {
                     "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "accessModes": {
+                    "description": "ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capacity": {
+                    "description": "as the cluster reports it, e.g. \"1Gi\"",
+                    "type": "string"
+                },
+                "claimName": {
+                    "type": "string"
+                },
+                "claimNamespace": {
+                    "description": "the PVC it is bound to; a PV is cluster-scoped",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reclaimPolicy": {
+                    "description": "Retain leaves the source volume behind, Delete does not",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Bound, Available, Released, Failed",
+                    "type": "string"
+                },
+                "storageClass": {
+                    "description": "the class that provisioned it",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "accessModes": {
+                    "description": "ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "description": "the class it was bound through, mapped onto a target class",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources": {
+            "type": "object",
+            "properties": {
+                "clusterScopedWorkloads": {
+                    "description": "kind -\u003e count, for the kinds that belong to no namespace",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "helmReleases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease"
+                    }
+                },
+                "namespaces": {
+                    "description": "what included namespaces are picked from",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "persistentVolumeClaims": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim"
+                    }
+                },
+                "persistentVolumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume"
+                    }
+                },
+                "storageClasses": {
+                    "description": "what storage class mappings are picked from",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass"
+                    }
+                },
+                "workloads": {
+                    "description": "namespace -\u003e kind -\u003e count; Velero migrates a namespace at a time",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "provisioner": {
+                    "description": "what a source class is matched to a target class on",
                     "type": "string"
                 }
             }
@@ -2714,6 +2869,30 @@
                 "version"
             ],
             "properties": {
+                "application_id": {
+                    "description": "flatpak application id (e.g. org.gnome.Extensions)",
+                    "type": "string"
+                },
+                "base": {
+                    "description": "snap base (e.g. core22)",
+                    "type": "string"
+                },
+                "blob_path": {
+                    "description": "snap on-source blob path (offline sideload)",
+                    "type": "string"
+                },
+                "branch": {
+                    "description": "flatpak branch",
+                    "type": "string"
+                },
+                "channel": {
+                    "description": "snap/flatpak-only fields.",
+                    "type": "string"
+                },
+                "confinement": {
+                    "description": "snap confinement: strict/classic/devmode (classic needs --classic)",
+                    "type": "string"
+                },
                 "custom_configs": {
                     "type": "array",
                     "items": {
@@ -2738,12 +2917,32 @@
                 "needed_packages": {
                     "type": "string"
                 },
+                "origin": {
+                    "description": "flatpak remote name (e.g. flathub)",
+                    "type": "string"
+                },
+                "origin_url": {
+                    "description": "flatpak remote repo URL (from the source host)",
+                    "type": "string"
+                },
                 "repo_url": {
                     "type": "string"
                 },
                 "repo_use_os_version_code": {
                     "type": "boolean",
                     "default": false
+                },
+                "revision": {
+                    "description": "snap store revision (informational; drifts on auto-refresh)",
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "flatpak required runtime ref (e.g. org.gnome.Platform/x86_64/47)",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "flatpak install scope: system/user",
+                    "type": "string"
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType"
@@ -2761,6 +2960,30 @@
                 "version"
             ],
             "properties": {
+                "application_id": {
+                    "description": "flatpak application id",
+                    "type": "string"
+                },
+                "base": {
+                    "description": "snap base",
+                    "type": "string"
+                },
+                "blob_path": {
+                    "description": "snap on-source blob path (offline sideload)",
+                    "type": "string"
+                },
+                "branch": {
+                    "description": "flatpak branch",
+                    "type": "string"
+                },
+                "channel": {
+                    "description": "snap/flatpak-only fields.",
+                    "type": "string"
+                },
+                "confinement": {
+                    "description": "snap confinement: strict/classic/devmode",
+                    "type": "string"
+                },
                 "custom_configs": {
                     "type": "array",
                     "items": {
@@ -2794,12 +3017,40 @@
                 "order": {
                     "type": "integer"
                 },
+                "origin": {
+                    "description": "flatpak remote name",
+                    "type": "string"
+                },
+                "origin_url": {
+                    "description": "flatpak remote repo URL (from source)",
+                    "type": "string"
+                },
                 "repo_url": {
                     "type": "string"
                 },
                 "repo_use_os_version_code": {
                     "type": "boolean",
                     "default": false
+                },
+                "revision": {
+                    "description": "snap store revision (informational)",
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "flatpak required runtime ref",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "flatpak install scope: system/user",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "deb/rpm (OS package) or snap/flatpak",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType"
+                        }
+                    ]
                 },
                 "version": {
                     "type": "string"
@@ -2871,19 +3122,27 @@
             "type": "string",
             "enum": [
                 "deb",
-                "rpm"
+                "rpm",
+                "snap",
+                "flatpak"
             ],
             "x-enum-comments": {
                 "SoftwarePackageTypeDEB": "Debian based package type",
-                "SoftwarePackageTypeRPM": "RHEL based package type"
+                "SoftwarePackageTypeFlatpak": "flatpak application",
+                "SoftwarePackageTypeRPM": "RHEL based package type",
+                "SoftwarePackageTypeSnap": "snap package (snapd)"
             },
             "x-enum-descriptions": [
                 "Debian based package type",
-                "RHEL based package type"
+                "RHEL based package type",
+                "snap package (snapd)",
+                "flatpak application"
             ],
             "x-enum-varnames": [
                 "SoftwarePackageTypeDEB",
-                "SoftwarePackageTypeRPM"
+                "SoftwarePackageTypeRPM",
+                "SoftwarePackageTypeSnap",
+                "SoftwarePackageTypeFlatpak"
             ]
         },
         "github_com_cloud-barista_cm-grasshopper_smdl.SourceConnectionInfoSoftwareProperty": {

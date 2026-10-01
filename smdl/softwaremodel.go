@@ -82,10 +82,10 @@ type Env struct {
 }
 
 type Binary struct {
-	Name            string   `json:"name" validate:"required"`
-	Version         string   `gorm:"version" json:"version" validate:"required"`
-	UIDs            []int32  `json:"uids" validate:"required"`
-	GIDs            []int32  `json:"gids" validate:"required"`
+	Name             string   `json:"name" validate:"required"`
+	Version          string   `gorm:"version" json:"version" validate:"required"`
+	UIDs             []int32  `json:"uids" validate:"required"`
+	GIDs             []int32  `json:"gids" validate:"required"`
 	CmdlineSlice     []string `json:"cmdline_slice"`
 	Envs             []string `json:"envs" validate:"required"`
 	NeededLibraries  []string `json:"needed_libraries"`
@@ -145,10 +145,50 @@ type Container struct {
 	RestartPolicy     string                       `json:"restart_policy,omitempty" validate:"required"`
 }
 
+type KubernetesStorageClass struct {
+	Name        string `json:"name" validate:"required"`
+	Provisioner string `json:"provisioner,omitempty"` // what a source class is matched to a target class on
+}
+
+type KubernetesPersistentVolume struct {
+	Name           string   `json:"name" validate:"required"`
+	Capacity       string   `json:"capacity,omitempty"`       // as the cluster reports it, e.g. "1Gi"
+	AccessModes    []string `json:"accessModes,omitempty"`    // ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same
+	StorageClass   string   `json:"storageClass,omitempty"`   // the class that provisioned it
+	ReclaimPolicy  string   `json:"reclaimPolicy,omitempty"`  // Retain leaves the source volume behind, Delete does not
+	ClaimNamespace string   `json:"claimNamespace,omitempty"` // the PVC it is bound to; a PV is cluster-scoped
+	ClaimName      string   `json:"claimName,omitempty"`
+	Status         string   `json:"status,omitempty"` // Bound, Available, Released, Failed
+}
+
+type KubernetesPersistentVolumeClaim struct {
+	Namespace    string   `json:"namespace" validate:"required"`
+	Name         string   `json:"name" validate:"required"`
+	StorageClass string   `json:"storageClass,omitempty"` // the class it was bound through, mapped onto a target class
+	AccessModes  []string `json:"accessModes,omitempty"`  // ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same
+}
+
+type KubernetesHelmRelease struct {
+	Namespace    string `json:"namespace" validate:"required"`
+	Name         string `json:"name" validate:"required"`
+	Chart        string `json:"chart,omitempty"`
+	ChartVersion string `json:"chartVersion,omitempty"`
+}
+
+type KubernetesResources struct {
+	Namespaces             []string                          `json:"namespaces,omitempty"`             // what included namespaces are picked from
+	Workloads              map[string]map[string]int         `json:"workloads,omitempty"`              // namespace -> kind -> count; Velero migrates a namespace at a time
+	ClusterScopedWorkloads map[string]int                    `json:"clusterScopedWorkloads,omitempty"` // kind -> count, for the kinds that belong to no namespace
+	StorageClasses         []KubernetesStorageClass          `json:"storageClasses,omitempty"`         // what storage class mappings are picked from
+	PersistentVolumes      []KubernetesPersistentVolume      `json:"persistentVolumes,omitempty"`
+	PersistentVolumeClaims []KubernetesPersistentVolumeClaim `json:"persistentVolumeClaims,omitempty"`
+	HelmReleases           []KubernetesHelmRelease           `json:"helmReleases,omitempty"`
+}
+
 type Kubernetes struct {
-	Version    string                 `json:"version,omitempty" validate:"required"` // Same as release
-	KubeConfig string                 `json:"kube_config" validate:"required"`
-	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
+	Version    string               `json:"version,omitempty" validate:"required"` // Same as release
+	KubeConfig string               `json:"kube_config"`                           // Empty: the consumer fetches it from cm-honeybee by connection id
+	Resources  *KubernetesResources `json:"resources,omitempty"  validate:"required"`
 }
 
 type SoftwareList struct {
@@ -173,11 +213,11 @@ type SourceSoftwareModel struct {
 }
 
 type BinaryMigrationInfo struct {
-	Order           int      `json:"order"`
-	Name            string   `json:"name" validate:"required"`
-	Version         string   `gorm:"version" json:"version" validate:"required"`
-	UIDs            []int32  `json:"uids" validate:"required"`
-	GIDs            []int32  `json:"gids" validate:"required"`
+	Order            int      `json:"order"`
+	Name             string   `json:"name" validate:"required"`
+	Version          string   `gorm:"version" json:"version" validate:"required"`
+	UIDs             []int32  `json:"uids" validate:"required"`
+	GIDs             []int32  `json:"gids" validate:"required"`
 	CmdlineSlice     []string `json:"cmdline_slice"`
 	Envs             []string `json:"envs" validate:"required"`
 	NeededLibraries  []string `json:"needed_libraries"`
@@ -202,13 +242,13 @@ type PackageMigrationInfo struct {
 	Name                 string              `json:"name" validate:"required"`
 	Type                 SoftwarePackageType `json:"type,omitempty"` // deb/rpm (OS package) or snap/flatpak
 	Version              string              `gorm:"version" json:"version" validate:"required"`
-	NeededPackages       []string `json:"needed_packages" validate:"required"`
-	NeedToDeletePackages []string `json:"need_to_delete_packages"`
-	CustomDataPaths      []string `json:"custom_data_paths"`
-	CustomConfigs        []string `json:"custom_configs"`
-	RepoURL              string   `json:"repo_url"`
-	GPGKeyURL            string   `json:"gpg_key_url"`
-	RepoUseOSVersionCode bool     `json:"repo_use_os_version_code" default:"false"`
+	NeededPackages       []string            `json:"needed_packages" validate:"required"`
+	NeedToDeletePackages []string            `json:"need_to_delete_packages"`
+	CustomDataPaths      []string            `json:"custom_data_paths"`
+	CustomConfigs        []string            `json:"custom_configs"`
+	RepoURL              string              `json:"repo_url"`
+	GPGKeyURL            string              `json:"gpg_key_url"`
+	RepoUseOSVersionCode bool                `json:"repo_use_os_version_code" default:"false"`
 
 	// snap/flatpak-only fields.
 	Channel       string `json:"channel,omitempty"`        // snap tracking channel
@@ -249,11 +289,11 @@ type KubernetesVelero struct {
 }
 
 type KubernetesMigrationInfo struct {
-	Order      int                    `json:"order"`
-	Version    string                 `json:"version,omitempty" validate:"required"` // Same as release
-	KubeConfig string                 `json:"kube_config" validate:"required"`
-	Resources  map[string]interface{} `json:"resources,omitempty"  validate:"required"`
-	Velero     KubernetesVelero       `json:"velero" validate:"required"`
+	Order      int                  `json:"order"`
+	Version    string               `json:"version,omitempty" validate:"required"` // Same as release
+	KubeConfig string               `json:"kube_config"`                           // Empty: the consumer fetches it from cm-honeybee by connection id
+	Resources  *KubernetesResources `json:"resources,omitempty"  validate:"required"`
+	Velero     KubernetesVelero     `json:"velero" validate:"required"`
 }
 
 type MigrationList struct {

@@ -971,37 +971,148 @@ definitions:
   github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes:
     properties:
       kube_config:
+        description: 'Empty: the consumer fetches it from cm-honeybee by connection
+          id'
         type: string
       resources:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources'
       version:
         description: Same as release
         type: string
     required:
-    - kube_config
     - resources
     - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease:
+    properties:
+      chart:
+        type: string
+      chartVersion:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+    required:
+    - name
+    - namespace
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo:
     properties:
       kube_config:
+        description: 'Empty: the consumer fetches it from cm-honeybee by connection
+          id'
         type: string
       order:
         type: integer
       resources:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources'
       velero:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero'
       version:
         description: Same as release
         type: string
     required:
-    - kube_config
     - resources
     - velero
     - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume:
+    properties:
+      accessModes:
+        description: ReadWriteOnce, ReadWriteMany, ...; the target storage has to
+          offer the same
+        items:
+          type: string
+        type: array
+      capacity:
+        description: as the cluster reports it, e.g. "1Gi"
+        type: string
+      claimName:
+        type: string
+      claimNamespace:
+        description: the PVC it is bound to; a PV is cluster-scoped
+        type: string
+      name:
+        type: string
+      reclaimPolicy:
+        description: Retain leaves the source volume behind, Delete does not
+        type: string
+      status:
+        description: Bound, Available, Released, Failed
+        type: string
+      storageClass:
+        description: the class that provisioned it
+        type: string
+    required:
+    - name
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim:
+    properties:
+      accessModes:
+        description: ReadWriteOnce, ReadWriteMany, ...; the target storage has to
+          offer the same
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      namespace:
+        type: string
+      storageClass:
+        description: the class it was bound through, mapped onto a target class
+        type: string
+    required:
+    - name
+    - namespace
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources:
+    properties:
+      clusterScopedWorkloads:
+        additionalProperties:
+          type: integer
+        description: kind -> count, for the kinds that belong to no namespace
+        type: object
+      helmReleases:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease'
+        type: array
+      namespaces:
+        description: what included namespaces are picked from
+        items:
+          type: string
+        type: array
+      persistentVolumeClaims:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim'
+        type: array
+      persistentVolumes:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume'
+        type: array
+      storageClasses:
+        description: what storage class mappings are picked from
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass'
+        type: array
+      workloads:
+        additionalProperties:
+          additionalProperties:
+            type: integer
+          type: object
+        description: namespace -> kind -> count; Velero migrates a namespace at a
+          time
+        type: object
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass:
+    properties:
+      name:
+        type: string
+      provisioner:
+        description: what a source class is matched to a target class on
+        type: string
+    required:
+    - name
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero:
     properties:
@@ -1054,6 +1165,24 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.Package:
     properties:
+      application_id:
+        description: flatpak application id (e.g. org.gnome.Extensions)
+        type: string
+      base:
+        description: snap base (e.g. core22)
+        type: string
+      blob_path:
+        description: snap on-source blob path (offline sideload)
+        type: string
+      branch:
+        description: flatpak branch
+        type: string
+      channel:
+        description: snap/flatpak-only fields.
+        type: string
+      confinement:
+        description: 'snap confinement: strict/classic/devmode (classic needs --classic)'
+        type: string
       custom_configs:
         items:
           type: string
@@ -1070,11 +1199,26 @@ definitions:
         type: string
       needed_packages:
         type: string
+      origin:
+        description: flatpak remote name (e.g. flathub)
+        type: string
+      origin_url:
+        description: flatpak remote repo URL (from the source host)
+        type: string
       repo_url:
         type: string
       repo_use_os_version_code:
         default: false
         type: boolean
+      revision:
+        description: snap store revision (informational; drifts on auto-refresh)
+        type: string
+      runtime:
+        description: flatpak required runtime ref (e.g. org.gnome.Platform/x86_64/47)
+        type: string
+      scope:
+        description: 'flatpak install scope: system/user'
+        type: string
       type:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType'
       version:
@@ -1087,6 +1231,24 @@ definitions:
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.PackageMigrationInfo:
     properties:
+      application_id:
+        description: flatpak application id
+        type: string
+      base:
+        description: snap base
+        type: string
+      blob_path:
+        description: snap on-source blob path (offline sideload)
+        type: string
+      branch:
+        description: flatpak branch
+        type: string
+      channel:
+        description: snap/flatpak-only fields.
+        type: string
+      confinement:
+        description: 'snap confinement: strict/classic/devmode'
+        type: string
       custom_configs:
         items:
           type: string
@@ -1109,11 +1271,30 @@ definitions:
         type: array
       order:
         type: integer
+      origin:
+        description: flatpak remote name
+        type: string
+      origin_url:
+        description: flatpak remote repo URL (from source)
+        type: string
       repo_url:
         type: string
       repo_use_os_version_code:
         default: false
         type: boolean
+      revision:
+        description: snap store revision (informational)
+        type: string
+      runtime:
+        description: flatpak required runtime ref
+        type: string
+      scope:
+        description: 'flatpak install scope: system/user'
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType'
+        description: deb/rpm (OS package) or snap/flatpak
       version:
         type: string
     required:
@@ -1170,16 +1351,24 @@ definitions:
     enum:
     - deb
     - rpm
+    - snap
+    - flatpak
     type: string
     x-enum-comments:
       SoftwarePackageTypeDEB: Debian based package type
+      SoftwarePackageTypeFlatpak: flatpak application
       SoftwarePackageTypeRPM: RHEL based package type
+      SoftwarePackageTypeSnap: snap package (snapd)
     x-enum-descriptions:
     - Debian based package type
     - RHEL based package type
+    - snap package (snapd)
+    - flatpak application
     x-enum-varnames:
     - SoftwarePackageTypeDEB
     - SoftwarePackageTypeRPM
+    - SoftwarePackageTypeSnap
+    - SoftwarePackageTypeFlatpak
   github_com_cloud-barista_cm-grasshopper_smdl.SourceConnectionInfoSoftwareProperty:
     properties:
       connection_id:
