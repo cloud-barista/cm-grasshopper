@@ -2721,6 +2721,30 @@ const docTemplate = `{
                 "version"
             ],
             "properties": {
+                "application_id": {
+                    "description": "flatpak application id (e.g. org.gnome.Extensions)",
+                    "type": "string"
+                },
+                "base": {
+                    "description": "snap base (e.g. core22)",
+                    "type": "string"
+                },
+                "blob_path": {
+                    "description": "snap on-source blob path (offline sideload)",
+                    "type": "string"
+                },
+                "branch": {
+                    "description": "flatpak branch",
+                    "type": "string"
+                },
+                "channel": {
+                    "description": "snap/flatpak-only fields.",
+                    "type": "string"
+                },
+                "confinement": {
+                    "description": "snap confinement: strict/classic/devmode (classic needs --classic)",
+                    "type": "string"
+                },
                 "custom_configs": {
                     "type": "array",
                     "items": {
@@ -2745,12 +2769,32 @@ const docTemplate = `{
                 "needed_packages": {
                     "type": "string"
                 },
+                "origin": {
+                    "description": "flatpak remote name (e.g. flathub)",
+                    "type": "string"
+                },
+                "origin_url": {
+                    "description": "flatpak remote repo URL (from the source host)",
+                    "type": "string"
+                },
                 "repo_url": {
                     "type": "string"
                 },
                 "repo_use_os_version_code": {
                     "type": "boolean",
                     "default": false
+                },
+                "revision": {
+                    "description": "snap store revision (informational; drifts on auto-refresh)",
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "flatpak required runtime ref (e.g. org.gnome.Platform/x86_64/47)",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "flatpak install scope: system/user",
+                    "type": "string"
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType"
@@ -2768,6 +2812,30 @@ const docTemplate = `{
                 "version"
             ],
             "properties": {
+                "application_id": {
+                    "description": "flatpak application id",
+                    "type": "string"
+                },
+                "base": {
+                    "description": "snap base",
+                    "type": "string"
+                },
+                "blob_path": {
+                    "description": "snap on-source blob path (offline sideload)",
+                    "type": "string"
+                },
+                "branch": {
+                    "description": "flatpak branch",
+                    "type": "string"
+                },
+                "channel": {
+                    "description": "snap/flatpak-only fields.",
+                    "type": "string"
+                },
+                "confinement": {
+                    "description": "snap confinement: strict/classic/devmode",
+                    "type": "string"
+                },
                 "custom_configs": {
                     "type": "array",
                     "items": {
@@ -2801,12 +2869,40 @@ const docTemplate = `{
                 "order": {
                     "type": "integer"
                 },
+                "origin": {
+                    "description": "flatpak remote name",
+                    "type": "string"
+                },
+                "origin_url": {
+                    "description": "flatpak remote repo URL (from source)",
+                    "type": "string"
+                },
                 "repo_url": {
                     "type": "string"
                 },
                 "repo_use_os_version_code": {
                     "type": "boolean",
                     "default": false
+                },
+                "revision": {
+                    "description": "snap store revision (informational)",
+                    "type": "string"
+                },
+                "runtime": {
+                    "description": "flatpak required runtime ref",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "flatpak install scope: system/user",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "deb/rpm (OS package) or snap/flatpak",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.SoftwarePackageType"
+                        }
+                    ]
                 },
                 "version": {
                     "type": "string"
@@ -2878,19 +2974,27 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "deb",
-                "rpm"
+                "rpm",
+                "snap",
+                "flatpak"
             ],
             "x-enum-comments": {
                 "SoftwarePackageTypeDEB": "Debian based package type",
-                "SoftwarePackageTypeRPM": "RHEL based package type"
+                "SoftwarePackageTypeFlatpak": "flatpak application",
+                "SoftwarePackageTypeRPM": "RHEL based package type",
+                "SoftwarePackageTypeSnap": "snap package (snapd)"
             },
             "x-enum-descriptions": [
                 "Debian based package type",
-                "RHEL based package type"
+                "RHEL based package type",
+                "snap package (snapd)",
+                "flatpak application"
             ],
             "x-enum-varnames": [
                 "SoftwarePackageTypeDEB",
-                "SoftwarePackageTypeRPM"
+                "SoftwarePackageTypeRPM",
+                "SoftwarePackageTypeSnap",
+                "SoftwarePackageTypeFlatpak"
             ]
         },
         "github_com_cloud-barista_cm-grasshopper_smdl.SourceConnectionInfoSoftwareProperty": {
