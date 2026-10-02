@@ -66,6 +66,7 @@ func New() *echo.Echo {
 	route.Software(e)
 	route.Job(e)
 	route.Velero(e)
+	route.K8s(e)
 	route.RegisterSwagger(e)
 	route.RegisterUtility(e)
 

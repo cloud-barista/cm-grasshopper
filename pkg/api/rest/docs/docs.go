@@ -162,6 +162,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/k8s/migrate": {
+            "post": {
+                "description": "Install Velero on both clusters and run the migration as a single asynchronous job. Leave out the install block when Velero is already installed. Poll the returned job id through /job/status/{jobId}.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Kubernetes migration APIs"
+                ],
+                "summary": "Migrate Kubernetes Cluster",
+                "operationId": "k8s-migrate",
+                "parameters": [
+                    {
+                        "description": "Kubernetes migration request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully started migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to start migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/readyz": {
             "get": {
                 "description": "Check Grasshopper is ready",
@@ -1659,6 +1706,26 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec"
+                },
+                "migration": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                }
+            }
+        },
         "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest": {
             "type": "object",
             "properties": {
@@ -2592,17 +2659,16 @@ const docTemplate = `{
         "github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes": {
             "type": "object",
             "required": [
-                "kube_config",
                 "resources",
                 "version"
             ],
             "properties": {
                 "kube_config": {
+                    "description": "Empty: the consumer fetches it from cm-honeybee by connection id",
                     "type": "string"
                 },
                 "resources": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources"
                 },
                 "version": {
                     "description": "Same as release",
@@ -2610,30 +2676,186 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "chart": {
+                    "type": "string"
+                },
+                "chartVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo": {
             "type": "object",
             "required": [
-                "kube_config",
                 "resources",
                 "velero",
                 "version"
             ],
             "properties": {
                 "kube_config": {
+                    "description": "Empty: the consumer fetches it from cm-honeybee by connection id",
                     "type": "string"
                 },
                 "order": {
                     "type": "integer"
                 },
                 "resources": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources"
                 },
                 "velero": {
                     "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero"
                 },
                 "version": {
                     "description": "Same as release",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "accessModes": {
+                    "description": "ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capacity": {
+                    "description": "as the cluster reports it, e.g. \"1Gi\"",
+                    "type": "string"
+                },
+                "claimName": {
+                    "type": "string"
+                },
+                "claimNamespace": {
+                    "description": "the PVC it is bound to; a PV is cluster-scoped",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reclaimPolicy": {
+                    "description": "Retain leaves the source volume behind, Delete does not",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Bound, Available, Released, Failed",
+                    "type": "string"
+                },
+                "storageClass": {
+                    "description": "the class that provisioned it",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim": {
+            "type": "object",
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "properties": {
+                "accessModes": {
+                    "description": "ReadWriteOnce, ReadWriteMany, ...; the target storage has to offer the same",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "description": "the class it was bound through, mapped onto a target class",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources": {
+            "type": "object",
+            "properties": {
+                "clusterScopedWorkloads": {
+                    "description": "kind -\u003e count, for the kinds that belong to no namespace",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "helmReleases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease"
+                    }
+                },
+                "namespaces": {
+                    "description": "what included namespaces are picked from",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "persistentVolumeClaims": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim"
+                    }
+                },
+                "persistentVolumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume"
+                    }
+                },
+                "storageClasses": {
+                    "description": "what storage class mappings are picked from",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass"
+                    }
+                },
+                "workloads": {
+                    "description": "namespace -\u003e kind -\u003e count; Velero migrates a namespace at a time",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "provisioner": {
+                    "description": "what a source class is matched to a target class on",
                     "type": "string"
                 }
             }

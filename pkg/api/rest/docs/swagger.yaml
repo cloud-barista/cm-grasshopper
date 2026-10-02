@@ -339,6 +339,19 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest:
+    properties:
+      install:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec'
+      migration:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec'
+      sourceCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+      storage:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
+      targetCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest:
     properties:
       migration:
@@ -971,37 +984,148 @@ definitions:
   github_com_cloud-barista_cm-grasshopper_smdl.Kubernetes:
     properties:
       kube_config:
+        description: 'Empty: the consumer fetches it from cm-honeybee by connection
+          id'
         type: string
       resources:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources'
       version:
         description: Same as release
         type: string
     required:
-    - kube_config
     - resources
     - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease:
+    properties:
+      chart:
+        type: string
+      chartVersion:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+    required:
+    - name
+    - namespace
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.KubernetesMigrationInfo:
     properties:
       kube_config:
+        description: 'Empty: the consumer fetches it from cm-honeybee by connection
+          id'
         type: string
       order:
         type: integer
       resources:
-        additionalProperties: true
-        type: object
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources'
       velero:
         $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero'
       version:
         description: Same as release
         type: string
     required:
-    - kube_config
     - resources
     - velero
     - version
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume:
+    properties:
+      accessModes:
+        description: ReadWriteOnce, ReadWriteMany, ...; the target storage has to
+          offer the same
+        items:
+          type: string
+        type: array
+      capacity:
+        description: as the cluster reports it, e.g. "1Gi"
+        type: string
+      claimName:
+        type: string
+      claimNamespace:
+        description: the PVC it is bound to; a PV is cluster-scoped
+        type: string
+      name:
+        type: string
+      reclaimPolicy:
+        description: Retain leaves the source volume behind, Delete does not
+        type: string
+      status:
+        description: Bound, Available, Released, Failed
+        type: string
+      storageClass:
+        description: the class that provisioned it
+        type: string
+    required:
+    - name
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim:
+    properties:
+      accessModes:
+        description: ReadWriteOnce, ReadWriteMany, ...; the target storage has to
+          offer the same
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      namespace:
+        type: string
+      storageClass:
+        description: the class it was bound through, mapped onto a target class
+        type: string
+    required:
+    - name
+    - namespace
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesResources:
+    properties:
+      clusterScopedWorkloads:
+        additionalProperties:
+          type: integer
+        description: kind -> count, for the kinds that belong to no namespace
+        type: object
+      helmReleases:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesHelmRelease'
+        type: array
+      namespaces:
+        description: what included namespaces are picked from
+        items:
+          type: string
+        type: array
+      persistentVolumeClaims:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolumeClaim'
+        type: array
+      persistentVolumes:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesPersistentVolume'
+        type: array
+      storageClasses:
+        description: what storage class mappings are picked from
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass'
+        type: array
+      workloads:
+        additionalProperties:
+          additionalProperties:
+            type: integer
+          type: object
+        description: namespace -> kind -> count; Velero migrates a namespace at a
+          time
+        type: object
+    type: object
+  github_com_cloud-barista_cm-grasshopper_smdl.KubernetesStorageClass:
+    properties:
+      name:
+        type: string
+      provisioner:
+        description: what a source class is matched to a target class on
+        type: string
+    required:
+    - name
     type: object
   github_com_cloud-barista_cm-grasshopper_smdl.KubernetesVelero:
     properties:
@@ -1403,6 +1527,39 @@ paths:
       summary: Get Job Status
       tags:
       - '[Migration] K8s migration job APIs'
+  /k8s/migrate:
+    post:
+      consumes:
+      - application/json
+      description: Install Velero on both clusters and run the migration as a single
+        asynchronous job. Leave out the install block when Velero is already installed.
+        Poll the returned job id through /job/status/{jobId}.
+      operationId: k8s-migrate
+      parameters:
+      - description: Kubernetes migration request.
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully started migration job.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to start migration job.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Migrate Kubernetes Cluster
+      tags:
+      - '[Migration] Kubernetes migration APIs'
   /readyz:
     get:
       consumes:

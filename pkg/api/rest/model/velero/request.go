@@ -96,3 +96,11 @@ type MigrationExecuteRequest struct {
 	commonmodel.MultiClusterEnvelope
 	Migration MigrationExecuteSpec `json:"migration"`
 }
+
+// MigrateRequest drives the whole cluster migration from one call. Install is
+// optional: leave it out when Velero is already running on both clusters.
+type MigrateRequest struct {
+	commonmodel.MultiClusterEnvelope
+	Install   *InstallSpec         `json:"install,omitempty"`
+	Migration MigrationExecuteSpec `json:"migration"`
+}
