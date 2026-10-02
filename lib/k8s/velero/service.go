@@ -440,36 +440,174 @@ func isSnapshotOnlyPrecheckWarning(warning string) bool {
 		strings.Contains(lower, "snapshot backup check skipped")
 }
 
+// progressScale maps the migration flow's own 0-100 reporting onto the span a
+// caller left for it. A job that installs Velero first owns the first part of
+// the bar, and without this the progress would jump backwards once the
+// migration starts.
+type progressScale struct {
+	base int
+	span int
+}
+
+func (p progressScale) at(progress int) int {
+	if p.span <= 0 {
+		return progress
+	}
+
+	return p.base + progress*p.span/100
+}
+
+// runMigration drives precheck, source backup and target restore on an already
+// created job. It reports failures to the caller instead of failing the job so
+// that a caller which did more work before this (installing Velero) can decide
+// what to record.
+func (s *Service) runMigration(ctx context.Context, jobID string, sourceCluster, targetCluster *commonmodel.ClusterAccess,
+	s3Access *commonmodel.S3Access, spec veleromodel.MigrationExecuteSpec, backupName, restoreName string,
+	scale progressScale) (string, error) {
+	updateJobProgressSafe(jobID, scale.at(5), "Starting migration precheck")
+	_ = joblib.DefaultManager.AddJobLog(jobID, "Starting migration precheck")
+
+	precheckSpec := veleromodel.MigrationPrecheckSpec{
+		BackupName:              backupName,
+		RestoreName:             restoreName,
+		SourceNamespace:         spec.SourceNamespace,
+		TargetNamespace:         spec.TargetNamespace,
+		IncludedNamespaces:      spec.IncludedNamespaces,
+		ExcludedNamespaces:      spec.ExcludedNamespaces,
+		IncludedResources:       spec.IncludedResources,
+		ExcludedResources:       spec.ExcludedResources,
+		NamespaceMapping:        spec.NamespaceMapping,
+		StorageClassMappings:    spec.StorageClassMappings,
+		IncludeClusterResources: spec.IncludeClusterResources,
+		VolumeBackupMode:        spec.VolumeBackupMode,
+	}
+	precheckResult, precheckErr := s.Precheck(ctx, sourceCluster, targetCluster, s3Access, precheckSpec)
+	if precheckErr != nil {
+		return "", precheckErr
+	}
+	for _, warning := range precheckResult.Warnings {
+		_ = joblib.DefaultManager.AddJobLogWithLevel(jobID, joblib.LogLevelWarn, "Precheck warning: "+warning)
+	}
+	if precheckResult.Status == "not_ready" {
+		if len(precheckResult.Errors) > 0 {
+			return "", fmt.Errorf("migration precheck failed: %s", strings.Join(precheckResult.Errors, "; "))
+		}
+		return "", fmt.Errorf("migration precheck failed")
+	}
+	updateJobProgressSafe(jobID, scale.at(15), fmt.Sprintf("Migration precheck finished with status %s", precheckResult.Status))
+
+	backupSpec := veleromodel.BackupSpec{
+		Name:                     backupName,
+		SourceNamespace:          spec.SourceNamespace,
+		IncludedNamespaces:       spec.IncludedNamespaces,
+		ExcludedNamespaces:       spec.ExcludedNamespaces,
+		IncludedResources:        spec.IncludedResources,
+		ExcludedResources:        spec.ExcludedResources,
+		IncludeClusterResources:  spec.IncludeClusterResources,
+		VolumeBackupMode:         spec.VolumeBackupMode,
+		NameConflictPolicy:       spec.NameConflictPolicy,
+		SnapshotVolumes:          spec.SnapshotVolumes,
+		DefaultVolumesToFsBackup: spec.DefaultVolumesToFsBackup,
+	}
+
+	updateJobProgressSafe(jobID, scale.at(20), fmt.Sprintf("Creating source backup %s", backupName))
+	_ = joblib.DefaultManager.AddJobLog(jobID, fmt.Sprintf("Creating source backup %s", backupName))
+	backupResult, createErr := s.CreateBackup(ctx, sourceCluster, backupSpec)
+	if createErr != nil {
+		return "", createErr
+	}
+	if backupResult != nil && backupResult.Name != "" {
+		backupName = backupResult.Name
+	}
+	updateJobProgressSafe(jobID, scale.at(30), fmt.Sprintf("Source backup %s created; waiting for completion", backupName))
+
+	backup, waitBackupErr := s.waitForBackupCompletion(ctx, sourceCluster, backupName, jobID, scale.at(40))
+	if waitBackupErr != nil {
+		return "", waitBackupErr
+	}
+	updateJobProgressSafe(jobID, scale.at(65), fmt.Sprintf("Backup %s completed with phase %s", backupName, backup.Status.Phase))
+
+	if locationErr := s.checkBackupLocations(ctx, sourceCluster, targetCluster); locationErr != nil {
+		return "", locationErr
+	}
+
+	updateJobProgressSafe(jobID, scale.at(70), fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
+	_ = joblib.DefaultManager.AddJobLog(jobID, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
+	if waitSyncErr := s.waitForBackupSync(ctx, targetCluster, backupName, jobID, scale.at(72)); waitSyncErr != nil {
+		return "", waitSyncErr
+	}
+	updateJobProgressSafe(jobID, scale.at(75), fmt.Sprintf("Backup %s is available on target cluster", backupName))
+
+	restoreSpec := veleromodel.RestoreSpec{
+		Name:                    restoreName,
+		BackupName:              backupName,
+		SourceNamespace:         spec.SourceNamespace,
+		TargetNamespace:         spec.TargetNamespace,
+		IncludedNamespaces:      spec.IncludedNamespaces,
+		ExcludedNamespaces:      spec.ExcludedNamespaces,
+		IncludedResources:       spec.IncludedResources,
+		ExcludedResources:       spec.ExcludedResources,
+		NamespaceMapping:        spec.NamespaceMapping,
+		StorageClassMappings:    spec.StorageClassMappings,
+		IncludeClusterResources: spec.IncludeClusterResources,
+		ExistingResourcePolicy:  spec.ExistingResourcePolicy,
+		RestorePVs:              spec.RestorePVs,
+	}
+
+	updateJobProgressSafe(jobID, scale.at(80), fmt.Sprintf("Creating target restore %s", restoreName))
+	_ = joblib.DefaultManager.AddJobLog(jobID, fmt.Sprintf("Creating target restore %s", restoreName))
+	if _, createErr := s.CreateRestore(ctx, targetCluster, restoreSpec); createErr != nil {
+		return "", createErr
+	}
+	updateJobProgressSafe(jobID, scale.at(85), fmt.Sprintf("Target restore %s created; waiting for completion", restoreName))
+
+	restore, waitRestoreErr := s.waitForRestoreCompletion(ctx, targetCluster, restoreName, jobID, scale.at(90))
+	if waitRestoreErr != nil {
+		return "", waitRestoreErr
+	}
+
+	return fmt.Sprintf("Migration completed: backup=%s restore=%s phase=%s", backupName, restoreName, restore.Status.Phase), nil
+}
+
+// migrationNames fills in the backup and restore names the caller left empty.
+func migrationNames(backupName, restoreName string) (string, string) {
+	if backupName == "" {
+		backupName = fmt.Sprintf("backup-%d", time.Now().Unix())
+	}
+	if restoreName == "" {
+		restoreName = fmt.Sprintf("restore-%d", time.Now().Unix())
+	}
+
+	return backupName, restoreName
+}
+
+func clusterMetadata(cluster *commonmodel.ClusterAccess) map[string]interface{} {
+	return map[string]interface{}{
+		"name":                  cluster.Name,
+		"namespace":             k8scommon.DefaultNamespace(cluster, k8sinstaller.DefaultVeleroNamespace),
+		"kubeconfigFingerprint": joblib.KubeconfigFingerprint(cluster.Kubeconfig),
+	}
+}
+
+func s3Metadata(s3Access *commonmodel.S3Access) map[string]interface{} {
+	return map[string]interface{}{
+		"endpoint":        s3Access.Endpoint,
+		"bucket":          k8scommon.DefaultS3Bucket(s3Access, k8sinstaller.DefaultVeleroBucket),
+		"accessKeyMasked": joblib.MaskSecret(s3Access.AccessKey),
+	}
+}
+
 func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, spec veleromodel.MigrationExecuteSpec) (*joblib.Info, error) {
 	if joblib.DefaultManager == nil {
 		return nil, fmt.Errorf("job manager is not initialized")
 	}
 
-	backupName := spec.BackupName
-	if backupName == "" {
-		backupName = fmt.Sprintf("backup-%d", time.Now().Unix())
-	}
-	restoreName := spec.RestoreName
-	if restoreName == "" {
-		restoreName = fmt.Sprintf("restore-%d", time.Now().Unix())
-	}
+	backupName, restoreName := migrationNames(spec.BackupName, spec.RestoreName)
 
 	metadata := map[string]interface{}{
-		"sourceCluster": map[string]interface{}{
-			"name":                  sourceCluster.Name,
-			"namespace":             k8scommon.DefaultNamespace(sourceCluster, k8sinstaller.DefaultVeleroNamespace),
-			"kubeconfigFingerprint": joblib.KubeconfigFingerprint(sourceCluster.Kubeconfig),
-		},
-		"targetCluster": map[string]interface{}{
-			"name":                  targetCluster.Name,
-			"namespace":             k8scommon.DefaultNamespace(targetCluster, k8sinstaller.DefaultVeleroNamespace),
-			"kubeconfigFingerprint": joblib.KubeconfigFingerprint(targetCluster.Kubeconfig),
-		},
-		"s3": map[string]interface{}{
-			"endpoint":        s3Access.Endpoint,
-			"bucket":          k8scommon.DefaultS3Bucket(s3Access, k8sinstaller.DefaultVeleroBucket),
-			"accessKeyMasked": joblib.MaskSecret(s3Access.AccessKey),
-		},
+		"sourceCluster":   clusterMetadata(sourceCluster),
+		"targetCluster":   clusterMetadata(targetCluster),
+		"s3":              s3Metadata(s3Access),
 		"backupName":      backupName,
 		"restoreName":     restoreName,
 		"targetNamespace": spec.TargetNamespace,
@@ -481,123 +619,18 @@ func (s *Service) ExecuteMigrationAsync(sourceCluster, targetCluster *commonmode
 	}
 
 	joblib.DefaultManager.Submit(func() {
-		updateJobProgressSafe(job.JobID, 5, "Starting migration precheck")
-		_ = joblib.DefaultManager.AddJobLog(job.JobID, "Starting migration precheck")
-
 		ctx, cancel := context.WithTimeout(context.Background(), config.GetK8sBackupTimeout()+config.GetK8sRestoreTimeout())
 		defer cancel()
 
-		precheckSpec := veleromodel.MigrationPrecheckSpec{
-			BackupName:              backupName,
-			RestoreName:             restoreName,
-			SourceNamespace:         spec.SourceNamespace,
-			TargetNamespace:         spec.TargetNamespace,
-			IncludedNamespaces:      spec.IncludedNamespaces,
-			ExcludedNamespaces:      spec.ExcludedNamespaces,
-			IncludedResources:       spec.IncludedResources,
-			ExcludedResources:       spec.ExcludedResources,
-			NamespaceMapping:        spec.NamespaceMapping,
-			StorageClassMappings:    spec.StorageClassMappings,
-			IncludeClusterResources: spec.IncludeClusterResources,
-			VolumeBackupMode:        spec.VolumeBackupMode,
-		}
-		precheckResult, precheckErr := s.Precheck(ctx, sourceCluster, targetCluster, s3Access, precheckSpec)
-		if precheckErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, precheckErr)
-			return
-		}
-		for _, warning := range precheckResult.Warnings {
-			_ = joblib.DefaultManager.AddJobLogWithLevel(job.JobID, joblib.LogLevelWarn, "Precheck warning: "+warning)
-		}
-		if precheckResult.Status == "not_ready" {
-			if len(precheckResult.Errors) > 0 {
-				_ = joblib.DefaultManager.FailJob(job.JobID, fmt.Errorf("migration precheck failed: %s", strings.Join(precheckResult.Errors, "; ")))
-				return
-			}
-			_ = joblib.DefaultManager.FailJob(job.JobID, fmt.Errorf("migration precheck failed"))
-			return
-		}
-		updateJobProgressSafe(job.JobID, 15, fmt.Sprintf("Migration precheck finished with status %s", precheckResult.Status))
-
-		backupSpec := veleromodel.BackupSpec{
-			Name:                     backupName,
-			SourceNamespace:          spec.SourceNamespace,
-			IncludedNamespaces:       spec.IncludedNamespaces,
-			ExcludedNamespaces:       spec.ExcludedNamespaces,
-			IncludedResources:        spec.IncludedResources,
-			ExcludedResources:        spec.ExcludedResources,
-			IncludeClusterResources:  spec.IncludeClusterResources,
-			VolumeBackupMode:         spec.VolumeBackupMode,
-			NameConflictPolicy:       spec.NameConflictPolicy,
-			SnapshotVolumes:          spec.SnapshotVolumes,
-			DefaultVolumesToFsBackup: spec.DefaultVolumesToFsBackup,
-		}
-
-		updateJobProgressSafe(job.JobID, 20, fmt.Sprintf("Creating source backup %s", backupName))
-		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Creating source backup %s", backupName))
-		backupResult, createErr := s.CreateBackup(ctx, sourceCluster, backupSpec)
-		if createErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, createErr)
-			return
-		}
-		if backupResult != nil && backupResult.Name != "" {
-			backupName = backupResult.Name
-		}
-		updateJobProgressSafe(job.JobID, 30, fmt.Sprintf("Source backup %s created; waiting for completion", backupName))
-
-		backup, waitBackupErr := s.waitForBackupCompletion(ctx, sourceCluster, backupName, job.JobID, 40)
-		if waitBackupErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, waitBackupErr)
-			return
-		}
-		updateJobProgressSafe(job.JobID, 65, fmt.Sprintf("Backup %s completed with phase %s", backupName, backup.Status.Phase))
-
-		if locationErr := s.checkBackupLocations(ctx, sourceCluster, targetCluster); locationErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, locationErr)
+		message, migrateErr := s.runMigration(ctx, job.JobID, sourceCluster, targetCluster, s3Access, spec,
+			backupName, restoreName, progressScale{})
+		if migrateErr != nil {
+			_ = joblib.DefaultManager.FailJob(job.JobID, migrateErr)
 			return
 		}
 
-		updateJobProgressSafe(job.JobID, 70, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
-		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Waiting for backup %s to sync into target cluster", backupName))
-		if waitSyncErr := s.waitForBackupSync(ctx, targetCluster, backupName, job.JobID, 72); waitSyncErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, waitSyncErr)
-			return
-		}
-		updateJobProgressSafe(job.JobID, 75, fmt.Sprintf("Backup %s is available on target cluster", backupName))
-
-		restoreSpec := veleromodel.RestoreSpec{
-			Name:                    restoreName,
-			BackupName:              backupName,
-			SourceNamespace:         spec.SourceNamespace,
-			TargetNamespace:         spec.TargetNamespace,
-			IncludedNamespaces:      spec.IncludedNamespaces,
-			ExcludedNamespaces:      spec.ExcludedNamespaces,
-			IncludedResources:       spec.IncludedResources,
-			ExcludedResources:       spec.ExcludedResources,
-			NamespaceMapping:        spec.NamespaceMapping,
-			StorageClassMappings:    spec.StorageClassMappings,
-			IncludeClusterResources: spec.IncludeClusterResources,
-			ExistingResourcePolicy:  spec.ExistingResourcePolicy,
-			RestorePVs:              spec.RestorePVs,
-		}
-
-		updateJobProgressSafe(job.JobID, 80, fmt.Sprintf("Creating target restore %s", restoreName))
-		_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Creating target restore %s", restoreName))
-		if _, createErr := s.CreateRestore(ctx, targetCluster, restoreSpec); createErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, createErr)
-			return
-		}
-		updateJobProgressSafe(job.JobID, 85, fmt.Sprintf("Target restore %s created; waiting for completion", restoreName))
-
-		restore, waitRestoreErr := s.waitForRestoreCompletion(ctx, targetCluster, restoreName, job.JobID, 90)
-		if waitRestoreErr != nil {
-			_ = joblib.DefaultManager.FailJob(job.JobID, waitRestoreErr)
-			return
-		}
-
-		finalMessage := fmt.Sprintf("Migration completed: backup=%s restore=%s phase=%s", backupName, restoreName, restore.Status.Phase)
-		_ = joblib.DefaultManager.AddJobLog(job.JobID, finalMessage)
-		_ = joblib.DefaultManager.CompleteJob(job.JobID, finalMessage)
+		_ = joblib.DefaultManager.AddJobLog(job.JobID, message)
+		_ = joblib.DefaultManager.CompleteJob(job.JobID, message)
 	})
 
 	return job, nil
@@ -1598,4 +1631,86 @@ func (s *Service) waitForRestoreCompletion(ctx context.Context, cluster *commonm
 			}
 		}
 	}
+}
+
+// MigrateAsync is the single entry point for a cluster migration: it installs
+// Velero on both clusters, then runs the same precheck, backup and restore flow
+// as ExecuteMigrationAsync, under one job id.
+//
+// install is nil when the caller has already installed Velero, which keeps the
+// endpoint usable against clusters that were prepared separately.
+func (s *Service) MigrateAsync(sourceCluster, targetCluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access,
+	install *veleromodel.InstallSpec, spec veleromodel.MigrationExecuteSpec) (*joblib.Info, error) {
+	if joblib.DefaultManager == nil {
+		return nil, fmt.Errorf("job manager is not initialized")
+	}
+
+	backupName, restoreName := migrationNames(spec.BackupName, spec.RestoreName)
+
+	metadata := map[string]interface{}{
+		"sourceCluster":   clusterMetadata(sourceCluster),
+		"targetCluster":   clusterMetadata(targetCluster),
+		"s3":              s3Metadata(s3Access),
+		"backupName":      backupName,
+		"restoreName":     restoreName,
+		"targetNamespace": spec.TargetNamespace,
+		"install":         install != nil,
+	}
+
+	job, err := joblib.DefaultManager.CreateJob("k8s_migrate", "migration", restoreName, metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	joblib.DefaultManager.Submit(func() {
+		// Install owns the first fifth of the progress bar, the migration the rest.
+		scale := progressScale{}
+
+		if install != nil {
+			volumeBackupMode := install.VolumeBackupMode
+			if volumeBackupMode == "" {
+				volumeBackupMode = veleromodel.VolumeBackupModeFilesystem
+			}
+
+			installCtx, cancelInstall := context.WithTimeout(context.Background(), config.GetK8sInstallTimeout())
+			for _, target := range []struct {
+				role    string
+				cluster *commonmodel.ClusterAccess
+				at      int
+			}{
+				{"source", sourceCluster, 2},
+				{"target", targetCluster, 11},
+			} {
+				updateJobProgressSafe(job.JobID, target.at, fmt.Sprintf("Installing Velero on %s cluster", target.role))
+				_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Installing Velero on %s cluster", target.role))
+
+				result, installErr := s.installer.Install(installCtx, target.cluster, s3Access, install.Force, volumeBackupMode)
+				if installErr != nil {
+					cancelInstall()
+					_ = joblib.DefaultManager.FailJob(job.JobID, fmt.Errorf("velero install on %s cluster failed: %w", target.role, installErr))
+					return
+				}
+				_ = joblib.DefaultManager.AddJobLog(job.JobID, fmt.Sprintf("Velero installed on %s cluster in namespace %s", target.role, result.Namespace))
+			}
+			cancelInstall()
+
+			updateJobProgressSafe(job.JobID, 20, "Velero is ready on both clusters")
+			scale = progressScale{base: 20, span: 80}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), config.GetK8sBackupTimeout()+config.GetK8sRestoreTimeout())
+		defer cancel()
+
+		message, migrateErr := s.runMigration(ctx, job.JobID, sourceCluster, targetCluster, s3Access, spec,
+			backupName, restoreName, scale)
+		if migrateErr != nil {
+			_ = joblib.DefaultManager.FailJob(job.JobID, migrateErr)
+			return
+		}
+
+		_ = joblib.DefaultManager.AddJobLog(job.JobID, message)
+		_ = joblib.DefaultManager.CompleteJob(job.JobID, message)
+	})
+
+	return job, nil
 }

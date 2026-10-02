@@ -477,6 +477,45 @@ func VeleroMigrationExecute(c echo.Context) error {
 	return c.JSONPretty(http.StatusOK, toJobStartResponse(job), " ")
 }
 
+// K8sMigrate godoc
+//
+//	@ID				k8s-migrate
+//	@Summary		Migrate Kubernetes Cluster
+//	@Description	Install Velero on both clusters and run the migration as a single asynchronous job. Leave out the install block when Velero is already installed. Poll the returned job id through /job/status/{jobId}.
+//	@Tags			[Migration] Kubernetes migration APIs
+//	@Accept			json
+//	@Produce		json
+//	@Param			request body veleromodel.MigrateRequest true "Kubernetes migration request."
+//	@Success		200	{object}	jobmodel.StartResponse	"Successfully started migration job."
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to start migration job."
+//	@Router			/k8s/migrate [post]
+func K8sMigrate(c echo.Context) error {
+	req := new(veleromodel.MigrateRequest)
+	if err := c.Bind(req); err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+	if err := k8scommon.ValidateClusterAccess(req.SourceCluster); err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+	if err := k8scommon.ValidateClusterAccess(req.TargetCluster); err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+	if req.Storage == nil || req.Storage.S3 == nil {
+		return common.ReturnErrorMsg(c, "s3 access is required")
+	}
+	if err := k8scommon.ValidateS3Access(req.Storage.S3); err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+
+	job, err := veleroService.MigrateAsync(req.SourceCluster, req.TargetCluster, req.Storage.S3, req.Install, req.Migration)
+	if err != nil {
+		return common.ReturnInternalError(c, err, "kubernetes migration failed to start")
+	}
+
+	return c.JSONPretty(http.StatusOK, toJobStartResponse(job), " ")
+}
+
 func toJobStartResponse(job *joblib.Info) jobmodel.StartResponse {
 	if job == nil {
 		return jobmodel.StartResponse{}
