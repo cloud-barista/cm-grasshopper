@@ -1,4 +1,4 @@
-FROM golang:1.26.2-bookworm AS builder
+FROM golang:1.27.1-bookworm AS builder
 
 RUN apt-get update && apt-get install -y make bash git
 
@@ -17,7 +17,7 @@ RUN git commit --allow-empty -m "a commit for the build"
 
 RUN make build-only
 
-FROM alpine:3.20.1 as prod
+FROM alpine:3.24.2 as prod
 
 RUN apk --no-cache add tzdata
 RUN echo "Asia/Seoul" >  /etc/timezone
