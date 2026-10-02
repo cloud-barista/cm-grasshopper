@@ -155,6 +155,53 @@
                 }
             }
         },
+        "/k8s/migrate": {
+            "post": {
+                "description": "Install Velero on both clusters and run the migration as a single asynchronous job. Leave out the install block when Velero is already installed. Poll the returned job id through /job/status/{jobId}.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Kubernetes migration APIs"
+                ],
+                "summary": "Migrate Kubernetes Cluster",
+                "operationId": "k8s-migrate",
+                "parameters": [
+                    {
+                        "description": "Kubernetes migration request.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully started migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to start migration job.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/readyz": {
             "get": {
                 "description": "Check Grasshopper is ready",
@@ -1649,6 +1696,26 @@
                 },
                 "volumeBackupMode": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest": {
+            "type": "object",
+            "properties": {
+                "install": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec"
+                },
+                "migration": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec"
+                },
+                "sourceCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
+                },
+                "storage": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess"
+                },
+                "targetCluster": {
+                    "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess"
                 }
             }
         },

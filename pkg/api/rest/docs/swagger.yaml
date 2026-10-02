@@ -339,6 +339,19 @@ definitions:
       volumeBackupMode:
         type: string
     type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest:
+    properties:
+      install:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.InstallSpec'
+      migration:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteSpec'
+      sourceCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+      storage:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.StorageAccess'
+      targetCluster:
+        $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.ClusterAccess'
+    type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrationExecuteRequest:
     properties:
       migration:
@@ -1514,6 +1527,39 @@ paths:
       summary: Get Job Status
       tags:
       - '[Migration] K8s migration job APIs'
+  /k8s/migrate:
+    post:
+      consumes:
+      - application/json
+      description: Install Velero on both clusters and run the migration as a single
+        asynchronous job. Leave out the install block when Velero is already installed.
+        Poll the returned job id through /job/status/{jobId}.
+      operationId: k8s-migrate
+      parameters:
+      - description: Kubernetes migration request.
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.MigrateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully started migration job.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_job.StartResponse'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to start migration job.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: Migrate Kubernetes Cluster
+      tags:
+      - '[Migration] Kubernetes migration APIs'
   /readyz:
     get:
       consumes:
