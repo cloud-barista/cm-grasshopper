@@ -30,7 +30,7 @@ SW 마이그레이션은 여러 구성요소가 협력하는 파이프라인의 
 | **cm-cicada** | **워크플로우 오케스트레이션(Airflow)**. "타깃 SW 모델 조회 → grasshopper 마이그레이션 → 결과 알림" 을 DAG 로 자동 실행. |
 | **cm-grasshopper** | **SW 마이그레이션 실행 엔진**. 타깃 SW 모델을 받아 Source/Target 에 SSH 접속해 타입별 과정을 수행. |
 
-> 보조적으로 **cm-beetle** 가 소스↔타깃 인프라를 매핑(타깃 노드에 `sourceMachineId` 라벨 부여)하고, **cm-damselfly** 가 타깃 SW 모델을 보관·제공합니다.
+> 보조적으로 **cm-beetle** 가 소스↔타깃 인프라를 매핑(타깃 NodeGroup 에 `cm-source-machine-ids` 라벨 부여)하고, **cm-damselfly** 가 타깃 SW 모델을 보관·제공합니다.
 >
 > **용어 주의 (cb-tumblebug):** 리소스 모델이 **MCI/VM → Infra/Node** 로 변경되었습니다. 타깃 조회 API 도 `/ns/{ns}/infra/{infra}/node/{node}` 형태를 사용합니다. 이 문서에서는 **Infra(구 MCI) / Node(구 VM)** 로 표기합니다.
 
@@ -94,7 +94,7 @@ honeybee-agent 는 소스 OS 위에서 타입마다 **서로 다른 소스(sourc
 
 ### 3-2. 준비 (연결·타깃 노드 해석)
 - **Source 연결** — honeybee 의 연결정보(자격증명)로 소스에 SSH 접속.
-- **Target Node 해석** — honeybee 가 가진 소스 머신 ID 로, tumblebug 의 해당 **Infra** 안에서 `sourceMachineId` 라벨이 일치하는 **Node** 를 찾음.
+- **Target Node 해석** - honeybee 가 가진 소스 머신 ID 로, tumblebug 의 해당 **Infra** 안에서 `cm-source-machine-ids` 라벨로 대응하는 **Node** 를 찾음. 라벨에 ID 가 여러 개(쉼표 구분)인 NodeGroup 은 Node 이름 끝 번호(`<nodeGroup>-N`)로 N 번째 ID 와 1:1 매칭.
 - **Target 연결** — 그 Node 의 SSH 키로 타깃에 접속.
 - 항목마다 진행 상태(`ready`)를 기록(이후 `installing` → `finished`/`failed`).
 

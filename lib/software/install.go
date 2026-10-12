@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -86,17 +87,12 @@ func getNodeId(tbInfraInfo *model.TBInfraInfo, sourceConnectionInfoID string) (s
 
 	machineid := infraInfo.Compute.OS.Node.Machineid
 
+	if machineid == "" {
+		return "", errors.New("source machine id is empty")
+	}
+
 	for _, node := range tbInfraInfo.Node {
-		// cm-beetle stamps the source machine id onto the target node as a label.
-		// The label KEY differs by recommendation path:
-		//   - "sourceMachineId"  (vm-infra path):        a single id
-		//   - "sourceMachineIds" (infra-with-nlb path):  one id, or a comma-joined
-		//                                                 list for an NLB backend group
-		// Match either key (and any member of the comma list) so migration works no
-		// matter which path provisioned the target. Matching only the singular key
-		// made whole-infra migrations created via the NLB path fail with
-		// "can't find matched target node". (cm-beetle v0.3.7, commit 94e030c)
-		if nodeLabelMatchesMachineID(node.Label, machineid) {
+		if resolveNodeSourceMachineID(node) == machineid {
 			return node.Id, nil
 		}
 	}
@@ -104,23 +100,52 @@ func getNodeId(tbInfraInfo *model.TBInfraInfo, sourceConnectionInfoID string) (s
 	return "", errors.New("can't find matched target node")
 }
 
-// nodeLabelMatchesMachineID reports whether a tumblebug node's labels identify it
-// as the target for the given source machine id, tolerating both the singular
-// ("sourceMachineId") and plural, possibly comma-joined ("sourceMachineIds")
-// label keys that cm-beetle emits.
-func nodeLabelMatchesMachineID(label map[string]string, machineID string) bool {
-	if machineID == "" {
-		return false
+// sourceMachineIdsLabelKey is the label cm-beetle sets on every NodeGroup it
+// provisions, holding the comma-separated source machine ids the NodeGroup was
+// recommended from (a single id for a 1:1 NodeGroup).
+const sourceMachineIdsLabelKey = "cm-source-machine-ids"
+
+// resolveNodeSourceMachineID returns the source machine id a tumblebug node was
+// provisioned for, or "" if it can't be determined.
+//
+// cb-tumblebug copies the NodeGroup label verbatim onto every node in the group,
+// so for a NodeGroup of N nodes each node carries the full list of N ids. The
+// node's own entry is picked by its 1-based index within the group: cb-tumblebug
+// names NodeGroup members "<nodeGroup>-1", "-2", ... in creation order, which is
+// the same order cm-beetle used to build the list.
+func resolveNodeSourceMachineID(node model.TBNodeInfo) string {
+	ids := node.Label[sourceMachineIdsLabelKey]
+	if ids == "" {
+		return ""
 	}
-	if label["sourceMachineId"] == machineID {
-		return true
+
+	idList := strings.Split(ids, ",")
+	if len(idList) == 1 {
+		return strings.TrimSpace(idList[0])
 	}
-	for _, id := range strings.Split(label["sourceMachineIds"], ",") {
-		if strings.TrimSpace(id) == machineID {
-			return true
-		}
+
+	idx := nodeGroupIndex(node.Name)
+	if idx < 1 || idx > len(idList) {
+		return ""
 	}
-	return false
+
+	return strings.TrimSpace(idList[idx-1])
+}
+
+// nodeGroupIndex extracts the 1-based NodeGroup member index from a node name's
+// trailing "-N" suffix. Returns 0 if the name has no such numeric suffix.
+func nodeGroupIndex(nodeName string) int {
+	i := strings.LastIndex(nodeName, "-")
+	if i < 0 || i == len(nodeName)-1 {
+		return 0
+	}
+
+	n, err := strconv.Atoi(nodeName[i+1:])
+	if err != nil || n < 1 {
+		return 0
+	}
+
+	return n
 }
 
 func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.MigrationServer, nsId string, infraId string) ([]Execution, []model.TargetMapping, error) {
