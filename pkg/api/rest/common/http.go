@@ -20,6 +20,22 @@ const (
 	httpRetryMaxWait  = 8 * time.Second
 )
 
+// HTTPStatusError is returned by GetHTTPRequest for a non-2xx response, so callers can
+// tell a rejection by the upstream (4xx) from an upstream failure (5xx) with errors.As.
+type HTTPStatusError struct {
+	StatusCode int
+	URL        string
+	Body       string
+}
+
+func (e *HTTPStatusError) Error() string {
+	snippet := e.Body
+	if len(snippet) > 300 {
+		snippet = snippet[:300]
+	}
+	return fmt.Sprintf("HTTP %d from %s: %s", e.StatusCode, e.URL, snippet)
+}
+
 func GetHTTPRequest(URL string, username string, password string) ([]byte, error) {
 	ctx := context.Background()
 	client := &http.Client{}
@@ -67,11 +83,7 @@ func GetHTTPRequest(URL string, username string, password string) ([]byte, error
 		// (429 {"message":"rate limit exceeded"}) unmarshalled into an empty struct
 		// and looked like a valid-but-empty result to the caller.
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			snippet := string(responseBody)
-			if len(snippet) > 300 {
-				snippet = snippet[:300]
-			}
-			return nil, fmt.Errorf("HTTP %d from %s: %s", resp.StatusCode, URL, snippet)
+			return nil, &HTTPStatusError{StatusCode: resp.StatusCode, URL: URL, Body: string(responseBody)}
 		}
 
 		return responseBody, nil
