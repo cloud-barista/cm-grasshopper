@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
+	softwaremodel "github.com/cloud-barista/cm-grasshopper/smdl"
 )
 
 func TestResolveNodeSourceMachineID(t *testing.T) {
@@ -32,5 +33,28 @@ func TestResolveNodeSourceMachineID(t *testing.T) {
 				t.Errorf("resolveNodeSourceMachineID() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestKubernetesSkippedStatus(t *testing.T) {
+	k := softwaremodel.KubernetesMigrationInfo{Order: 7, Version: "1.30.2"}
+
+	got := kubernetesSkippedStatus("ex-1", "conn-1", "ns-1", "infra-1", "node-1", k)
+
+	want := model.SoftwareMigrationStatus{
+		ExecutionID:            "ex-1",
+		SourceConnectionInfoID: "conn-1",
+		NamespaceID:            "ns-1",
+		InfraID:                "infra-1",
+		NodeID:                 "node-1",
+		Order:                  7,
+		SoftwareName:           "kubernetes",
+		SoftwareVersion:        "1.30.2",
+		SoftwareInstallType:    softwaremodel.SoftwareTypeKubernetes,
+		Status:                 "skipped",
+		ErrorMessage:           "Kubernetes migration is served by POST /grasshopper/k8s/migrate",
+	}
+	if got != want {
+		t.Errorf("kubernetesSkippedStatus() = %+v, want %+v", got, want)
 	}
 }

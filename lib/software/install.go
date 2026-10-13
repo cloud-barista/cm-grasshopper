@@ -300,7 +300,19 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			}
 		}
 
-		// TODO - Kubernetes Migration
+		// Kubernetes items are recorded as "skipped" with a pointer to the k8s
+		// migration API instead of being dropped, so the status list shows them.
+		for _, execution := range server.MigrationList.Kubernetes {
+			softwareMigrationStatus := kubernetesSkippedStatus(executionID, server.SourceConnectionInfoID, nsId, infraId, nodeId, execution)
+			softwareMigrationStatusList = append(softwareMigrationStatusList, softwareMigrationStatus)
+			_, err = dao.SoftwareMigrationStatusCreate(&softwareMigrationStatus)
+			if err != nil {
+				logger.Println(logger.ERROR, true, "Failed to create software migration status ("+
+					"SoftwareName: "+softwareMigrationStatus.SoftwareName+", "+
+					"SoftwareVersion: "+softwareMigrationStatus.SoftwareVersion+", "+
+					"SoftwareInstallType: "+string(softwareMigrationStatus.SoftwareInstallType)+")")
+			}
+		}
 
 		exList = append(exList, Execution{
 			ExecutionID:            executionID,
@@ -483,14 +495,27 @@ func getContainer(execution *Execution, packageMigrationStatus *model.SoftwareMi
 	return nil
 }
 
-func getKubernetes(execution *Execution, packageMigrationStatus *model.SoftwareMigrationStatus) *softwaremodel.KubernetesMigrationInfo {
-	for _, k := range execution.MigrationList.Kubernetes {
-		if k.Order == packageMigrationStatus.Order {
-			return &k
-		}
-	}
+const kubernetesSkipReason = "Kubernetes migration is served by POST /grasshopper/k8s/migrate"
 
-	return nil
+// kubernetesSkippedStatus builds the "skipped" status row for a Kubernetes item
+// of the software migration list.
+func kubernetesSkippedStatus(executionID string, sourceConnectionInfoID string, nsId string, infraId string, nodeId string,
+	k softwaremodel.KubernetesMigrationInfo) model.SoftwareMigrationStatus {
+	return model.SoftwareMigrationStatus{
+		ExecutionID:            executionID,
+		SourceConnectionInfoID: sourceConnectionInfoID,
+		NamespaceID:            nsId,
+		InfraID:                infraId,
+		NodeID:                 nodeId,
+		Order:                  k.Order,
+		SoftwareName:           "kubernetes",
+		SoftwareVersion:        k.Version,
+		SoftwareInstallType:    softwaremodel.SoftwareTypeKubernetes,
+		Status:                 "skipped",
+		StartedAt:              time.Time{},
+		UpdatedAt:              time.Time{},
+		ErrorMessage:           kubernetesSkipReason,
+	}
 }
 
 func MigrateSoftware(execution *Execution) {
@@ -691,13 +716,6 @@ func MigrateSoftware(execution *Execution) {
 			_ = runItemWithRetry(execution, ms, &exStatus, migrationLogger, "container "+container.Name, func() error {
 				return migrateContainerItem(execution, container, migrationLogger)
 			})
-		case softwaremodel.SoftwareTypeKubernetes:
-			kubernetes := getKubernetes(execution, ms)
-			if kubernetes == nil {
-				continue
-			}
-
-			// TODO - Kubernetes Migration
 		}
 	}
 }
