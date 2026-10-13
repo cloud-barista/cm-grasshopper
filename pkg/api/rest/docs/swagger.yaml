@@ -56,6 +56,12 @@ definitions:
     properties:
       context:
         type: string
+      honeybee:
+        allOf:
+        - $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.HoneybeeK8sRef'
+        description: |-
+          Honeybee optionally references a cm-honeybee connection that holds an on-prem k8s
+          kubeconfig. It is mutually exclusive with Kubeconfig and Tumblebug.
       kubeconfig:
         type: string
       name:
@@ -68,6 +74,13 @@ definitions:
         description: |-
           Tumblebug optionally references a cb-tumblebug-managed k8s cluster. When set and
           Kubeconfig is empty, the kubeconfig is resolved from cb-tumblebug at request time.
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.HoneybeeK8sRef:
+    properties:
+      connectionId:
+        type: string
+      sourceGroupId:
+        type: string
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.MultiClusterEnvelope:
     properties:
@@ -308,6 +321,78 @@ definitions:
       name:
         type: string
       phase:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateHelmRelease:
+    properties:
+      chart:
+        type: string
+      chartVersion:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateNamespace:
+    properties:
+      helmReleases:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateHelmRelease'
+        type: array
+      name:
+        type: string
+      persistentVolumeClaims:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatePersistentVolumeClaim'
+        type: array
+      workloads:
+        additionalProperties:
+          type: integer
+        type: object
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatePersistentVolumeClaim:
+    properties:
+      accessModes:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      storageClass:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateStorageClass:
+    properties:
+      name:
+        type: string
+      provisioner:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesRequest:
+    properties:
+      connectionId:
+        type: string
+      sourceGroupId:
+        type: string
+    type: object
+  github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesResponse:
+    properties:
+      clusterScopedWorkloads:
+        additionalProperties:
+          type: integer
+        type: object
+      namespaces:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateNamespace'
+        type: array
+      resourceKinds:
+        items:
+          type: string
+        type: array
+      storageClasses:
+        items:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateStorageClass'
+        type: array
+      version:
         type: string
     type: object
   github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.HealthResponse:
@@ -1527,6 +1612,43 @@ paths:
       summary: Get Job Status
       tags:
       - '[Migration] K8s migration job APIs'
+  /k8s/candidates:
+    post:
+      consumes:
+      - application/json
+      description: Read the kubernetes inventory cm-honeybee collected for a connection
+        and list the namespaces, resource kinds and storage classes that can be picked
+        for /k8s/migrate.
+      operationId: k8s-candidates
+      parameters:
+      - description: Source group and connection of the cm-honeybee kubernetes inventory.
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully listed migration candidates.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesResponse'
+        "400":
+          description: Sent bad request.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "404":
+          description: No kubernetes inventory for the connection.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+        "500":
+          description: Failed to list migration candidates.
+          schema:
+            $ref: '#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse'
+      summary: List Kubernetes Migration Candidates
+      tags:
+      - '[Migration] Kubernetes migration APIs'
   /k8s/migrate:
     post:
       consumes:

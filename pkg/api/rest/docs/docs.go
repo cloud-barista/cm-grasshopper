@@ -162,6 +162,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/k8s/candidates": {
+            "post": {
+                "description": "Read the kubernetes inventory cm-honeybee collected for a connection and list the namespaces, resource kinds and storage classes that can be picked for /k8s/migrate.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "[Migration] Kubernetes migration APIs"
+                ],
+                "summary": "List Kubernetes Migration Candidates",
+                "operationId": "k8s-candidates",
+                "parameters": [
+                    {
+                        "description": "Source group and connection of the cm-honeybee kubernetes inventory.",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully listed migration candidates.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Sent bad request.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No kubernetes inventory for the connection.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list migration candidates.",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_common.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/k8s/migrate": {
             "post": {
                 "description": "Install Velero on both clusters and run the migration as a single asynchronous job. Leave out the install block when Velero is already installed. Poll the returned job id through /job/status/{jobId}.",
@@ -1284,6 +1337,14 @@ const docTemplate = `{
                 "context": {
                     "type": "string"
                 },
+                "honeybee": {
+                    "description": "Honeybee optionally references a cm-honeybee connection that holds an on-prem k8s\nkubeconfig. It is mutually exclusive with Kubeconfig and Tumblebug.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.HoneybeeK8sRef"
+                        }
+                    ]
+                },
                 "kubeconfig": {
                     "type": "string"
                 },
@@ -1300,6 +1361,17 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.TumblebugK8sRef"
                         }
                     ]
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_common.HoneybeeK8sRef": {
+            "type": "object",
+            "properties": {
+                "connectionId": {
+                    "type": "string"
+                },
+                "sourceGroupId": {
+                    "type": "string"
                 }
             }
         },
@@ -1657,6 +1729,117 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "phase": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateHelmRelease": {
+            "type": "object",
+            "properties": {
+                "chart": {
+                    "type": "string"
+                },
+                "chartVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateNamespace": {
+            "type": "object",
+            "properties": {
+                "helmReleases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateHelmRelease"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "persistentVolumeClaims": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatePersistentVolumeClaim"
+                    }
+                },
+                "workloads": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatePersistentVolumeClaim": {
+            "type": "object",
+            "properties": {
+                "accessModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "storageClass": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateStorageClass": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "provisioner": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesRequest": {
+            "type": "object",
+            "properties": {
+                "connectionId": {
+                    "type": "string"
+                },
+                "sourceGroupId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidatesResponse": {
+            "type": "object",
+            "properties": {
+                "clusterScopedWorkloads": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "namespaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateNamespace"
+                    }
+                },
+                "resourceKinds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "storageClasses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_cloud-barista_cm-grasshopper_pkg_api_rest_model_velero.CandidateStorageClass"
+                    }
+                },
+                "version": {
                     "type": "string"
                 }
             }
