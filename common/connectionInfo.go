@@ -61,5 +61,24 @@ func ConnectionInfoDecryptSecrets(connectionInfo *honeybee.ConnectionInfo) (*hon
 	}
 	connectionInfo.PrivateKey = string(decryptedPrivateKeyBytes)
 
+	if connectionInfo.Kubeconfig != "" {
+		encryptedKubeconfig, err := base64.StdEncoding.DecodeString(connectionInfo.Kubeconfig)
+		if err != nil {
+			errMsg := "error occurred while decrypting the base64 encoded encrypted kubeconfig (" + err.Error() + ")"
+			logger.Println(logger.ERROR, true, errMsg)
+
+			return nil, errors.New(errMsg)
+		}
+
+		decryptedKubeconfigBytes, err := rsautil.DecryptWithPrivateKey(encryptedKubeconfig, HoneybeePrivateKey)
+		if err != nil {
+			errMsg := "error occurred while decrypting kubeconfig (" + err.Error() + ")"
+			logger.Println(logger.ERROR, true, errMsg)
+
+			return nil, errors.New(errMsg)
+		}
+		connectionInfo.Kubeconfig = string(decryptedKubeconfigBytes)
+	}
+
 	return connectionInfo, nil
 }

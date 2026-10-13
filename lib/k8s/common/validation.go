@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cloud-barista/cm-grasshopper/lib/k8s/honeybee"
 	"github.com/cloud-barista/cm-grasshopper/lib/k8s/tumblebug"
 	commonmodel "github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model/common"
 )
@@ -41,8 +42,14 @@ func ValidateClusterAccess(cluster *commonmodel.ClusterAccess) error {
 	if cluster == nil {
 		return errors.New("cluster access is required")
 	}
-	if strings.TrimSpace(cluster.Kubeconfig) == "" && cluster.Tumblebug == nil {
-		return errors.New("either kubeconfig or tumblebug cluster reference is required")
+	hasKubeconfig := strings.TrimSpace(cluster.Kubeconfig) != ""
+	if !hasKubeconfig && cluster.Tumblebug == nil && cluster.Honeybee == nil {
+		return errors.New("one of kubeconfig, tumblebug or honeybee cluster reference is required")
+	}
+	// kubeconfig together with tumblebug is accepted for backward compatibility (kubeconfig wins),
+	// but honeybee must be the only source.
+	if cluster.Honeybee != nil && (hasKubeconfig || cluster.Tumblebug != nil) {
+		return errors.New("honeybee cluster reference cannot be combined with kubeconfig or tumblebug")
 	}
 	if cluster.Tumblebug != nil {
 		if strings.TrimSpace(cluster.Tumblebug.NamespaceID) == "" ||
@@ -50,12 +57,18 @@ func ValidateClusterAccess(cluster *commonmodel.ClusterAccess) error {
 			return errors.New("tumblebug namespaceId and k8sClusterId are required")
 		}
 	}
+	if cluster.Honeybee != nil {
+		if strings.TrimSpace(cluster.Honeybee.ConnectionID) == "" {
+			return errors.New("honeybee connectionId is required")
+		}
+	}
 	return nil
 }
 
 // ResolveKubeconfig returns the effective kubeconfig for a cluster: the directly supplied
 // kubeconfig when present, otherwise one resolved from cb-tumblebug (with exec-plugin CSPs
-// rewritten to a self-contained token-broker form).
+// rewritten to a self-contained token-broker form), otherwise one fetched from a cm-honeybee
+// connection.
 func ResolveKubeconfig(cluster *commonmodel.ClusterAccess) (string, error) {
 	if err := ValidateClusterAccess(cluster); err != nil {
 		return "", err
@@ -63,7 +76,10 @@ func ResolveKubeconfig(cluster *commonmodel.ClusterAccess) (string, error) {
 	if strings.TrimSpace(cluster.Kubeconfig) != "" {
 		return DecodeKubeconfig(cluster.Kubeconfig)
 	}
-	return tumblebug.ResolveKubeconfig(cluster.Tumblebug.NamespaceID, cluster.Tumblebug.K8sClusterID)
+	if cluster.Tumblebug != nil {
+		return tumblebug.ResolveKubeconfig(cluster.Tumblebug.NamespaceID, cluster.Tumblebug.K8sClusterID)
+	}
+	return honeybee.ResolveKubeconfig(cluster.Honeybee.ConnectionID)
 }
 
 func ValidateS3Access(s3 *commonmodel.S3Access) error {

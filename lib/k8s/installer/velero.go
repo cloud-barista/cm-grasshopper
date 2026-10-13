@@ -58,6 +58,7 @@ func helmClusterAccess(cluster *commonmodel.ClusterAccess, namespace string) *co
 		Kubeconfig: cluster.Kubeconfig,
 		Namespace:  namespace,
 		Tumblebug:  cluster.Tumblebug,
+		Honeybee:   cluster.Honeybee,
 	}
 }
 

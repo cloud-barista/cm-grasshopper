@@ -229,3 +229,31 @@ func backupStorageLocationConfig(t *testing.T, values map[string]interface{}) ma
 
 	return config
 }
+
+// The helm client gets its own ClusterAccess copy. Every credential source must survive the
+// copy, or a cluster given only by reference fails validation at the helm step.
+func TestHelmClusterAccess_KeepsCredentialSources(t *testing.T) {
+	tb := &commonmodel.TumblebugK8sRef{NamespaceID: "mig01", K8sClusterID: "k8s-01"}
+	hb := &commonmodel.HoneybeeK8sRef{SourceGroupID: "sg-01", ConnectionID: "conn-cp"}
+	cluster := &commonmodel.ClusterAccess{
+		Kubeconfig: "apiVersion: v1",
+		Namespace:  "user-ns",
+		Tumblebug:  tb,
+		Honeybee:   hb,
+	}
+
+	got := helmClusterAccess(cluster, "velero")
+
+	if got.Kubeconfig != cluster.Kubeconfig {
+		t.Errorf("Kubeconfig = %q, want %q", got.Kubeconfig, cluster.Kubeconfig)
+	}
+	if got.Namespace != "velero" {
+		t.Errorf("Namespace = %q, want %q", got.Namespace, "velero")
+	}
+	if got.Tumblebug != tb {
+		t.Errorf("Tumblebug = %v, want %v", got.Tumblebug, tb)
+	}
+	if got.Honeybee != hb {
+		t.Errorf("Honeybee = %v, want %v", got.Honeybee, hb)
+	}
+}

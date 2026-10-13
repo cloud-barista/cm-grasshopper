@@ -9,6 +9,10 @@ type ClusterAccess struct {
 	// Tumblebug optionally references a cb-tumblebug-managed k8s cluster. When set and
 	// Kubeconfig is empty, the kubeconfig is resolved from cb-tumblebug at request time.
 	Tumblebug *TumblebugK8sRef `json:"tumblebug,omitempty"`
+
+	// Honeybee optionally references a cm-honeybee connection that holds an on-prem k8s
+	// kubeconfig. It is mutually exclusive with Kubeconfig and Tumblebug.
+	Honeybee *HoneybeeK8sRef `json:"honeybee,omitempty"`
 }
 
 // TumblebugK8sRef identifies a Kubernetes cluster deployed through cb-tumblebug so that
@@ -17,6 +21,13 @@ type ClusterAccess struct {
 type TumblebugK8sRef struct {
 	NamespaceID  string `json:"namespaceId"`
 	K8sClusterID string `json:"k8sClusterId"`
+}
+
+// HoneybeeK8sRef identifies a cm-honeybee connection registered with a kubeconfig so that
+// cm-grasshopper can fetch and decrypt that kubeconfig at request time.
+type HoneybeeK8sRef struct {
+	SourceGroupID string `json:"sourceGroupId"`
+	ConnectionID  string `json:"connectionId"`
 }
 
 // S3Access describes credentials for any S3-compatible object store
