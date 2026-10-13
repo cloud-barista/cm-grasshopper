@@ -51,6 +51,16 @@ func NewVeleroInstaller() *VeleroInstaller {
 	return &VeleroInstaller{}
 }
 
+// helmClusterAccess copies the cluster credential sources for the helm client, scoped to
+// the velero namespace.
+func helmClusterAccess(cluster *commonmodel.ClusterAccess, namespace string) *commonmodel.ClusterAccess {
+	return &commonmodel.ClusterAccess{
+		Kubeconfig: cluster.Kubeconfig,
+		Namespace:  namespace,
+		Tumblebug:  cluster.Tumblebug,
+	}
+}
+
 func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.ClusterAccess, s3Access *commonmodel.S3Access, force bool, volumeBackupMode string) (*InstallResult, error) {
 	start := time.Now()
 	namespace := k8scommon.DefaultNamespace(cluster, DefaultVeleroNamespace)
@@ -81,11 +91,7 @@ func (v *VeleroInstaller) Install(ctx context.Context, cluster *commonmodel.Clus
 		return nil, err
 	}
 
-	actionConfig, err := k8sclient.NewHelmActionConfig(&commonmodel.ClusterAccess{
-		Kubeconfig: cluster.Kubeconfig,
-		Namespace:  namespace,
-		Tumblebug:  cluster.Tumblebug,
-	})
+	actionConfig, err := k8sclient.NewHelmActionConfig(helmClusterAccess(cluster, namespace))
 	if err != nil {
 		return nil, err
 	}
