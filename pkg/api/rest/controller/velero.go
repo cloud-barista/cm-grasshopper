@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	joblib "github.com/cloud-barista/cm-grasshopper/lib/job"
 	k8scommon "github.com/cloud-barista/cm-grasshopper/lib/k8s/common"
+	k8shoneybee "github.com/cloud-barista/cm-grasshopper/lib/k8s/honeybee"
 	k8svelero "github.com/cloud-barista/cm-grasshopper/lib/k8s/velero"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/common"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
@@ -514,6 +517,43 @@ func K8sMigrate(c echo.Context) error {
 	}
 
 	return c.JSONPretty(http.StatusOK, toJobStartResponse(job), " ")
+}
+
+// K8sCandidates godoc
+//
+//	@ID				k8s-candidates
+//	@Summary		List Kubernetes Migration Candidates
+//	@Description	Read the kubernetes inventory cm-honeybee collected for a connection and list the namespaces, resource kinds and storage classes that can be picked for /k8s/migrate.
+//	@Tags			[Migration] Kubernetes migration APIs
+//	@Accept			json
+//	@Produce		json
+//	@Param			request body veleromodel.CandidatesRequest true "Source group and connection of the cm-honeybee kubernetes inventory."
+//	@Success		200	{object}	veleromodel.CandidatesResponse	"Successfully listed migration candidates."
+//	@Failure		400	{object}	common.ErrorResponse	"Sent bad request."
+//	@Failure		404	{object}	common.ErrorResponse	"No kubernetes inventory for the connection."
+//	@Failure		500	{object}	common.ErrorResponse	"Failed to list migration candidates."
+//	@Router			/k8s/candidates [post]
+func K8sCandidates(c echo.Context) error {
+	req := new(veleromodel.CandidatesRequest)
+	if err := c.Bind(req); err != nil {
+		return common.ReturnErrorMsg(c, err.Error())
+	}
+	if strings.TrimSpace(req.SourceGroupID) == "" {
+		return common.ReturnErrorMsg(c, "sourceGroupId is required")
+	}
+	if strings.TrimSpace(req.ConnectionID) == "" {
+		return common.ReturnErrorMsg(c, "connectionId is required")
+	}
+
+	result, err := k8shoneybee.FetchCandidates(req.SourceGroupID, req.ConnectionID)
+	if err != nil {
+		if errors.Is(err, k8shoneybee.ErrNoKubernetesInventory) {
+			return c.JSONPretty(http.StatusNotFound, common.ErrorResponse{Error: err.Error()}, " ")
+		}
+		return common.ReturnInternalError(c, err, "kubernetes migration candidates lookup failed")
+	}
+
+	return c.JSONPretty(http.StatusOK, result, " ")
 }
 
 func toJobStartResponse(job *joblib.Info) jobmodel.StartResponse {

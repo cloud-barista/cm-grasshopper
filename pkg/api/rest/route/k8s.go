@@ -10,4 +10,5 @@ import (
 
 func K8s(e *echo.Echo) {
 	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/k8s/migrate", controller.K8sMigrate)
+	e.POST("/"+strings.ToLower(common.ShortModuleName)+"/k8s/candidates", controller.K8sCandidates)
 }
