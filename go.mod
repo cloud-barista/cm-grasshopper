@@ -4,8 +4,8 @@ go 1.27.1
 
 require (
 	github.com/cloud-barista/cm-grasshopper/smdl v0.1.4
-	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20261019111008-e7cd081474a0
-	github.com/cloud-barista/cm-honeybee/server v0.0.0-20261019111008-e7cd081474a0
+	github.com/cloud-barista/cm-honeybee/agent v0.0.0-20261105144928-ca7f739c7fdf
+	github.com/cloud-barista/cm-honeybee/server v0.0.0-20261105144928-ca7f739c7fdf
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jollaman999/utils v1.0.10
@@ -73,7 +73,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/cs-20151215/v4 v4.5.8 // indirect
-	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4 // indirect
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.5 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/alibabacloud-go/ecs-20140526/v4 v4.26.10 // indirect
 	github.com/alibabacloud-go/endpoint-util v1.1.1 // indirect
@@ -87,14 +87,14 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.55.8 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.47.5 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.20.13 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.8 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.343.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/eks v1.105.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.23 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.8 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.47.6 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.20.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.9 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.344.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/eks v1.105.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.24 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.9 // indirect
 	github.com/aws/smithy-go v1.28.8 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
@@ -151,7 +151,7 @@ require (
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/s2a-go v0.1.11 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.3.24 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.3.25 // indirect
 	github.com/googleapis/gax-go/v2 v2.27.0 // indirect
 	github.com/gophercloud/gophercloud/v2 v2.15.0 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
@@ -233,19 +233,19 @@ require (
 	github.com/sv-tools/openapi v0.4.0 // indirect
 	github.com/swaggo/files/v2 v2.0.2 // indirect
 	github.com/swaggo/swag/v2 v2.0.0-rc6 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go-intl-en v3.0.1518+incompatible // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go-intl-en v3.0.1519+incompatible // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/as v1.3.173 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cam v1.3.186 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cbs v1.3.179 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cdb v1.3.207 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cfs v1.3.194 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/clb v1.3.205 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.207 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.208 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.3.183 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod v1.3.131 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tag v1.3.110 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/tke v1.3.198 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/vpc v1.3.207 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/vpc v1.3.208 // indirect
 	github.com/tinylib/msgp v1.6.5 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -273,10 +273,10 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
-	google.golang.org/api v0.310.0 // indirect
-	google.golang.org/genproto v0.0.0-20261026165753-2ffab32bce7e // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20261026165753-2ffab32bce7e // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261026165753-2ffab32bce7e // indirect
+	google.golang.org/api v0.311.0 // indirect
+	google.golang.org/genproto v0.0.0-20261104224025-d1e00e9f33ab // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261104224025-d1e00e9f33ab // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261104224025-d1e00e9f33ab // indirect
 	google.golang.org/grpc v1.85.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
@@ -289,10 +289,10 @@ require (
 	k8s.io/apiserver v0.37.2 // indirect
 	k8s.io/component-base v0.37.2 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20261014044854-ca3452a79603 // indirect
+	k8s.io/kube-openapi v0.0.0-20261104182252-5bee61fc5225 // indirect
 	k8s.io/kubectl v0.37.2 // indirect
 	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab // indirect
-	modernc.org/libc v1.80.0 // indirect
+	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 	modernc.org/sqlite v1.61.1 // indirect
