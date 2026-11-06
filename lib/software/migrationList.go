@@ -121,6 +121,16 @@ var systemBasePackages = map[string]bool{
 	"pollinate": true, "sosreport": true, "netplan.io": true, "mdadm": true, "multipath-tools": true,
 	"open-iscsi": true, "thermald": true, "bolt": true, "byobu": true, "distro-info-data": true,
 	"walinuxagent": true, "azure-vm-utils": true, "open-vm-tools": true, "cloud-init": true,
+	// Guest agents of a specific CSP. They only work on that CSP's instances
+	// (amazon-ssm-agent is a snap on Ubuntu AMIs), so moving them to another CSP
+	// fails or leaves a dead agent; the target image ships its own.
+	"amazon-ssm-agent": true, "hibagent": true, "google-guest-agent": true,
+	"google-osconfig-agent": true, "google-compute-engine": true,
+	"google-compute-engine-oslogin": true, "gce-compute-image-packages": true,
+	// Seeded by Ubuntu cloud images: the lxd snap (20.04/22.04, channel
+	// <track>/stable/ubuntu-<release>), the lxd deb (18.04) and, from 24.04, the
+	// lxd-installer and lxd-agent-loader debs.
+	"lxd": true, "lxd-installer": true, "lxd-agent-loader": true,
 }
 
 // systemBasePackagePatterns catch versioned/variant base packages (kernel, boot
@@ -128,7 +138,7 @@ var systemBasePackages = map[string]bool{
 var systemBasePackagePatterns = []string{
 	"^linux-", "^grub", "^plymouth", "^cryptsetup", "^initramfs",
 	"^snap", "^cloud-init", "^cloud-guest", "^cloud-initramfs",
-	"^walinuxagent", "^azure-", "^open-vm-tools",
+	"^walinuxagent", "^azure-", "^open-vm-tools", "^ec2-",
 }
 
 func isSystemBasePackage(packageName string) bool {
@@ -253,9 +263,14 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 
 	for _, pkg := range packages {
 		// snap/flatpak are installed by their own package managers, not the OS
-		// package manager — skip the deb/rpm base/library/kernel name filters
-		// (they were already filtered at collection) and carry their fields.
+		// package manager. Collection drops only system snaps (base/os/snapd), so
+		// image-seeded and CSP agent snaps (lxd, amazon-ssm-agent) still go through
+		// the base package list; the deb/rpm library/kernel name filters do not
+		// apply. Their fields are carried as is.
 		if pkg.Type == softwaremodel.SoftwarePackageTypeSnap || pkg.Type == softwaremodel.SoftwarePackageTypeFlatpak {
+			if isSystemBasePackage(pkg.Name) {
+				continue
+			}
 			*prevOrder++
 			migrationPackages = append(migrationPackages, softwaremodel.PackageMigrationInfo{
 				Order:         *prevOrder,
