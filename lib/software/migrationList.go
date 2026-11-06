@@ -127,10 +127,25 @@ var systemBasePackages = map[string]bool{
 	"amazon-ssm-agent": true, "hibagent": true, "google-guest-agent": true,
 	"google-osconfig-agent": true, "google-compute-engine": true,
 	"google-compute-engine-oslogin": true, "gce-compute-image-packages": true,
-	// Seeded by Ubuntu cloud images: the lxd snap (20.04/22.04, channel
-	// <track>/stable/ubuntu-<release>), the lxd deb (18.04) and, from 24.04, the
-	// lxd-installer and lxd-agent-loader debs.
-	"lxd": true, "lxd-installer": true, "lxd-agent-loader": true,
+	// Ubuntu-only helper debs seeded by Ubuntu cloud images (lxd-agent-loader on
+	// 20.04-24.04, lxd-installer from 24.04).
+	"lxd-installer": true, "lxd-agent-loader": true,
+}
+
+// isImageSeededSnap reports a snap that the Ubuntu cloud image seeded rather than
+// one the user installed. Ubuntu cloud images seed lxd on the
+// <track>/stable/ubuntu-<release> channel (e.g. 5.0/stable/ubuntu-22.04); a user
+// install tracks a plain channel such as latest/stable and must still migrate.
+func isImageSeededSnap(name string, channel string) bool {
+	return name == "lxd" && strings.Contains(channel, "/ubuntu-")
+}
+
+// isSkippedPackage applies the base package denylist plus the snap channel check.
+func isSkippedPackage(name string, pkgType softwaremodel.SoftwarePackageType, channel string) bool {
+	if isSystemBasePackage(name) {
+		return true
+	}
+	return pkgType == softwaremodel.SoftwarePackageTypeSnap && isImageSeededSnap(name, channel)
 }
 
 // systemBasePackagePatterns catch versioned/variant base packages (kernel, boot
@@ -183,8 +198,8 @@ func isSystemBaseBinary(binaryName string) bool {
 // azure-vm-utils, ubuntu-server, ...) the same as real apps (mariadb, nginx). So
 // this uses a curated denylist of well-known base/cloud/host packages that the
 // target base image already provides. Extend systemBasePackages as needed.
-func basePackageSkipReason(name string) string {
-	if isSystemBasePackage(name) {
+func basePackageSkipReason(name string, pkgType softwaremodel.SoftwarePackageType, channel string) string {
+	if isSkippedPackage(name, pkgType, channel) {
 		return "skipped: base OS/cloud package provided by the target base image"
 	}
 	return ""
@@ -265,10 +280,10 @@ func processSoftwarePackages(prevOrder *int, packages []softwaremodel.Package) (
 		// snap/flatpak are installed by their own package managers, not the OS
 		// package manager. Collection drops only system snaps (base/os/snapd), so
 		// image-seeded and CSP agent snaps (lxd, amazon-ssm-agent) still go through
-		// the base package list; the deb/rpm library/kernel name filters do not
-		// apply. Their fields are carried as is.
+		// the base package list and the seeded channel check; the deb/rpm
+		// library/kernel name filters do not apply. Their fields are carried as is.
 		if pkg.Type == softwaremodel.SoftwarePackageTypeSnap || pkg.Type == softwaremodel.SoftwarePackageTypeFlatpak {
-			if isSystemBasePackage(pkg.Name) {
+			if isSkippedPackage(pkg.Name, pkg.Type, pkg.Channel) {
 				continue
 			}
 			*prevOrder++

@@ -254,7 +254,7 @@ func PrepareSoftwareMigration(executionID string, targetServers []softwaremodel.
 			// Base OS / cloud-agent / host-daemon packages are recorded as "skipped"
 			// with a reason (target already ships them) instead of being dropped, so
 			// the status list stays complete and auditable.
-			if reason := basePackageSkipReason(execution.Name); reason != "" {
+			if reason := basePackageSkipReason(execution.Name, execution.Type, execution.Channel); reason != "" {
 				softwareMigrationStatus.Status = "skipped"
 				softwareMigrationStatus.ErrorMessage = reason
 			} else {

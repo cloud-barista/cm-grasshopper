@@ -21,6 +21,12 @@ func TestProcessSoftwarePackagesDropsCSPAgentsAndImageSnaps(t *testing.T) {
 		{Name: "mariadb-server"},
 		{Name: "nginx"},
 		{Name: "certbot", Type: snap, Channel: "latest/stable"},
+		{Name: "lxd-agent-loader"},
+		{Name: "lxd-installer"},
+		// lxd the user installed (snap on a plain channel, or the Debian deb) is
+		// an application and still migrates.
+		{Name: "lxd", Type: snap, Channel: "latest/stable"},
+		{Name: "lxd"},
 	}
 
 	var order int
@@ -30,7 +36,7 @@ func TestProcessSoftwarePackagesDropsCSPAgentsAndImageSnaps(t *testing.T) {
 	for _, p := range got {
 		names = append(names, p.Name)
 	}
-	want := []string{"mariadb-server", "nginx", "certbot"}
+	want := []string{"mariadb-server", "nginx", "certbot", "lxd", "lxd"}
 	if len(names) != len(want) {
 		t.Fatalf("migration list = %v, want %v", names, want)
 	}
@@ -42,6 +48,9 @@ func TestProcessSoftwarePackagesDropsCSPAgentsAndImageSnaps(t *testing.T) {
 	if got[2].Type != snap {
 		t.Errorf("certbot type = %q, want %q", got[2].Type, snap)
 	}
+	if got[3].Type != snap || got[3].Channel != "latest/stable" {
+		t.Errorf("user lxd snap = %+v, want snap on latest/stable", got[3])
+	}
 }
 
 // A migration list built before the exclusion (e.g. frozen in a workflow) is
@@ -49,15 +58,28 @@ func TestProcessSoftwarePackagesDropsCSPAgentsAndImageSnaps(t *testing.T) {
 func TestBasePackageSkipReasonCSPAgents(t *testing.T) {
 	for _, name := range []string{
 		"amazon-ssm-agent", "ec2-hibinit-agent", "ec2-instance-connect", "hibagent",
-		"google-guest-agent", "google-osconfig-agent", "lxd",
+		"google-guest-agent", "google-osconfig-agent", "lxd-installer", "lxd-agent-loader",
 	} {
-		if basePackageSkipReason(name) == "" {
+		if basePackageSkipReason(name, "", "") == "" {
 			t.Errorf("%s: not skipped", name)
 		}
 	}
 	for _, name := range []string{"mariadb-server", "nginx", "apache2", "nfs-kernel-server", "certbot"} {
-		if r := basePackageSkipReason(name); r != "" {
+		if r := basePackageSkipReason(name, "", ""); r != "" {
 			t.Errorf("%s: skipped (%s)", name, r)
+		}
+	}
+
+	snap := softwaremodel.SoftwarePackageTypeSnap
+	if basePackageSkipReason("lxd", snap, "5.0/stable/ubuntu-22.04") == "" {
+		t.Error("image-seeded lxd snap: not skipped")
+	}
+	for _, c := range []struct {
+		t       softwaremodel.SoftwarePackageType
+		channel string
+	}{{snap, "latest/stable"}, {snap, "5.21/stable"}, {"", ""}} {
+		if r := basePackageSkipReason("lxd", c.t, c.channel); r != "" {
+			t.Errorf("lxd %q %q: skipped (%s)", c.t, c.channel, r)
 		}
 	}
 }
