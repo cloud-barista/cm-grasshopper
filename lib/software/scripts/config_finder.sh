@@ -29,9 +29,11 @@ tmp_deps=$(mktemp)
 tmp_file_owners=$(mktemp)
 tmp_verification=$(mktemp)
 tmp_processed=$(mktemp)
+tmp_base=$(mktemp)
+tmp_extra=$(mktemp)
 
 cleanup() {
-    rm -f "$tmp_all_files" "$tmp_deps" "$tmp_file_owners" "$tmp_verification" "$tmp_processed"
+    rm -f "$tmp_all_files" "$tmp_deps" "$tmp_file_owners" "$tmp_verification" "$tmp_processed" "$tmp_base" "$tmp_extra"
 }
 trap cleanup EXIT
 
@@ -68,19 +70,84 @@ collect_all_files() {
         get_all_dependencies
     } > "$tmp_deps"
 
-    if [ "$PKG_MANAGER" = "dpkg" ]; then
-        xargs -I {} dpkg -L {} 2>/dev/null < "$tmp_deps" | \
-        grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
-        sort -u
-    else
-        xargs -I {} rpm -ql {} 2>/dev/null < "$tmp_deps" | \
-        grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
-        sort -u
-    fi
+    {
+        if [ "$PKG_MANAGER" = "dpkg" ]; then
+            xargs -I {} dpkg -L {} 2>/dev/null < "$tmp_deps" | \
+            grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
+            sort -u
+        else
+            xargs -I {} rpm -ql {} 2>/dev/null < "$tmp_deps" | \
+            grep -E '\.(conf|cfg|ini|yaml|yml|bak)$|/etc/|conf\.d|\.d/|config$|[._]bak$' | \
+            sort -u
+        fi
 
-    if [ -d "/etc/$pkg" ]; then
-        find "/etc/$pkg" -type f -o -type l 2>/dev/null
-    fi
+        if [ -d "/etc/$pkg" ]; then
+            find "/etc/$pkg" -type f -o -type l 2>/dev/null
+        fi
+    } > "$tmp_base"
+    cat "$tmp_base"
+
+    # Only paths that are not candidates already, so existing candidates keep their status.
+    {
+        if [ "$PKG_MANAGER" = "dpkg" ]; then
+            while read -r p; do
+                [ -n "$p" ] && get_ucf_configs "$p"
+            done < "$tmp_deps"
+        fi
+
+        get_well_known_configs "$pkg"
+    } | sort -u | grep -Fxv -f "$tmp_base" | tee "$tmp_extra"
+}
+
+# Config files that a package uses but does not list in its file list, keyed by
+# package name. One line per package: "<package> <path or glob>...".
+WELL_KNOWN_CONFIGS='
+nfs-kernel-server /etc/exports /etc/exports.d/*
+nfs-utils /etc/exports /etc/exports.d/*
+'
+
+get_well_known_configs() {
+    echo "$WELL_KNOWN_CONFIGS" | awk -v p="$1" '$1 == p { for (i = 2; i <= NF; i++) print $i }' | \
+    while read -r pattern; do
+        for f in $pattern; do
+            if [ -f "$f" ] || [ -L "$f" ]; then
+                echo "$f"
+            fi
+        done
+    done
+}
+
+# Debian packages may create files under /etc from a template with ucf instead of
+# shipping them as dpkg conffiles (e.g. /etc/exports of nfs-kernel-server).
+get_ucf_configs() {
+    p="$1"
+    {
+        if command -v ucfq >/dev/null 2>&1; then
+            ucfq -w "$p" 2>/dev/null | cut -d: -f1
+        elif [ -r /var/lib/ucf/registry ]; then
+            awk -v p="$p" '$1 == p { print $2 }' /var/lib/ucf/registry
+        fi
+
+        # Not every postinst registers its files with ucfr, so also read the
+        # destination of "ucf [options] <source> <destination>" calls.
+        for script in "/var/lib/dpkg/info/$p.postinst" /var/lib/dpkg/info/"$p":*.postinst; do
+            [ -r "$script" ] || continue
+            grep -E '(^|[[:space:];&|])ucf[[:space:]]' "$script" 2>/dev/null | \
+            awk '{
+                n = 0
+                for (i = 1; i <= NF; i++) {
+                    f = $i
+                    gsub(/["'"'"']/, "", f)
+                    if (f ~ /^\//) last[++n] = f
+                }
+                if (n >= 2) print last[n]
+            }'
+        done
+    } | while read -r f; do
+        case "$f" in
+            /etc/*) [ -f "$f" ] && echo "$f" ;;
+        esac
+    done
 }
 
 build_file_owner_cache() {
@@ -164,6 +231,10 @@ check_file_status() {
             echo "$file [Symlink]"
         elif grep -Fq "$file" "$tmp_verification" 2>/dev/null; then
             echo "$file [Modified]"
+        elif grep -Fxq "$file" "$tmp_extra" 2>/dev/null; then
+            # Not judged by package verification: ucf files are not dpkg conffiles,
+            # and RHEL "setup" excludes /etc/exports from rpm -V content checks.
+            echo "$file [Custom]"
         elif grep -F "$file" "$tmp_file_owners" >/dev/null 2>&1; then
             echo "$file [Unmodified]"
         else
