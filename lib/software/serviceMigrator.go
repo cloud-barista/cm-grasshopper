@@ -253,7 +253,84 @@ func findPackageRelatedServices(client *ssh.Client, packageName string) ([]strin
 		}
 	}
 
-	return services, nil
+	// Template units (e.g. apache2@.service) cannot be queried, enabled or
+	// started without an instance name. Look up their running instances so
+	// those are migrated and validated in place of the template.
+	running := make(map[string][]string)
+	for _, template := range templateServiceUnits(services) {
+		cmd = fmt.Sprintf("systemctl list-units --type=service --state=running --no-legend --plain '%s*.service'", template)
+		session, err = client.NewSessionWithRetry()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create session: %v", err)
+		}
+
+		stdout.Reset()
+		stderr.Reset()
+		session.Stdout = &stdout
+		session.Stderr = &stderr
+
+		err = session.Run(sudoWrapper(cmd, client.SSHTarget.Password))
+		_ = session.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list running instances of %s: %v, stderr: %s", template, err, stderr.String())
+		}
+		running[template] = parseRunningTemplateInstances(stdout.String(), template)
+	}
+
+	return selectServiceUnits(services, running), nil
+}
+
+func isTemplateServiceUnit(name string) bool {
+	return strings.HasSuffix(name, "@")
+}
+
+// templateServiceUnits returns the template units (names ending in "@") among
+// unit names given without the ".service" suffix.
+func templateServiceUnits(names []string) []string {
+	var templates []string
+	for _, name := range names {
+		if isTemplateServiceUnit(name) && !contains(templates, name) {
+			templates = append(templates, name)
+		}
+	}
+	return templates
+}
+
+// parseRunningTemplateInstances picks the instances of template from the
+// output of "systemctl list-units --no-legend --plain", returned without the
+// ".service" suffix.
+func parseRunningTemplateInstances(output, template string) []string {
+	var instances []string
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		name := strings.TrimSuffix(cleanServiceName(scanner.Text()), ".service")
+		if len(name) > len(template) && strings.HasPrefix(name, template) && !contains(instances, name) {
+			instances = append(instances, name)
+		}
+	}
+	return instances
+}
+
+// selectServiceUnits returns the units to migrate and validate: plain units as
+// found, and each template replaced by its running instances (or dropped when
+// none runs).
+func selectServiceUnits(found []string, running map[string][]string) []string {
+	var units []string
+	add := func(name string) {
+		if !contains(units, name) {
+			units = append(units, name)
+		}
+	}
+	for _, name := range found {
+		if !isTemplateServiceUnit(name) {
+			add(name)
+			continue
+		}
+		for _, instance := range running[name] {
+			add(instance)
+		}
+	}
+	return units
 }
 
 func findServices(client *ssh.Client, name string, migrationLogger *Logger) []ServiceInfo {
