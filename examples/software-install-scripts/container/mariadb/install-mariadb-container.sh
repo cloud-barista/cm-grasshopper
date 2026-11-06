@@ -60,7 +60,7 @@ cnt=0
 while true
 do
    (( cnt = "$cnt" + 1 ))
-   MARIADB_STATUS=`docker exec -it mariadb_compose mariadb -uroot -prootpass -e"SELECT 1;" > /dev/null 2>&1 || exit 1 ; echo $?`
+   MARIADB_STATUS=`docker exec mariadb_compose mariadb -uroot -prootpass -e"SELECT 1;" > /dev/null 2>&1 || exit 1 ; echo $?`
    if [ "$MARIADB_STATUS" = "0" ]; then
       break
    fi
@@ -72,4 +72,4 @@ do
 done
 echo "MariaDB is now ready!"
 
-docker exec -it mariadb_compose mariadb -uroot -prootpass -e "CREATE DATABASE IF NOT EXISTS newdb;"
+docker exec mariadb_compose mariadb -uroot -prootpass -e "CREATE DATABASE IF NOT EXISTS newdb;"
