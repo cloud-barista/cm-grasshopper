@@ -30,7 +30,14 @@ func MigrateRepositoryConfiguration(sourceClient *ssh.Client, targetClient *ssh.
 	migrationLogger.Printf(INFO, "Repository configuration collection completed\n")
 
 	// Step 2: Copy to cm-grasshopper intermediate storage
-	localBackupDir := fmt.Sprintf(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder+"/%s/repo_backup", uuid)
+	// Targets of one execution run this concurrently under the same uuid, so each
+	// run keeps its own backup directory; a shared one let a target receive
+	// another source's repository configuration.
+	localBackupDir, err := os.MkdirTemp(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder, uuid+"-repo_backup-")
+	if err != nil {
+		return fmt.Errorf("failed to create local directory: %v", err)
+	}
+	defer deleteDir(localBackupDir)
 	if err := copyFromRemoteToLocal(sourceClient, sourceTmpDir, localBackupDir, migrationLogger); err != nil {
 		return fmt.Errorf("failed to copy repository config to local storage: %v", err)
 	}

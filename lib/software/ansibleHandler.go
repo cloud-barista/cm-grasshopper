@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cloud-barista/cm-grasshopper/lib/config"
 	"github.com/cloud-barista/cm-grasshopper/pkg/api/rest/model"
@@ -84,7 +85,17 @@ func getTemporaryAnsiblePlaybookFolderPath(executionID string, playbookName stri
 		return "", err
 	}
 
-	absDest, err := filepath.Abs(filepath.Join(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder, executionID))
+	tempFolder, err := filepath.Abs(config.CMGrasshopperConfig.CMGrasshopper.Software.TempFolder)
+	if err != nil {
+		errMsg := err.Error()
+		logger.Logger.Println(logger.ERROR, true, errMsg)
+		return "", err
+	}
+
+	// Every target of an execution runs its playbooks concurrently under the same
+	// execution ID, so each run gets its own directory. A shared one let a run
+	// pick up another target's inventory and package list.
+	absDest, err := os.MkdirTemp(tempFolder, executionID+"-"+playbookName+"-")
 	if err != nil {
 		errMsg := err.Error()
 		logger.Logger.Println(logger.ERROR, true, errMsg)
@@ -277,7 +288,14 @@ func playbookHostsReplacer(playbookFilePath string) error {
 	return nil
 }
 
+// ansibleConfigMu guards ansibleConfigPath and the ansible.cfg write, which
+// concurrent target runs would otherwise race on.
+var ansibleConfigMu sync.Mutex
+
 func checkAnsibleConfig() error {
+	ansibleConfigMu.Lock()
+	defer ansibleConfigMu.Unlock()
+
 	if fileutil.IsExist(ansibleConfigPath) {
 		return nil
 	}
