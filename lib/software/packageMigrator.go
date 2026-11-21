@@ -106,8 +106,24 @@ func ensureSnapd(targetClient *ssh.Client, migrationLogger *Logger) error {
 	_, _ = runTargetCmd(targetClient, "systemctl enable --now snapd.socket snapd.service 2>/dev/null; "+
 		"[ -e /snap ] || ln -s /var/lib/snapd/snap /snap 2>/dev/null; "+
 		"snap wait system seed.loaded 2>/dev/null; true")
+
+	// Every snap command talks to snapd over its socket. Without it each install
+	// fails with "cannot communicate with server" and no hint why, so report the
+	// unit states here instead.
+	if _, err := runTargetCmd(targetClient, "test -S /run/snapd.socket"); err != nil {
+		state, _ := runTargetCmd(targetClient, snapdStateCmd)
+		migrationLogger.Printf(ERROR, "snapd is not running on the target:\n%s\n", state)
+		return fmt.Errorf("snapd is not running on the target (/run/snapd.socket missing): %s",
+			strings.Join(strings.Fields(state), " "))
+	}
 	return nil
 }
+
+// snapdStateCmd prints why snapd may not be running: whether its units are
+// enabled or masked, whether they are active, and the last socket log lines.
+const snapdStateCmd = "for u in snapd.socket snapd.service; do " +
+	"echo \"$u enabled=$(systemctl is-enabled $u 2>&1) active=$(systemctl is-active $u 2>&1)\"; done; " +
+	"journalctl -u snapd.socket -u snapd.service -n 5 --no-pager -o cat 2>&1"
 
 // warnConfinementDrift logs a warning when a strict-confined snap lands on a
 // target whose snapd cannot enforce strict confinement (e.g. Ubuntu/AppArmor ->
