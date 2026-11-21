@@ -452,7 +452,13 @@ func runPlaybook(executionID string, playbookName string, softwareName string, s
 		_ = logFile.Close()
 	}()
 
-	mw := io.Writer(logFile)
+	// Keep the end of this run's output so a failure can say why. The log file
+	// is shared by every playbook of the execution, so it cannot be read back.
+	tail := &outputTail{max: playbookOutputTailBytes}
+	mw := io.Writer(tail)
+	if logFile != nil {
+		mw = io.MultiWriter(logFile, tail)
+	}
 
 	cmd.Stdout = mw
 	cmd.Stderr = mw
@@ -466,7 +472,8 @@ func runPlaybook(executionID string, playbookName string, softwareName string, s
 		// installs proceed to config/service migration, which then failed later
 		// at a misleading point (e.g. "failed to start service: Unit not found"
 		// because the package was never actually installed). See install.go.
-		return fmt.Errorf("failed to install %s: ansible-playbook exited with error: %w", softwareName, err)
+		return fmt.Errorf("failed to install %s: ansible-playbook exited with error: %w\n%s",
+			softwareName, err, tail.lastLines(playbookOutputTailLines))
 	}
 
 	return nil
@@ -482,4 +489,42 @@ func DeletePlaybook(id string) error {
 	deleteDir(playbookPath)
 
 	return nil
+}
+
+const (
+	playbookOutputTailBytes = 8 * 1024
+	playbookOutputTailLines = 20
+)
+
+// outputTail keeps the last max bytes written to it.
+type outputTail struct {
+	mu  sync.Mutex
+	max int
+	buf []byte
+}
+
+func (t *outputTail) Write(p []byte) (int, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.buf = append(t.buf, p...)
+	if len(t.buf) > t.max {
+		t.buf = append([]byte(nil), t.buf[len(t.buf)-t.max:]...)
+	}
+	return len(p), nil
+}
+
+// lastLines returns up to n last non-empty lines of the kept output.
+func (t *outputTail) lastLines(n int) string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var lines []string
+	for _, line := range strings.Split(string(t.buf), "\n") {
+		if strings.TrimSpace(line) != "" {
+			lines = append(lines, strings.TrimRight(line, "\r"))
+		}
+	}
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
 }

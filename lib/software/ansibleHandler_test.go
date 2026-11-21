@@ -1,6 +1,7 @@
 package software
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,5 +118,24 @@ func TestRunPlaybookConcurrentTargetsIsolated(t *testing.T) {
 		if !strings.Contains(seen, "  - "+want+"\n") {
 			t.Errorf("run for %s was not handed its own package %s:\n%s", hosts[0], want, seen)
 		}
+	}
+}
+
+func TestOutputTailLastLines(t *testing.T) {
+	tail := &outputTail{max: 64}
+	for i := 1; i <= 30; i++ {
+		_, _ = fmt.Fprintf(tail, "line %d\n", i)
+	}
+	got := tail.lastLines(3)
+	if got != "line 28\nline 29\nline 30" {
+		t.Fatalf("lastLines(3) = %q", got)
+	}
+	if len(tail.buf) > 64 {
+		t.Fatalf("kept %d bytes, want at most 64", len(tail.buf))
+	}
+
+	empty := &outputTail{max: 64}
+	if got := empty.lastLines(3); got != "" {
+		t.Fatalf("lastLines on empty output = %q", got)
 	}
 }
